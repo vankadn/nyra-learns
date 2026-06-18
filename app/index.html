@@ -441,6 +441,101 @@
     min-height: 22px;
     color: #E53935;
   }
+
+  /* ── Level filtering ── */
+  .chip[data-level="medium"],
+  .chip[data-level="hard"]                              { display: none; }
+  .word-group.show-medium  .chip[data-level="medium"],
+  .team-group.show-medium  .chip[data-level="medium"]   { display: inline-flex; }
+
+  .show-more-btn {
+    display: inline-block;
+    margin-top: 6px;
+    font-family: 'Baloo 2', cursive;
+    font-size: 0.78rem;
+    background: #EDE7F6;
+    border: 2px solid #B39DDB;
+    border-radius: 50px;
+    padding: 3px 14px;
+    cursor: pointer;
+    font-weight: 700;
+    color: #4527A0;
+    transition: background 0.15s;
+  }
+  .show-more-btn:hover { background: #D1C4E9; }
+
+  .item-note {
+    font-size: 0.8rem;
+    color: #7B1FA2;
+    background: #F3E5F5;
+    border-radius: 8px;
+    padding: 4px 8px;
+    margin-bottom: 6px;
+  }
+  .item-rule {
+    font-size: 0.8rem;
+    color: #BF360C;
+    background: #FFF3E0;
+    border-radius: 8px;
+    padding: 4px 8px;
+    margin-bottom: 6px;
+    font-weight: 700;
+  }
+
+  /* ── Quiz level picker ── */
+  .level-pick-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 10px 0;
+    background: #F5F5F5;
+    border-radius: 12px;
+    padding: 8px 12px;
+  }
+  .level-pick-row > span { font-family: 'Baloo 2', cursive; font-size: 0.9rem; font-weight: 700; color: var(--ink); }
+  .lvl-btn {
+    font-family: 'Baloo 2', cursive;
+    font-size: 0.85rem;
+    padding: 5px 14px;
+    border-radius: 50px;
+    border: 2px solid #ddd;
+    background: white;
+    cursor: pointer;
+    font-weight: 700;
+    color: #888;
+    transition: all 0.15s;
+  }
+  .lvl-btn.on-easy   { background: #C8E6C9; border-color: #43A047; color: #1B5E20; }
+  .lvl-btn.on-medium { background: #FFF9C4; border-color: #F9A825; color: #5D4037; }
+  .lvl-btn.on-hard   { background: #FFCDD2; border-color: #E53935; color: #B71C1C; }
+
+  /* ── Worksheet level row ── */
+  .ws-level-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    background: white;
+    border-radius: 14px;
+    padding: 10px 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    font-family: 'Baloo 2', cursive;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .ws-level-cb-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.88rem;
+    user-select: none;
+  }
+  .ws-level-cb-label input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--plum); cursor: pointer; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -512,10 +607,26 @@ function renderChip(wordObj, item, sec) {
   const emoji = getEmoji(wordObj, item, sec);
   const w = wordObj.word.replace(/"/g, '&quot;');
   const e = emoji.replace(/"/g, '&quot;');
-  return `<span class="chip" data-word="${w}" data-emoji="${e}">` +
+  const level = wordObj.level || 'easy';
+  return `<span class="chip" data-word="${w}" data-emoji="${e}" data-level="${level}">` +
     `<span class="chip-word">${wordObj.word}</span>` +
     `<span class="chip-emoji">${emoji}</span>` +
     `</span>`;
+}
+
+function setupShowMore(container) {
+  container.querySelectorAll('.word-group, .team-group').forEach(group => {
+    const medChips = group.querySelectorAll('.chip[data-level="medium"]');
+    if (medChips.length === 0) return;
+    const btn = document.createElement('button');
+    btn.className = 'show-more-btn';
+    btn.textContent = `+ ${medChips.length} more`;
+    btn.addEventListener('click', () => {
+      const showing = group.classList.toggle('show-medium');
+      btn.textContent = showing ? '▲ show less' : `+ ${medChips.length} more`;
+    });
+    group.querySelector('.word-chips').after(btn);
+  });
 }
 
 function renderVowelSection(sec) {
@@ -556,8 +667,10 @@ function renderVowelSection(sec) {
   for (const item of sec.items) {
     const groupEmoji = item.defaultEmoji || sec.defaultEmoji || DEFAULT_EMOJI;
     html += `<div class="word-group" style="border-left-color:${sec.color}">
-      <h3>${groupEmoji} ${item.label}</h3>
-      <div class="word-chips">`;
+      <h3>${groupEmoji} ${item.label}</h3>`;
+    if (item.rule) html += `<div class="item-rule">📌 ${item.rule}</div>`;
+    if (item.note) html += `<div class="item-note">💡 ${item.note}</div>`;
+    html += `<div class="word-chips">`;
     for (const wordObj of item.words) {
       html += renderChip(wordObj, item, sec);
     }
@@ -566,6 +679,7 @@ function renderVowelSection(sec) {
 
   div.innerHTML = html;
   setupChipListeners(div);
+  setupShowMore(div);
   return div;
 }
 
@@ -580,8 +694,9 @@ function renderTeamsSection(sec) {
   for (const item of sec.items) {
     html += `<div class="team-group">
       <div class="team-label" style="background:${sec.color}">${item.label}</div>
-      <div class="team-sound">👉 ${item.sound}</div>
-      <div class="word-chips">`;
+      <div class="team-sound">👉 ${item.sound}</div>`;
+    if (item.note) html += `<div class="item-note">💡 ${item.note}</div>`;
+    html += `<div class="word-chips">`;
     for (const wordObj of item.words) {
       html += renderChip(wordObj, item, sec);
     }
@@ -590,7 +705,28 @@ function renderTeamsSection(sec) {
 
   div.innerHTML = html;
   setupChipListeners(div);
+  setupShowMore(div);
   return div;
+}
+
+function buildQuizData(sections) {
+  const titles = sections.map(s => s.title);
+  const qs = [];
+  for (const sec of sections) {
+    for (const item of sec.items) {
+      for (const wObj of item.words) {
+        const wrong = shuffle(titles.filter(t => t !== sec.title)).slice(0, 3);
+        qs.push({
+          topic: sec.id,
+          level: wObj.level || 'easy',
+          word: wObj.word,
+          answer: sec.title,
+          options: shuffle([sec.title, ...wrong])
+        });
+      }
+    }
+  }
+  return qs;
 }
 
 function renderQuizSection(quizData, sections) {
@@ -598,32 +734,30 @@ function renderQuizSection(quizData, sections) {
   div.id = 'sec-quiz';
   div.className = 'section';
 
-  const topicOptions = sections.map(s => ({
-    id: s.id,
-    icon: s.icon,
-    title: s.title,
-    color: s.color,
-    eg: s.items.slice(0, 3).flatMap(i => i.words.slice(0, 2).map(w => w.word)).join(', ')
-  }));
-
   let html = `<div class="section-title">⭐ Quiz Time!</div>
   <div id="quizSetup">
     <div class="tip">👆 Pick what you want to practice today!</div>
-    <div style="display:grid;gap:10px;margin-bottom:16px;">`;
+    <div style="display:grid;gap:10px;margin-bottom:4px;">`;
 
-  for (const t of topicOptions) {
-    const topicKey = t.id === 'short-vowels' ? 'short' : t.id === 'long-vowels' ? 'long' : 'double';
-    html += `<label class="topic-card" style="border-color:${t.color}">
-      <input type="checkbox" value="${topicKey}" checked>
-      <span class="topic-icon">${t.icon}</span>
-      <span class="topic-name">${t.title}</span>
-      <span class="topic-eg">${t.eg}</span>
+  for (const sec of sections) {
+    const eg = sec.items.slice(0, 3).flatMap(i => i.words.slice(0, 2).map(w => w.word)).join(', ');
+    html += `<label class="topic-card" style="border-color:${sec.color}">
+      <input type="checkbox" class="quiz-topic-cb" value="${sec.id}" checked>
+      <span class="topic-icon">${sec.icon}</span>
+      <span class="topic-name">${sec.title}</span>
+      <span class="topic-eg">${eg}</span>
     </label>`;
   }
 
   html += `</div>
+    <div class="level-pick-row">
+      <span>Level:</span>
+      <button class="lvl-btn on-easy"  data-level="easy">⭐ Easy</button>
+      <button class="lvl-btn"          data-level="medium">⭐⭐ Medium</button>
+      <button class="lvl-btn"          data-level="hard">⭐⭐⭐ Hard</button>
+    </div>
     <button class="next-btn" id="startQuizBtn">▶️ Start Quiz!</button>
-    <div id="topicWarning" style="color:#E53935;font-weight:700;text-align:center;margin-top:8px;display:none;">Please pick at least one topic! 🙏</div>
+    <div id="topicWarning" style="color:#E53935;font-weight:700;text-align:center;margin-top:8px;display:none;">Please pick at least one topic and level! 🙏</div>
   </div>
 
   <div id="quizPlay" style="display:none;">
@@ -634,7 +768,7 @@ function renderQuizSection(quizData, sections) {
       <button id="changeTopicsBtn" style="font-family:'Baloo 2',cursive;background:#90CAF9;border:none;padding:6px 12px;border-radius:20px;cursor:pointer;font-weight:700;">⬅️ Change</button>
     </div>
     <div class="quiz-card">
-      <div class="quiz-question">What kind of vowel does this word have?</div>
+      <div class="quiz-question">Which group does this word belong to?</div>
       <div class="quiz-word" id="quizWord"></div>
       <div class="quiz-options" id="quizOptions"></div>
       <div class="quiz-result" id="quizResult"></div>
@@ -643,6 +777,13 @@ function renderQuizSection(quizData, sections) {
   </div>`;
 
   div.innerHTML = html;
+
+  div.querySelectorAll('.lvl-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const classMap = { easy: 'on-easy', medium: 'on-medium', hard: 'on-hard' };
+      btn.classList.toggle(classMap[btn.dataset.level]);
+    });
+  });
 
   div.querySelector('#startQuizBtn').addEventListener('click', () => startQuiz(quizData));
   div.querySelector('#changeTopicsBtn').addEventListener('click', backToSetup);
@@ -654,17 +795,34 @@ function renderQuizSection(quizData, sections) {
 function shuffle(arr) { return arr.slice().sort(() => Math.random() - 0.5); }
 
 function getSelectedTopics() {
-  return Array.from(document.querySelectorAll('#quizSetup input[type=checkbox]:checked')).map(cb => cb.value);
+  return Array.from(document.querySelectorAll('.quiz-topic-cb:checked')).map(cb => cb.value);
+}
+
+function getSelectedLevels() {
+  const map = { 'on-easy': 'easy', 'on-medium': 'medium', 'on-hard': 'hard' };
+  const levels = [];
+  document.querySelectorAll('.lvl-btn').forEach(btn => {
+    for (const [cls, lvl] of Object.entries(map)) {
+      if (btn.classList.contains(cls)) levels.push(lvl);
+    }
+  });
+  return levels;
 }
 
 function startQuiz(quizData) {
   const topics = getSelectedTopics();
-  if (topics.length === 0) {
+  const levels = getSelectedLevels();
+  if (topics.length === 0 || levels.length === 0) {
     document.getElementById('topicWarning').style.display = 'block';
     return;
   }
   document.getElementById('topicWarning').style.display = 'none';
-  shuffledQuiz = shuffle(quizData.filter(q => topics.includes(q.topic)));
+  shuffledQuiz = shuffle(quizData.filter(q => topics.includes(q.topic) && levels.includes(q.level)));
+  if (shuffledQuiz.length === 0) {
+    document.getElementById('topicWarning').style.display = 'block';
+    document.getElementById('topicWarning').textContent = 'No words found for this combo — try adding more levels!';
+    return;
+  }
   currentQ = 0; score = 0; total = 0; answered = false;
   updateScore();
   document.getElementById('quizSetup').style.display = 'none';
@@ -758,6 +916,12 @@ function renderWorksheetSection(sections) {
   }
 
   html += `</div>
+  <div class="ws-level-row">
+    <span>Levels:</span>
+    <label class="ws-level-cb-label"><input type="checkbox" class="ws-level-cb" value="easy" checked> ⭐ Easy</label>
+    <label class="ws-level-cb-label"><input type="checkbox" class="ws-level-cb" value="medium" checked> ⭐⭐ Medium</label>
+    <label class="ws-level-cb-label"><input type="checkbox" class="ws-level-cb" value="hard"> ⭐⭐⭐ Hard</label>
+  </div>
   <div class="ws-count-row">
     <span>Words per category:</span>
     <input type="number" id="wsWordCount" value="25" min="1" max="200">
@@ -847,6 +1011,7 @@ async function generateWorksheetPDF(sections) {
   statusEl.textContent = '';
 
   const wordCount = Math.max(1, parseInt(document.getElementById('wsWordCount').value, 10) || 25);
+  const selectedLevels = Array.from(document.querySelectorAll('.ws-level-cb:checked')).map(cb => cb.value);
 
   const selectedSections = [];
   for (const sec of sections) {
@@ -859,7 +1024,9 @@ async function generateWorksheetPDF(sections) {
     for (const item of sec.items) {
       if (checkedItems.includes(item.id)) {
         for (const wObj of item.words) {
-          words.push({ word: wObj.word, emoji: getEmoji(wObj, item, sec) });
+          if (!selectedLevels.length || selectedLevels.includes(wObj.level || 'easy')) {
+            words.push({ word: wObj.word, emoji: getEmoji(wObj, item, sec) });
+          }
         }
       }
     }
@@ -992,7 +1159,7 @@ async function init() {
     tabBar.appendChild(btn);
 
     let secEl;
-    if (sec.id === 'vowel-teams') {
+    if (sec.items && sec.items[0] && sec.items[0].sound !== undefined) {
       secEl = renderTeamsSection(sec);
     } else {
       secEl = renderVowelSection(sec);
@@ -1009,7 +1176,7 @@ async function init() {
   quizBtn.addEventListener('click', () => showTab('quiz'));
   tabBar.appendChild(quizBtn);
 
-  content.appendChild(renderQuizSection(DATA.quiz, DATA.sections));
+  content.appendChild(renderQuizSection(buildQuizData(DATA.sections), DATA.sections));
 
   const wsBtn = document.createElement('button');
   wsBtn.id = 'btn-worksheet';

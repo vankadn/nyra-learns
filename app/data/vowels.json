@@ -1,5 +1,9 @@
 {
-  "metadata": { "subject": "English", "unit": "Vowels", "version": "2.0" },
+  "metadata": {
+    "subject": "English",
+    "unit": "Vowels & Spelling Rules",
+    "version": "3.0"
+  },
   "sections": [
     {
       "id": "short-vowels",
@@ -17,41 +21,81 @@
         { "letter": "U", "example": "cup", "speak": "u as in cup" }
       ],
       "items": [
-        { "id": "short-a", "label": "Short A — /ă/", "defaultEmoji": "🐱", "words": [
-          { "word": "cat",  "emoji": "🐱" },
-          { "word": "map",  "emoji": "🗺️" },
-          { "word": "hand", "emoji": "✋" },
-          { "word": "bat",  "emoji": "🦇" },
-          { "word": "bag",  "emoji": "👜" }
-        ]},
-        { "id": "short-e", "label": "Short E — /ĕ/", "defaultEmoji": "🛏️", "words": [
-          { "word": "bed", "emoji": "🛏️" },
-          { "word": "ten", "emoji": "🔟" },
-          { "word": "leg", "emoji": "🦵" },
-          { "word": "red", "emoji": "🔴" },
-          { "word": "hen", "emoji": "🐔" }
-        ]},
-        { "id": "short-i", "label": "Short I — /ĭ/", "defaultEmoji": "🐟", "words": [
-          { "word": "sit",  "emoji": "🪑" },
-          { "word": "fish", "emoji": "🐟" },
-          { "word": "milk", "emoji": "🥛" },
-          { "word": "big",  "emoji": "🐘" },
-          { "word": "win",  "emoji": "🏆" }
-        ]},
-        { "id": "short-o", "label": "Short O — /ŏ/", "defaultEmoji": "🐶", "words": [
-          { "word": "top",  "emoji": "🔝" },
-          { "word": "dog",  "emoji": "🐶" },
-          { "word": "sock", "emoji": "🧦" },
-          { "word": "hot",  "emoji": "🔥" },
-          { "word": "box",  "emoji": "📦" }
-        ]},
-        { "id": "short-u", "label": "Short U — /ŭ/", "defaultEmoji": "☀️", "words": [
-          { "word": "cup",  "emoji": "☕" },
-          { "word": "sun",  "emoji": "☀️" },
-          { "word": "duck", "emoji": "🦆" },
-          { "word": "bug",  "emoji": "🐛" },
-          { "word": "run",  "emoji": "🏃" }
-        ]}
+        {
+          "id": "short-a", "label": "Short A — /ă/", "defaultEmoji": "🐱",
+          "words": [
+            { "word": "cat",  "emoji": "🐱",  "level": "easy"   },
+            { "word": "map",  "emoji": "🗺️",  "level": "easy"   },
+            { "word": "bat",  "emoji": "🦇",  "level": "easy"   },
+            { "word": "bag",  "emoji": "👜",  "level": "easy"   },
+            { "word": "hat",  "emoji": "🎩",  "level": "easy"   },
+            { "word": "dad",  "emoji": "👨",  "level": "easy"   },
+            { "word": "ran",  "emoji": "🏃",  "level": "easy"   },
+            { "word": "van",  "emoji": "🚐",  "level": "easy"   },
+            { "word": "hand", "emoji": "✋",  "level": "medium"  },
+            { "word": "sand", "emoji": "🏖️", "level": "medium"  }
+          ]
+        },
+        {
+          "id": "short-e", "label": "Short E — /ĕ/", "defaultEmoji": "🛏️",
+          "words": [
+            { "word": "bed", "emoji": "🛏️", "level": "easy"   },
+            { "word": "ten", "emoji": "🔟",  "level": "easy"   },
+            { "word": "leg", "emoji": "🦵",  "level": "easy"   },
+            { "word": "red", "emoji": "🔴",  "level": "easy"   },
+            { "word": "hen", "emoji": "🐔",  "level": "easy"   },
+            { "word": "web", "emoji": "🕸️", "level": "easy"   },
+            { "word": "net", "emoji": "🥅",  "level": "easy"   },
+            { "word": "pet", "emoji": "🐾",  "level": "easy"   },
+            { "word": "pen", "emoji": "✏️",  "level": "easy"   },
+            { "word": "men", "emoji": "👨‍👨‍👦", "level": "easy" }
+          ]
+        },
+        {
+          "id": "short-i", "label": "Short I — /ĭ/", "defaultEmoji": "🐟",
+          "words": [
+            { "word": "sit",  "emoji": "🪑",  "level": "easy"   },
+            { "word": "big",  "emoji": "🐘",  "level": "easy"   },
+            { "word": "win",  "emoji": "🏆",  "level": "easy"   },
+            { "word": "dig",  "emoji": "⛏️", "level": "easy"   },
+            { "word": "pig",  "emoji": "🐷",  "level": "easy"   },
+            { "word": "pin",  "emoji": "📌",  "level": "easy"   },
+            { "word": "lip",  "emoji": "👄",  "level": "easy"   },
+            { "word": "fish", "emoji": "🐟",  "level": "easy"   },
+            { "word": "milk", "emoji": "🥛",  "level": "medium"  },
+            { "word": "hill", "emoji": "⛰️", "level": "medium"  }
+          ]
+        },
+        {
+          "id": "short-o", "label": "Short O — /ŏ/", "defaultEmoji": "🐶",
+          "words": [
+            { "word": "top",  "emoji": "🔝",  "level": "easy"   },
+            { "word": "dog",  "emoji": "🐶",  "level": "easy"   },
+            { "word": "hot",  "emoji": "🔥",  "level": "easy"   },
+            { "word": "box",  "emoji": "📦",  "level": "easy"   },
+            { "word": "fog",  "emoji": "🌫️", "level": "easy"   },
+            { "word": "log",  "emoji": "🪵",  "level": "easy"   },
+            { "word": "pot",  "emoji": "🪴",  "level": "easy"   },
+            { "word": "dot",  "emoji": "🔴",  "level": "easy"   },
+            { "word": "hop",  "emoji": "🐇",  "level": "easy"   },
+            { "word": "sock", "emoji": "🧦",  "level": "easy"   }
+          ]
+        },
+        {
+          "id": "short-u", "label": "Short U — /ŭ/", "defaultEmoji": "☀️",
+          "words": [
+            { "word": "cup",  "emoji": "☕",  "level": "easy"   },
+            { "word": "sun",  "emoji": "☀️",  "level": "easy"   },
+            { "word": "bug",  "emoji": "🐛",  "level": "easy"   },
+            { "word": "run",  "emoji": "🏃",  "level": "easy"   },
+            { "word": "mud",  "emoji": "💧",  "level": "easy"   },
+            { "word": "bud",  "emoji": "🌸",  "level": "easy"   },
+            { "word": "hug",  "emoji": "🤗",  "level": "easy"   },
+            { "word": "nut",  "emoji": "🥜",  "level": "easy"   },
+            { "word": "gum",  "emoji": "🫧",  "level": "easy"   },
+            { "word": "duck", "emoji": "🦆",  "level": "easy"   }
+          ]
+        }
       ]
     },
     {
@@ -76,40 +120,81 @@
         { "before": "tub", "after": "tube" }
       ],
       "items": [
-        { "id": "long-a", "label": "Long A — ā", "defaultEmoji": "🎂", "words": [
-          { "word": "cake", "emoji": "🎂" },
-          { "word": "name", "emoji": "📛" },
-          { "word": "play", "emoji": "🎮" },
-          { "word": "rain", "emoji": "🌧️" },
-          { "word": "day",  "emoji": "📅" }
-        ]},
-        { "id": "long-e", "label": "Long E — ē", "defaultEmoji": "🌳", "words": [
-          { "word": "tree", "emoji": "🌳" },
-          { "word": "meet", "emoji": "🤝" },
-          { "word": "seed", "emoji": "🌱" },
-          { "word": "me",   "emoji": "🙋" },
-          { "word": "she",  "emoji": "👧" }
-        ]},
-        { "id": "long-i", "label": "Long I — ī", "defaultEmoji": "🚲", "words": [
-          { "word": "bike", "emoji": "🚲" },
-          { "word": "time", "emoji": "⏰" },
-          { "word": "five", "emoji": "✋" },
-          { "word": "hi",   "emoji": "👋" },
-          { "word": "kite", "emoji": "🪁" }
-        ]},
-        { "id": "long-o", "label": "Long O — ō", "defaultEmoji": "🏠", "words": [
-          { "word": "home", "emoji": "🏠" },
-          { "word": "boat", "emoji": "⛵" },
-          { "word": "road", "emoji": "🏞️" },
-          { "word": "go",   "emoji": "🚦" },
-          { "word": "snow", "emoji": "❄️" }
-        ]},
-        { "id": "long-u", "label": "Long U — ū", "defaultEmoji": "🌸", "words": [
-          { "word": "cute",  "emoji": "🥰" },
-          { "word": "music", "emoji": "🎵" },
-          { "word": "tube",  "emoji": "🧪" },
-          { "word": "use",   "emoji": "🔧" }
-        ]}
+        {
+          "id": "long-a", "label": "Long A — ā", "defaultEmoji": "🎂",
+          "words": [
+            { "word": "cake",  "emoji": "🎂",  "level": "easy"   },
+            { "word": "name",  "emoji": "📛",  "level": "easy"   },
+            { "word": "day",   "emoji": "📅",  "level": "easy"   },
+            { "word": "rain",  "emoji": "🌧️", "level": "easy"   },
+            { "word": "make",  "emoji": "🔨",  "level": "easy"   },
+            { "word": "lake",  "emoji": "🏞️", "level": "easy"   },
+            { "word": "came",  "emoji": "🚶",  "level": "easy"   },
+            { "word": "play",  "emoji": "🎮",  "level": "easy"   },
+            { "word": "plate", "emoji": "🍽️", "level": "medium"  },
+            { "word": "grade", "emoji": "📝",  "level": "medium"  }
+          ]
+        },
+        {
+          "id": "long-e", "label": "Long E — ē", "defaultEmoji": "🌳",
+          "words": [
+            { "word": "me",    "emoji": "🙋",  "level": "easy"   },
+            { "word": "she",   "emoji": "👧",  "level": "easy"   },
+            { "word": "he",    "emoji": "👦",  "level": "easy"   },
+            { "word": "bee",   "emoji": "🐝",  "level": "easy"   },
+            { "word": "tree",  "emoji": "🌳",  "level": "easy"   },
+            { "word": "feet",  "emoji": "🦶",  "level": "easy"   },
+            { "word": "meet",  "emoji": "🤝",  "level": "easy"   },
+            { "word": "seed",  "emoji": "🌱",  "level": "easy"   },
+            { "word": "week",  "emoji": "📆",  "level": "easy"   },
+            { "word": "sleep", "emoji": "😴",  "level": "medium"  }
+          ]
+        },
+        {
+          "id": "long-i", "label": "Long I — ī", "defaultEmoji": "🚲",
+          "words": [
+            { "word": "hi",    "emoji": "👋",  "level": "easy"   },
+            { "word": "bike",  "emoji": "🚲",  "level": "easy"   },
+            { "word": "time",  "emoji": "⏰",  "level": "easy"   },
+            { "word": "kite",  "emoji": "🪁",  "level": "easy"   },
+            { "word": "five",  "emoji": "✋",  "level": "easy"   },
+            { "word": "mine",  "emoji": "⛏️", "level": "easy"   },
+            { "word": "ride",  "emoji": "🏇",  "level": "easy"   },
+            { "word": "bite",  "emoji": "😬",  "level": "easy"   },
+            { "word": "smile", "emoji": "😊",  "level": "medium"  },
+            { "word": "shine", "emoji": "✨",  "level": "medium"  }
+          ]
+        },
+        {
+          "id": "long-o", "label": "Long O — ō", "defaultEmoji": "🏠",
+          "words": [
+            { "word": "go",    "emoji": "🚦",  "level": "easy"   },
+            { "word": "home",  "emoji": "🏠",  "level": "easy"   },
+            { "word": "snow",  "emoji": "❄️",  "level": "easy"   },
+            { "word": "rope",  "emoji": "🪢",  "level": "easy"   },
+            { "word": "bone",  "emoji": "🦴",  "level": "easy"   },
+            { "word": "note",  "emoji": "📝",  "level": "easy"   },
+            { "word": "boat",  "emoji": "⛵",  "level": "easy"   },
+            { "word": "road",  "emoji": "🛣️", "level": "easy"   },
+            { "word": "stone", "emoji": "🪨",  "level": "medium"  },
+            { "word": "globe", "emoji": "🌍",  "level": "medium"  }
+          ]
+        },
+        {
+          "id": "long-u", "label": "Long U — ū", "defaultEmoji": "🌸",
+          "words": [
+            { "word": "use",   "emoji": "🔧",  "level": "easy"   },
+            { "word": "cute",  "emoji": "🥰",  "level": "easy"   },
+            { "word": "cube",  "emoji": "🧊",  "level": "easy"   },
+            { "word": "mule",  "emoji": "🫏",  "level": "easy"   },
+            { "word": "huge",  "emoji": "🦣",  "level": "easy"   },
+            { "word": "tune",  "emoji": "🎶",  "level": "easy"   },
+            { "word": "tube",  "emoji": "🧪",  "level": "easy"   },
+            { "word": "fuse",  "emoji": "💡",  "level": "easy"   },
+            { "word": "music", "emoji": "🎵",  "level": "medium"  },
+            { "word": "flute", "emoji": "🎵",  "level": "medium"  }
+          ]
+        }
       ]
     },
     {
@@ -120,102 +205,188 @@
       "defaultEmoji": "🔤",
       "tip": "Two vowels work together to make one sound!",
       "items": [
-        { "id": "ai-ay", "label": "ai / ay", "sound": "Long A sound (ā)", "defaultEmoji": "🌧️", "words": [
-          { "word": "rain",  "emoji": "🌧️" },
-          { "word": "train", "emoji": "🚂" },
-          { "word": "day",   "emoji": "📅" },
-          { "word": "play",  "emoji": "🎮" },
-          { "word": "stay",  "emoji": "🏕️" }
-        ]},
-        { "id": "ee-ea", "label": "ee / ea", "sound": "Long E sound (ē)", "defaultEmoji": "🐝", "words": [
-          { "word": "feet", "emoji": "🦶" },
-          { "word": "bee",  "emoji": "🐝" },
-          { "word": "leaf", "emoji": "🍃" },
-          { "word": "meat", "emoji": "🥩" },
-          { "word": "seat", "emoji": "💺" }
-        ]},
-        { "id": "oa-ow", "label": "oa / ow", "sound": "Long O sound (ō)", "defaultEmoji": "⛵", "words": [
-          { "word": "boat", "emoji": "⛵" },
-          { "word": "soap", "emoji": "🧼" },
-          { "word": "snow", "emoji": "❄️" },
-          { "word": "grow", "emoji": "🌱" },
-          { "word": "blow", "emoji": "💨" }
-        ]},
-        { "id": "oo", "label": "oo", "sound": "As in moon or book", "defaultEmoji": "🌙", "words": [
-          { "word": "moon",  "emoji": "🌙" },
-          { "word": "spoon", "emoji": "🥄" },
-          { "word": "food",  "emoji": "🍕" },
-          { "word": "book",  "emoji": "📚" },
-          { "word": "look",  "emoji": "👀" }
-        ]},
-        { "id": "oi-oy", "label": "oi / oy", "sound": "\"oi\" sound", "defaultEmoji": "🧸", "words": [
-          { "word": "coin", "emoji": "🪙" },
-          { "word": "boil", "emoji": "🫧" },
-          { "word": "toy",  "emoji": "🧸" },
-          { "word": "boy",  "emoji": "👦" },
-          { "word": "joy",  "emoji": "😄" }
-        ]},
-        { "id": "ou-ow", "label": "ou / ow", "sound": "As in \"ouch!\"", "defaultEmoji": "🏠", "words": [
-          { "word": "house", "emoji": "🏠" },
-          { "word": "mouse", "emoji": "🐭" },
-          { "word": "cloud", "emoji": "☁️" },
-          { "word": "cow",   "emoji": "🐄" },
-          { "word": "town",  "emoji": "🏘️" }
-        ]},
-        { "id": "au-aw", "label": "au / aw", "sound": "\"aw\" sound", "defaultEmoji": "✏️", "words": [
-          { "word": "saw",    "emoji": "🪚" },
-          { "word": "draw",   "emoji": "✏️" },
-          { "word": "claw",   "emoji": "🦞" },
-          { "word": "August", "emoji": "📅" }
-        ]},
-        { "id": "ei", "label": "ei / eigh", "sound": "Long A sound", "defaultEmoji": "⚖️", "words": [
-          { "word": "vein",   "emoji": "🩺" },
-          { "word": "rein",   "emoji": "🐴" },
-          { "word": "eight",  "emoji": "🎱" },
-          { "word": "weight", "emoji": "⚖️" }
-        ]}
+        {
+          "id": "ai-ay", "label": "ai / ay", "sound": "Long A (ā)", "defaultEmoji": "🌧️",
+          "words": [
+            { "word": "rain",   "emoji": "🌧️", "level": "easy"   },
+            { "word": "train",  "emoji": "🚂",  "level": "easy"   },
+            { "word": "day",    "emoji": "📅",  "level": "easy"   },
+            { "word": "play",   "emoji": "🎮",  "level": "easy"   },
+            { "word": "tail",   "emoji": "🐾",  "level": "easy"   },
+            { "word": "stay",   "emoji": "🏕️", "level": "medium"  },
+            { "word": "paint",  "emoji": "🎨",  "level": "medium"  },
+            { "word": "clay",   "emoji": "🏺",  "level": "medium"  },
+            { "word": "snail",  "emoji": "🐌",  "level": "medium"  },
+            { "word": "stayed", "emoji": "🏠",  "level": "hard"   }
+          ]
+        },
+        {
+          "id": "ee-ea", "label": "ee / ea", "sound": "Long E (ē)", "defaultEmoji": "🐝",
+          "note": "ea has 3 sounds: long E (eat, leaf), short E (bread, head), long A (pear, bear, tear)",
+          "words": [
+            { "word": "bee",   "emoji": "🐝",  "level": "easy"   },
+            { "word": "feet",  "emoji": "🦶",  "level": "easy"   },
+            { "word": "leaf",  "emoji": "🍃",  "level": "easy"   },
+            { "word": "eat",   "emoji": "🍽️", "level": "easy"   },
+            { "word": "meat",  "emoji": "🥩",  "level": "easy"   },
+            { "word": "seat",  "emoji": "💺",  "level": "easy"   },
+            { "word": "bread", "emoji": "🍞",  "level": "medium"  },
+            { "word": "head",  "emoji": "🗣️", "level": "medium"  },
+            { "word": "pear",  "emoji": "🍐",  "level": "medium"  },
+            { "word": "bear",  "emoji": "🐻",  "level": "medium"  }
+          ]
+        },
+        {
+          "id": "oa-ow", "label": "oa / ow", "sound": "Long O (ō)", "defaultEmoji": "⛵",
+          "note": "ow can also make the 'ouch' sound as in cow, town, down",
+          "words": [
+            { "word": "boat",  "emoji": "⛵",  "level": "easy"   },
+            { "word": "soap",  "emoji": "🧼",  "level": "easy"   },
+            { "word": "snow",  "emoji": "❄️",  "level": "easy"   },
+            { "word": "road",  "emoji": "🛣️", "level": "easy"   },
+            { "word": "show",  "emoji": "🎪",  "level": "easy"   },
+            { "word": "grow",  "emoji": "🌱",  "level": "medium"  },
+            { "word": "blow",  "emoji": "💨",  "level": "medium"  },
+            { "word": "float", "emoji": "🛶",  "level": "medium"  },
+            { "word": "glow",  "emoji": "✨",  "level": "medium"  },
+            { "word": "cloak", "emoji": "🧥",  "level": "hard"   }
+          ]
+        },
+        {
+          "id": "oo", "label": "oo", "sound": "moon or book", "defaultEmoji": "🌙",
+          "words": [
+            { "word": "moon",  "emoji": "🌙",  "level": "easy"   },
+            { "word": "book",  "emoji": "📚",  "level": "easy"   },
+            { "word": "food",  "emoji": "🍕",  "level": "easy"   },
+            { "word": "look",  "emoji": "👀",  "level": "easy"   },
+            { "word": "pool",  "emoji": "🏊",  "level": "easy"   },
+            { "word": "cool",  "emoji": "😎",  "level": "easy"   },
+            { "word": "wood",  "emoji": "🪵",  "level": "easy"   },
+            { "word": "spoon", "emoji": "🥄",  "level": "easy"   },
+            { "word": "wool",  "emoji": "🧶",  "level": "medium"  },
+            { "word": "tooth", "emoji": "🦷",  "level": "medium"  }
+          ]
+        },
+        {
+          "id": "ui-ue", "label": "ui / ue", "sound": "Long U (ū)", "defaultEmoji": "🍇",
+          "note": "Sometimes 'ui' makes a long I sound as in guide, build",
+          "words": [
+            { "word": "blue",   "emoji": "🔵",  "level": "easy"   },
+            { "word": "glue",   "emoji": "🖊️", "level": "easy"   },
+            { "word": "juice",  "emoji": "🧃",  "level": "easy"   },
+            { "word": "true",   "emoji": "✅",  "level": "medium"  },
+            { "word": "clue",   "emoji": "🔍",  "level": "medium"  },
+            { "word": "fruit",  "emoji": "🍎",  "level": "medium"  },
+            { "word": "suit",   "emoji": "👔",  "level": "medium"  },
+            { "word": "guide",  "emoji": "🧭",  "level": "hard"   },
+            { "word": "cruise", "emoji": "🚢",  "level": "hard"   },
+            { "word": "build",  "emoji": "🏗️", "level": "hard"   }
+          ]
+        },
+        {
+          "id": "oi-oy", "label": "oi / oy", "sound": "oi sound", "defaultEmoji": "🧸",
+          "words": [
+            { "word": "toy",   "emoji": "🧸",  "level": "easy"   },
+            { "word": "boy",   "emoji": "👦",  "level": "easy"   },
+            { "word": "joy",   "emoji": "😄",  "level": "easy"   },
+            { "word": "coin",  "emoji": "🪙",  "level": "easy"   },
+            { "word": "join",  "emoji": "🔗",  "level": "easy"   },
+            { "word": "oil",   "emoji": "🛢️", "level": "easy"   },
+            { "word": "soil",  "emoji": "🌱",  "level": "easy"   },
+            { "word": "boil",  "emoji": "🫧",  "level": "medium"  },
+            { "word": "foil",  "emoji": "✨",  "level": "medium"  },
+            { "word": "point", "emoji": "👆",  "level": "medium"  }
+          ]
+        },
+        {
+          "id": "ou-ow", "label": "ou / ow", "sound": "ouch sound", "defaultEmoji": "🏠",
+          "words": [
+            { "word": "cow",    "emoji": "🐄",  "level": "easy"   },
+            { "word": "house",  "emoji": "🏠",  "level": "easy"   },
+            { "word": "mouse",  "emoji": "🐭",  "level": "easy"   },
+            { "word": "down",   "emoji": "⬇️", "level": "easy"   },
+            { "word": "cloud",  "emoji": "☁️", "level": "medium"  },
+            { "word": "town",   "emoji": "🏘️", "level": "medium"  },
+            { "word": "brown",  "emoji": "🟫",  "level": "medium"  },
+            { "word": "crown",  "emoji": "👑",  "level": "medium"  },
+            { "word": "loud",   "emoji": "📢",  "level": "medium"  },
+            { "word": "flower", "emoji": "🌸",  "level": "hard"   }
+          ]
+        },
+        {
+          "id": "ei-eigh", "label": "ei / eigh", "sound": "Long A (ā)", "defaultEmoji": "8️⃣",
+          "words": [
+            { "word": "eight",   "emoji": "8️⃣", "level": "easy"   },
+            { "word": "vein",    "emoji": "💉",  "level": "medium"  },
+            { "word": "weigh",   "emoji": "⚖️",  "level": "medium"  },
+            { "word": "weight",  "emoji": "⚖️",  "level": "medium"  },
+            { "word": "their",   "emoji": "👥",  "level": "medium"  },
+            { "word": "sleigh",  "emoji": "🛷",  "level": "hard"   },
+            { "word": "neigh",   "emoji": "🐴",  "level": "hard"   },
+            { "word": "rein",    "emoji": "🐎",  "level": "hard"   },
+            { "word": "freight", "emoji": "🚂",  "level": "hard"   },
+            { "word": "reign",   "emoji": "👑",  "level": "hard"   }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "spelling-rules",
+      "title": "C, K, and CK Spelling Rules",
+      "color": "#E65100",
+      "icon": "📝",
+      "defaultEmoji": "✏️",
+      "tip": "Same /k/ sound — but which spelling do you use?",
+      "items": [
+        {
+          "id": "use-ck", "label": "Use CK — after a short vowel at end of word", "defaultEmoji": "🦆",
+          "rule": "Use CK right after a short vowel sound at the end of a word or syllable",
+          "words": [
+            { "word": "duck",  "emoji": "🦆",  "level": "easy"   },
+            { "word": "sock",  "emoji": "🧦",  "level": "easy"   },
+            { "word": "pack",  "emoji": "🎒",  "level": "easy"   },
+            { "word": "pick",  "emoji": "👆",  "level": "easy"   },
+            { "word": "neck",  "emoji": "🦒",  "level": "easy"   },
+            { "word": "rock",  "emoji": "🪨",  "level": "easy"   },
+            { "word": "kick",  "emoji": "🦵",  "level": "easy"   },
+            { "word": "truck", "emoji": "🚚",  "level": "medium"  },
+            { "word": "black", "emoji": "⬛",  "level": "medium"  },
+            { "word": "stick", "emoji": "🪵",  "level": "medium"  }
+          ]
+        },
+        {
+          "id": "use-k", "label": "Use K — after a consonant, two vowels, or long vowel", "defaultEmoji": "📚",
+          "rule": "Use K after a consonant, two vowels (vowel team), or a long vowel sound",
+          "words": [
+            { "word": "park",  "emoji": "🏞️", "level": "easy"   },
+            { "word": "book",  "emoji": "📚",  "level": "easy"   },
+            { "word": "take",  "emoji": "✋",  "level": "easy"   },
+            { "word": "week",  "emoji": "📆",  "level": "easy"   },
+            { "word": "seek",  "emoji": "🔍",  "level": "easy"   },
+            { "word": "bike",  "emoji": "🚲",  "level": "easy"   },
+            { "word": "milk",  "emoji": "🥛",  "level": "medium"  },
+            { "word": "silk",  "emoji": "🧵",  "level": "medium"  },
+            { "word": "steak", "emoji": "🥩",  "level": "medium"  },
+            { "word": "creek", "emoji": "🏞️", "level": "medium"  }
+          ]
+        },
+        {
+          "id": "use-c", "label": "Use C — before a, o, u or at start of most words", "defaultEmoji": "🐱",
+          "rule": "Use C before a, o, u and in most multi-syllable words. Use K before e, i, y at the start.",
+          "words": [
+            { "word": "cat",    "emoji": "🐱",  "level": "easy"   },
+            { "word": "cup",    "emoji": "☕",  "level": "easy"   },
+            { "word": "coat",   "emoji": "🧥",  "level": "easy"   },
+            { "word": "candy",  "emoji": "🍬",  "level": "medium"  },
+            { "word": "music",  "emoji": "🎵",  "level": "medium"  },
+            { "word": "comic",  "emoji": "📖",  "level": "hard"   },
+            { "word": "cabin",  "emoji": "🛖",  "level": "hard"   },
+            { "word": "coral",  "emoji": "🪸",  "level": "hard"   },
+            { "word": "cubic",  "emoji": "🧊",  "level": "hard"   },
+            { "word": "picnic", "emoji": "🧺",  "level": "hard"   }
+          ]
+        }
       ]
     }
-  ],
-  "quiz": [
-    { "topic": "short", "word": "cat",  "answer": "Short A", "options": ["Short A","Long A","Short E","Short O"] },
-    { "topic": "short", "word": "map",  "answer": "Short A", "options": ["Short A","Long A","Short I","Short U"] },
-    { "topic": "short", "word": "hand", "answer": "Short A", "options": ["Short A","Long A","Short E","Vowel Team"] },
-    { "topic": "short", "word": "bed",  "answer": "Short E", "options": ["Short E","Long E","Short A","Short O"] },
-    { "topic": "short", "word": "ten",  "answer": "Short E", "options": ["Short E","Long E","Short I","Short U"] },
-    { "topic": "short", "word": "leg",  "answer": "Short E", "options": ["Short E","Long E","Short A","Vowel Team"] },
-    { "topic": "short", "word": "sit",  "answer": "Short I", "options": ["Short I","Long I","Short A","Short E"] },
-    { "topic": "short", "word": "fish", "answer": "Short I", "options": ["Short I","Long I","Short O","Short U"] },
-    { "topic": "short", "word": "milk", "answer": "Short I", "options": ["Short I","Long I","Short E","Vowel Team"] },
-    { "topic": "short", "word": "dog",  "answer": "Short O", "options": ["Short O","Long O","Short U","Short A"] },
-    { "topic": "short", "word": "top",  "answer": "Short O", "options": ["Short O","Long O","Short I","Short E"] },
-    { "topic": "short", "word": "sock", "answer": "Short O", "options": ["Short O","Long O","Short U","Vowel Team"] },
-    { "topic": "short", "word": "cup",  "answer": "Short U", "options": ["Short U","Long U","Short O","Short A"] },
-    { "topic": "short", "word": "sun",  "answer": "Short U", "options": ["Short U","Long U","Short I","Short E"] },
-    { "topic": "short", "word": "duck", "answer": "Short U", "options": ["Short U","Long U","Short O","Vowel Team"] },
-    { "topic": "long",  "word": "cake", "answer": "Long A",  "options": ["Long A","Short A","Long E","Vowel Team"] },
-    { "topic": "long",  "word": "name", "answer": "Long A",  "options": ["Long A","Short A","Long O","Short I"] },
-    { "topic": "long",  "word": "kite", "answer": "Long I",  "options": ["Long I","Short I","Long A","Vowel Team"] },
-    { "topic": "long",  "word": "bike", "answer": "Long I",  "options": ["Long I","Short I","Long E","Short O"] },
-    { "topic": "long",  "word": "home", "answer": "Long O",  "options": ["Long O","Short O","Long A","Vowel Team"] },
-    { "topic": "long",  "word": "tune", "answer": "Long U",  "options": ["Long U","Short U","Long O","Short A"] },
-    { "topic": "long",  "word": "me",   "answer": "Long E",  "options": ["Long E","Short E","Long A","Vowel Team"] },
-    { "topic": "long",  "word": "go",   "answer": "Long O",  "options": ["Long O","Short O","Long U","Short U"] },
-    { "topic": "long",  "word": "hi",   "answer": "Long I",  "options": ["Long I","Short I","Long O","Short A"] },
-    { "topic": "long",  "word": "cube", "answer": "Long U",  "options": ["Long U","Short U","Long A","Short I"] },
-    { "topic": "double","word": "rain",  "answer": "Vowel Team (ai)",   "options": ["Vowel Team (ai)","Short A","Long A","Short I"] },
-    { "topic": "double","word": "day",   "answer": "Vowel Team (ay)",   "options": ["Vowel Team (ay)","Short A","Long A","Short E"] },
-    { "topic": "double","word": "feet",  "answer": "Vowel Team (ee)",   "options": ["Vowel Team (ee)","Short E","Long E","Short I"] },
-    { "topic": "double","word": "leaf",  "answer": "Vowel Team (ea)",   "options": ["Vowel Team (ea)","Short E","Long E","Short A"] },
-    { "topic": "double","word": "boat",  "answer": "Vowel Team (oa)",   "options": ["Vowel Team (oa)","Short O","Long O","Short A"] },
-    { "topic": "double","word": "snow",  "answer": "Vowel Team (ow)",   "options": ["Vowel Team (ow)","Short O","Long O","Short U"] },
-    { "topic": "double","word": "moon",  "answer": "Vowel Team (oo)",   "options": ["Vowel Team (oo)","Short O","Long O","Short U"] },
-    { "topic": "double","word": "book",  "answer": "Vowel Team (oo)",   "options": ["Vowel Team (oo)","Short O","Long O","Short U"] },
-    { "topic": "double","word": "boy",   "answer": "Vowel Team (oy)",   "options": ["Vowel Team (oy)","Short O","Long O","Short U"] },
-    { "topic": "double","word": "coin",  "answer": "Vowel Team (oi)",   "options": ["Vowel Team (oi)","Short O","Long O","Short I"] },
-    { "topic": "double","word": "house", "answer": "Vowel Team (ou)",   "options": ["Vowel Team (ou)","Short O","Long O","Short U"] },
-    { "topic": "double","word": "cow",   "answer": "Vowel Team (ow)",   "options": ["Vowel Team (ow)","Short O","Long O","Short U"] },
-    { "topic": "double","word": "saw",   "answer": "Vowel Team (aw)",   "options": ["Vowel Team (aw)","Short A","Long A","Short O"] },
-    { "topic": "double","word": "eight", "answer": "Vowel Team (eigh)", "options": ["Vowel Team (eigh)","Short E","Long A","Vowel Team (ee)"] }
   ]
 }
