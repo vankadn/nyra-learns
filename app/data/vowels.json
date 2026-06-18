@@ -1,0 +1,117 @@
+{
+  "metadata": {
+    "subject": "English",
+    "unit": "Vowels",
+    "version": "1.0"
+  },
+  "sections": [
+    {
+      "id": "short-vowels",
+      "title": "Short Vowels",
+      "color": "#FF7043",
+      "icon": "🔴",
+      "tip": "Short vowels make a quick, soft sound — like a little hiccup!",
+      "rule": "Short vowels appear in closed syllables — a vowel followed by a consonant!",
+      "vowels": [
+        { "letter": "A", "example": "cat", "speak": "a as in cat" },
+        { "letter": "E", "example": "bed", "speak": "e as in bed" },
+        { "letter": "I", "example": "sit", "speak": "i as in sit" },
+        { "letter": "O", "example": "hot", "speak": "o as in hot" },
+        { "letter": "U", "example": "cup", "speak": "u as in cup" }
+      ],
+      "items": [
+        { "id": "short-a", "label": "Short A — /ă/", "icon": "🐱", "words": ["cat","map","hand","bat","bag"] },
+        { "id": "short-e", "label": "Short E — /ĕ/", "icon": "🛏️", "words": ["bed","ten","leg","red","hen"] },
+        { "id": "short-i", "label": "Short I — /ĭ/", "icon": "🐟", "words": ["sit","fish","milk","big","win"] },
+        { "id": "short-o", "label": "Short O — /ŏ/", "icon": "🐶", "words": ["top","dog","sock","hot","box"] },
+        { "id": "short-u", "label": "Short U — /ŭ/", "icon": "☀️", "words": ["cup","sun","duck","bug","run"] }
+      ]
+    },
+    {
+      "id": "long-vowels",
+      "title": "Long Vowels",
+      "color": "#7C4DFF",
+      "icon": "🟣",
+      "tip": "Long vowels say their name — like when you say the alphabet!",
+      "rule": "Magic E Rule: vowel + consonant + e = long vowel! The silent E at the end makes the vowel long!",
+      "vowels": [
+        { "letter": "A", "example": "cake", "speak": "long a, say A" },
+        { "letter": "E", "example": "tree", "speak": "long e, say E" },
+        { "letter": "I", "example": "bike", "speak": "long i, say I" },
+        { "letter": "O", "example": "home", "speak": "long o, say O" },
+        { "letter": "U", "example": "cute", "speak": "long u, say U" }
+      ],
+      "transforms": [
+        { "before": "cap", "after": "cape" },
+        { "before": "bit", "after": "bite" },
+        { "before": "hop", "after": "hope" },
+        { "before": "tub", "after": "tube" }
+      ],
+      "items": [
+        { "id": "long-a", "label": "Long A — ā", "icon": "🎂", "words": ["cake","name","play","rain","day"] },
+        { "id": "long-e", "label": "Long E — ē", "icon": "🌳", "words": ["tree","meet","seed","me","she"] },
+        { "id": "long-i", "label": "Long I — ī", "icon": "🚲", "words": ["bike","time","five","hi","kite"] },
+        { "id": "long-o", "label": "Long O — ō", "icon": "🏠", "words": ["home","boat","road","go","snow"] },
+        { "id": "long-u", "label": "Long U — ū", "icon": "🌸", "words": ["cute","music","tube","use"] }
+      ]
+    },
+    {
+      "id": "vowel-teams",
+      "title": "Vowel Teams",
+      "color": "#0097A7",
+      "icon": "🔵",
+      "tip": "Two vowels work together to make one sound!",
+      "items": [
+        { "id": "ai-ay", "label": "ai / ay", "sound": "Long A sound (ā)", "words": ["rain","train","day","play","stay"] },
+        { "id": "ee-ea", "label": "ee / ea", "sound": "Long E sound (ē)", "words": ["feet","bee","leaf","meat","seat"] },
+        { "id": "oa-ow", "label": "oa / ow", "sound": "Long O sound (ō)", "words": ["boat","soap","snow","grow","blow"] },
+        { "id": "oo",    "label": "oo",      "sound": "As in moon or book", "words": ["moon","spoon","food","book","look"] },
+        { "id": "oi-oy", "label": "oi / oy", "sound": "\"oi\" sound",       "words": ["coin","boil","toy","boy","joy"] },
+        { "id": "ou-ow", "label": "ou / ow", "sound": "As in \"ouch!\"",    "words": ["house","mouse","cloud","cow","town"] },
+        { "id": "au-aw", "label": "au / aw", "sound": "\"aw\" sound",       "words": ["saw","draw","claw","August"] },
+        { "id": "ei",    "label": "ei / eigh","sound": "Long A sound",      "words": ["vein","rein","eight","weight"] }
+      ]
+    }
+  ],
+  "quiz": [
+    { "topic": "short", "word": "cat",  "answer": "Short A", "options": ["Short A","Long A","Short E","Short O"] },
+    { "topic": "short", "word": "map",  "answer": "Short A", "options": ["Short A","Long A","Short I","Short U"] },
+    { "topic": "short", "word": "hand", "answer": "Short A", "options": ["Short A","Long A","Short E","Vowel Team"] },
+    { "topic": "short", "word": "bed",  "answer": "Short E", "options": ["Short E","Long E","Short A","Short O"] },
+    { "topic": "short", "word": "ten",  "answer": "Short E", "options": ["Short E","Long E","Short I","Short U"] },
+    { "topic": "short", "word": "leg",  "answer": "Short E", "options": ["Short E","Long E","Short A","Vowel Team"] },
+    { "topic": "short", "word": "sit",  "answer": "Short I", "options": ["Short I","Long I","Short A","Short E"] },
+    { "topic": "short", "word": "fish", "answer": "Short I", "options": ["Short I","Long I","Short O","Short U"] },
+    { "topic": "short", "word": "milk", "answer": "Short I", "options": ["Short I","Long I","Short E","Vowel Team"] },
+    { "topic": "short", "word": "dog",  "answer": "Short O", "options": ["Short O","Long O","Short U","Short A"] },
+    { "topic": "short", "word": "top",  "answer": "Short O", "options": ["Short O","Long O","Short I","Short E"] },
+    { "topic": "short", "word": "sock", "answer": "Short O", "options": ["Short O","Long O","Short U","Vowel Team"] },
+    { "topic": "short", "word": "cup",  "answer": "Short U", "options": ["Short U","Long U","Short O","Short A"] },
+    { "topic": "short", "word": "sun",  "answer": "Short U", "options": ["Short U","Long U","Short I","Short E"] },
+    { "topic": "short", "word": "duck", "answer": "Short U", "options": ["Short U","Long U","Short O","Vowel Team"] },
+    { "topic": "long",  "word": "cake", "answer": "Long A",  "options": ["Long A","Short A","Long E","Vowel Team"] },
+    { "topic": "long",  "word": "name", "answer": "Long A",  "options": ["Long A","Short A","Long O","Short I"] },
+    { "topic": "long",  "word": "kite", "answer": "Long I",  "options": ["Long I","Short I","Long A","Vowel Team"] },
+    { "topic": "long",  "word": "bike", "answer": "Long I",  "options": ["Long I","Short I","Long E","Short O"] },
+    { "topic": "long",  "word": "home", "answer": "Long O",  "options": ["Long O","Short O","Long A","Vowel Team"] },
+    { "topic": "long",  "word": "tune", "answer": "Long U",  "options": ["Long U","Short U","Long O","Short A"] },
+    { "topic": "long",  "word": "me",   "answer": "Long E",  "options": ["Long E","Short E","Long A","Vowel Team"] },
+    { "topic": "long",  "word": "go",   "answer": "Long O",  "options": ["Long O","Short O","Long U","Short U"] },
+    { "topic": "long",  "word": "hi",   "answer": "Long I",  "options": ["Long I","Short I","Long O","Short A"] },
+    { "topic": "long",  "word": "cube", "answer": "Long U",  "options": ["Long U","Short U","Long A","Short I"] },
+    { "topic": "double","word": "rain",  "answer": "Vowel Team (ai)",   "options": ["Vowel Team (ai)","Short A","Long A","Short I"] },
+    { "topic": "double","word": "day",   "answer": "Vowel Team (ay)",   "options": ["Vowel Team (ay)","Short A","Long A","Short E"] },
+    { "topic": "double","word": "feet",  "answer": "Vowel Team (ee)",   "options": ["Vowel Team (ee)","Short E","Long E","Short I"] },
+    { "topic": "double","word": "leaf",  "answer": "Vowel Team (ea)",   "options": ["Vowel Team (ea)","Short E","Long E","Short A"] },
+    { "topic": "double","word": "boat",  "answer": "Vowel Team (oa)",   "options": ["Vowel Team (oa)","Short O","Long O","Short A"] },
+    { "topic": "double","word": "snow",  "answer": "Vowel Team (ow)",   "options": ["Vowel Team (ow)","Short O","Long O","Short U"] },
+    { "topic": "double","word": "moon",  "answer": "Vowel Team (oo)",   "options": ["Vowel Team (oo)","Short O","Long O","Short U"] },
+    { "topic": "double","word": "book",  "answer": "Vowel Team (oo)",   "options": ["Vowel Team (oo)","Short O","Long O","Short U"] },
+    { "topic": "double","word": "boy",   "answer": "Vowel Team (oy)",   "options": ["Vowel Team (oy)","Short O","Long O","Short U"] },
+    { "topic": "double","word": "coin",  "answer": "Vowel Team (oi)",   "options": ["Vowel Team (oi)","Short O","Long O","Short I"] },
+    { "topic": "double","word": "house", "answer": "Vowel Team (ou)",   "options": ["Vowel Team (ou)","Short O","Long O","Short U"] },
+    { "topic": "double","word": "cow",   "answer": "Vowel Team (ow)",   "options": ["Vowel Team (ow)","Short O","Long O","Short U"] },
+    { "topic": "double","word": "saw",   "answer": "Vowel Team (aw)",   "options": ["Vowel Team (aw)","Short A","Long A","Short O"] },
+    { "topic": "double","word": "eight", "answer": "Vowel Team (eigh)", "options": ["Vowel Team (eigh)","Short E","Long A","Vowel Team (ee)"] }
+  ]
+}
