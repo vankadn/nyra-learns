@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nyra Learns with Nana</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Baloo+2:wght@700;800&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --sky: #4FC3F7;
+    --sun: #FFD54F;
+    --grass: #81C784;
+    --berry: #F06292;
+    --plum: #9C27B0;
+    --cloud: #fff;
+    --ink: #1A237E;
+    --short-color: #FF7043;
+    --long-color: #7C4DFF;
+    --double-color: #0097A7;
+  }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: linear-gradient(180deg, #B3E5FC 0%, #E1F5FE 60%, #C8E6C9 100%);
+    min-height: 100vh;
+    color: var(--ink);
+    padding-bottom: 40px;
+  }
+
+  header {
+    background: linear-gradient(135deg, var(--plum), #1565C0);
+    padding: 18px 20px 14px;
+    text-align: center;
+    border-bottom: 5px solid var(--sun);
+    position: relative;
+    overflow: hidden;
+  }
+
+  header::before {
+    content: '🌈';
+    position: absolute;
+    font-size: 80px;
+    opacity: 0.12;
+    top: -10px;
+    right: -10px;
+  }
+
+  header h1 {
+    font-family: 'Baloo 2', cursive;
+    font-size: 2rem;
+    color: white;
+    text-shadow: 2px 3px 0 rgba(0,0,0,0.2);
+    letter-spacing: 1px;
+  }
+
+  header p {
+    color: #E3F2FD;
+    font-size: 0.95rem;
+    margin-top: 4px;
+  }
+
+  .tabs {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding: 18px 16px 0;
+    flex-wrap: wrap;
+  }
+
+  .tab-btn {
+    font-family: 'Baloo 2', cursive;
+    font-size: 1rem;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    font-weight: 700;
+    color: white;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+  }
+
+  .tab-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,0.2); }
+
+  .tab-btn.short  { background: var(--short-color); }
+  .tab-btn.long   { background: var(--long-color); }
+  .tab-btn.double { background: var(--double-color); }
+  .tab-btn.quiz   { background: #E65100; }
+
+  .tab-btn.active {
+    transform: translateY(-3px) scale(1.06);
+    box-shadow: 0 7px 0 rgba(0,0,0,0.2);
+    outline: 3px solid var(--sun);
+  }
+
+  .section {
+    display: none;
+    padding: 20px 16px;
+    max-width: 520px;
+    margin: 0 auto;
+    animation: popIn 0.3s ease;
+  }
+  .section.active { display: block; }
+
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  .section-title {
+    font-family: 'Baloo 2', cursive;
+    font-size: 1.5rem;
+    text-align: center;
+    margin-bottom: 16px;
+    color: var(--ink);
+  }
+
+  /* Vowel cards */
+  .vowel-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .vowel-card {
+    background: white;
+    border-radius: 14px;
+    padding: 10px 4px;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.12);
+    transition: transform 0.15s;
+    border: 3px solid transparent;
+  }
+
+  .vowel-card:active { transform: scale(0.95); }
+
+  .vowel-card .letter {
+    font-family: 'Baloo 2', cursive;
+    font-size: 2rem;
+    line-height: 1;
+    font-weight: 800;
+  }
+
+  .vowel-card .word {
+    font-size: 0.72rem;
+    color: #555;
+    margin-top: 3px;
+  }
+
+  .short .vowel-card { border-color: var(--short-color); }
+  .long  .vowel-card { border-color: var(--long-color); }
+
+  /* Word list cards */
+  .word-group {
+    background: white;
+    border-radius: 18px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+    border-left: 6px solid var(--short-color);
+  }
+
+  .word-group.long-style { border-left-color: var(--long-color); }
+  .word-group.double-style { border-left-color: var(--double-color); }
+
+  .word-group h3 {
+    font-family: 'Baloo 2', cursive;
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+    color: var(--ink);
+  }
+
+  .word-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+
+  .chip {
+    background: #F3F4FF;
+    border-radius: 50px;
+    padding: 5px 14px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: 2px solid #C5CAE9;
+    transition: background 0.15s, transform 0.1s;
+    user-select: none;
+  }
+
+  .chip:active { transform: scale(0.93); }
+  .chip.tapped { background: var(--sun); border-color: #F57F17; }
+
+  .rule-box {
+    background: linear-gradient(135deg, #FFF9C4, #FFFDE7);
+    border: 2px dashed #F9A825;
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #5D4037;
+  }
+
+  .rule-box span { font-size: 1.1rem; }
+
+  /* Magic E demo */
+  .magic-e-demo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin: 12px 0;
+  }
+
+  .word-transform {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+    border-radius: 14px;
+    padding: 10px 16px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+    font-family: 'Baloo 2', cursive;
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+
+  .word-transform .before { color: var(--short-color); }
+  .word-transform .arrow { color: #999; }
+  .word-transform .after { color: var(--long-color); }
+  .word-transform .magic-e { color: var(--berry); font-size: 0.8em; vertical-align: super; }
+
+  /* Double vowel section */
+  .dv-group {
+    background: white;
+    border-radius: 18px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+  }
+
+  .dv-label {
+    display: inline-block;
+    background: var(--double-color);
+    color: white;
+    font-family: 'Baloo 2', cursive;
+    font-size: 1rem;
+    border-radius: 50px;
+    padding: 3px 14px;
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+
+  .dv-sound {
+    font-size: 0.88rem;
+    color: #777;
+    margin-bottom: 8px;
+  }
+
+  /* Quiz */
+  .quiz-card {
+    background: white;
+    border-radius: 20px;
+    padding: 22px 18px;
+    text-align: center;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    margin-bottom: 16px;
+  }
+
+  .quiz-question {
+    font-family: 'Baloo 2', cursive;
+    font-size: 1.6rem;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+
+  .quiz-word {
+    font-family: 'Baloo 2', cursive;
+    font-size: 3rem;
+    color: var(--plum);
+    margin: 8px 0 16px;
+    letter-spacing: 4px;
+  }
+
+  .quiz-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .quiz-btn {
+    font-family: 'Baloo 2', cursive;
+    font-size: 1rem;
+    padding: 12px;
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    font-weight: 700;
+    color: white;
+    background: #5C6BC0;
+    box-shadow: 0 4px 0 #3949AB;
+    transition: transform 0.1s;
+  }
+
+  .quiz-btn:active { transform: translateY(2px); }
+  .quiz-btn.correct { background: #43A047; box-shadow: 0 4px 0 #2E7D32; }
+  .quiz-btn.wrong   { background: #E53935; box-shadow: 0 4px 0 #B71C1C; }
+  .quiz-btn:disabled { opacity: 0.7; cursor: default; }
+
+  .quiz-result {
+    font-family: 'Baloo 2', cursive;
+    font-size: 1.4rem;
+    margin-top: 14px;
+    min-height: 40px;
+  }
+
+  .score-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+    border-radius: 14px;
+    padding: 10px 16px;
+    margin-bottom: 14px;
+    font-family: 'Baloo 2', cursive;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+
+  .score-num { font-size: 1.8rem; color: var(--plum); }
+
+  .next-btn {
+    display: block;
+    width: 100%;
+    margin-top: 14px;
+    font-family: 'Baloo 2', cursive;
+    font-size: 1.1rem;
+    padding: 13px;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    font-weight: 800;
+    color: white;
+    background: var(--plum);
+    box-shadow: 0 5px 0 #6A1B9A;
+    transition: transform 0.1s;
+  }
+
+  .next-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #6A1B9A; }
+
+  .tip {
+    background: #E8F5E9;
+    border-left: 4px solid var(--grass);
+    border-radius: 0 10px 10px 0;
+    padding: 10px 14px;
+    font-size: 0.88rem;
+    color: #2E7D32;
+    margin-bottom: 12px;
+  }
+
+  .emoji-big { font-size: 2rem; }
+
+  .topic-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: white;
+    border: 3px solid #ccc;
+    border-radius: 16px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    user-select: none;
+  }
+
+  .topic-card:has(input:checked) { background: #F3F4FF; }
+  .topic-card:active { transform: scale(0.98); }
+
+  .topic-card input[type=checkbox] {
+    width: 22px; height: 22px;
+    accent-color: var(--plum);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .topic-icon { font-size: 1.5rem; }
+
+  .topic-name {
+    font-family: 'Baloo 2', cursive;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--ink);
+    flex: 1;
+  }
+
+  .topic-eg {
+    font-size: 0.78rem;
+    color: #888;
+  }
+
+
+    text-align: center;
+    padding: 16px;
+    animation: bounce 0.5s infinite alternate;
+  }
+
+  @keyframes bounce {
+    from { transform: translateY(0); }
+    to   { transform: translateY(-8px); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🌟 Nyra Learns with Nana</h1>
+  <p>Tap to learn A, E, I, O, U together! 🎉</p>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn short active" onclick="showTab('short')">🔴 Short Vowels</button>
+  <button class="tab-btn long"  onclick="showTab('long')">🟣 Long Vowels</button>
+  <button class="tab-btn double" onclick="showTab('double')">🔵 Vowel Teams</button>
+  <button class="tab-btn quiz"  onclick="showTab('quiz')">⭐ Quiz!</button>
+</div>
+
+<!-- SHORT VOWELS -->
+<div id="short" class="section short active">
+  <div class="section-title">🔴 Short Vowels</div>
+  <div class="tip">📣 Short vowels make a <strong>quick, soft sound</strong> — like a little hiccup!</div>
+
+  <div class="vowel-grid">
+    <div class="vowel-card" onclick="speak('a as in cat')">
+      <div class="letter" style="color:var(--short-color)">A</div>
+      <div class="word">cat 🐱</div>
+    </div>
+    <div class="vowel-card" onclick="speak('e as in bed')">
+      <div class="letter" style="color:var(--short-color)">E</div>
+      <div class="word">bed 🛏️</div>
+    </div>
+    <div class="vowel-card" onclick="speak('i as in sit')">
+      <div class="letter" style="color:var(--short-color)">I</div>
+      <div class="word">sit 🪑</div>
+    </div>
+    <div class="vowel-card" onclick="speak('o as in hot')">
+      <div class="letter" style="color:var(--short-color)">O</div>
+      <div class="word">hot 🔥</div>
+    </div>
+    <div class="vowel-card" onclick="speak('u as in cup')">
+      <div class="letter" style="color:var(--short-color)">U</div>
+      <div class="word">cup ☕</div>
+    </div>
+  </div>
+
+  <div class="rule-box">
+    <span>📌</span> Short vowels appear in <strong>closed syllables</strong> — a vowel <em>followed by a consonant</em>!
+  </div>
+
+  <div class="word-group">
+    <h3>🐱 Short A — /ă/</h3>
+    <div class="word-chips">
+      <span class="chip" onclick="tapChip(this,'cat')">cat</span>
+      <span class="chip" onclick="tapChip(this,'map')">map</span>
+      <span class="chip" onclick="tapChip(this,'hand')">hand</span>
+      <span class="chip" onclick="tapChip(this,'bat')">bat</span>
+      <span class="chip" onclick="tapChip(this,'bag')">bag</span>
+    </div>
+  </div>
+
+  <div class="word-group">
+    <h3>🛏️ Short E — /ĕ/</h3>
+    <div class="word-chips">
+      <span class="chip" onclick="tapChip(this,'bed')">bed</span>
+      <span class="chip" onclick="tapChip(this,'ten')">ten</span>
+      <span class="chip" onclick="tapChip(this,'leg')">leg</span>
+      <span class="chip" onclick="tapChip(this,'red')">red</span>
+      <span class="chip" onclick="tapChip(this,'hen')">hen</span>
+    </div>
+  </div>
+
+  <div class="word-group">
+    <h3>🐟 Short I — /ĭ/</h3>
+    <div class="word-chips">
+      <span class="chip" onclick="tapChip(this,'sit')">sit</span>
+      <span class="chip" onclick="tapChip(this,'fish')">fish</span>
+      <span class="chip" onclick="tapChip(this,'milk')">milk</span>
+      <span class="chip" onclick="tapChip(this,'big')">big</span>
+      <span class="chip" onclick="tapChip(this,'win')">win</span>
+    </div>
+  </div>
+
+  <div class="word-group">
+    <h3>🐶 Short O — /ŏ/</h3>
+    <div class="word-chips">
+      <span class="chip" onclick="tapChip(this,'top')">top</span>
+      <span class="chip" onclick="tapChip(this,'dog')">dog</span>
+      <span class="chip" onclick="tapChip(this,'sock')">sock</span>
+      <span class="chip" onclick="tapChip(this,'hot')">hot</span>
+      <span class="chip" onclick="tapChip(this,'box')">box</span>
+    </div>
+  </div>
+
+  <div class="word-group">
+    <h3>☀️ Short U — /ŭ/</h3>
+    <div class="word-chips">
+      <span class="chip" onclick="tapChip(this,'cup')">cup</span>
+      <span class="chip" onclick="tapChip(this,'sun')">sun</span>
+      <span class="chip" onclick="tapChip(this,'duck')">duck</span>
+      <span class="chip" onclick="tapChip(this,'bug')">bug</span>
+      <span class="chip" onclick="tapChip(this,'run')">run</span>
+    </div>
+  </div>
+</div>
+
+<!-- LONG VOWELS -->
+<div id="long" class="section">
+  <div class="section-title">🟣 Long Vowels</div>
+  <div class="tip">🎵 Long vowels <strong>say their name</strong> — like when you say the alphabet!</div>
+
+  <div class="vowel-grid">
+    <div class="vowel-card" onclick="speak('long a, say A')">
+      <div class="letter" style="color:var(--long-color)">A</div>
+      <div class="word">cake 🎂</div>
+    </div>
+    <div class="vowel-card" onclick="speak('long e, say E')">
+      <div class="letter" style="color:var(--long-color)">E</div>
+      <div class="word">tree 🌳</div>
+    </div>
+    <div class="vowel-card" onclick="speak('long i, say I')">
+      <div class="letter" style="color:var(--long-color)">I</div>
+      <div class="word">bike 🚲</div>
+    </div>
+    <div class="vowel-card" onclick="speak('long o, say O')">
+      <div class="letter" style="color:var(--long-color)">O</div>
+      <div class="word">home 🏠</div>
+    </div>
+    <div class="vowel-card" onclick="speak('long u, say U')">
+      <div class="letter" style="color:var(--long-color)">U</div>
+      <div class="word">cute 🌸</div>
+    </div>
+  </div>
+
+  <div class="rule-box">
+    <span>✨</span> <strong>Magic E Rule:</strong> vowel + consonant + e = <em>long vowel!</em>
+    <br>The silent E at the end makes the vowel long!
+  </div>
+
+  <div class="magic-e-demo">
+    <div class="word-transform">
+      <span class="before">cap</span><span class="arrow">→</span><span class="after">cap<span class="magic-e">e</span></span>
+    </div>
+    <div class="word-transform">
+      <span class="before">bit</span><span class="arrow">→</span><span class="after">bit<span class="magic-e">e</span></span>
+    </div>
+    <div class="word-transform">
+      <span class="before">hop</span><span class="arrow">→</span><span class="after">hop<span class="magic-e">e</span></span>
+    </div>
+    <div class="word-transform">
+      <span class="before">tub</span><span class="arrow">→</span><span class="after">tub<span class="magic-e">e</span></span>
+    </div>
+  </div>
+
+  <div class="word-group long-style">
+    <h3>🎂 Long A — ā</h3>
+    <div class="word-chips">
+      <span class="chip" onclick="tapChip(this,'cake')">cake</span>
+      <span class="chip" onclick="tapChip(this,'name')">name</span>
+      <span class="chip" onclick="tapChip(this,'play')">play</span>
+      <span class="chip" onclick="tapChip(this,'rain')">rain</span>
+      <span class="chip" onclick="tapChip(this,'day')">day</span>
+    </div>
+  </div>
+
+  <div class="word-group long-style">
+    <h3>🌳 Long E — ē</h3>
+    <div class="word-chips">
+      <span class="chip" onclick="tapChip(this,'tree')">tree</span>
+      <span class="chip" onclick="tapChip(this,'meet')">meet</span>
+      <span class="chip" onclick="tapChip(this,'seed')">seed</span>
+      <span class="chip" onclick="tapChip(this,'me')">me</span>
+      <span class="chip" onclick="tapChip(this,'she')">she</span>
+    </div>
+  </div>
+
+  <div class="word-group long-style">
+    <h3>🚲 Long I — ī</h3>
+    <div class="word-chips">
+      <span class="chip" onclick="tapChip(this,'bike')">bike</span>
+      <span class="chip" onclick="tapChip(this,'time')">time</span>
+      <span class="chip" onclick="tapChip(this,'five')">five</span>
+      <span class="chip" onclick="tapChip(this,'hi')">hi</span>
+      <span class="chip" onclick="tapChip(this,'kite')">kite</span>
+    </div>
+  </div>
+
+  <div class="word-group long-style">
+    <h3>🏠 Long O — ō</h3>
+    <div class="word-chips">
+      <span class="chip" onclick="tapChip(this,'home')">home</span>
+      <span class="chip" onclick="tapChip(this,'boat')">boat</span>
+      <span class="chip" onclick="tapChip(this,'road')">road</span>
+      <span class="chip" onclick="tapChip(this,'go')">go</span>
+      <span class="chip" onclick="tapChip(this,'snow')">snow</span>
+    </div>
+  </div>
+
+  <div class="word-group long-style">
+    <h3>🌸 Long U — ū</h3>
+    <div class="word-chips">
+      <span class="chip" onclick="tapChip(this,'cute')">cute</span>
+      <span class="chip" onclick="tapChip(this,'music')">music</span>
+      <span class="chip" onclick="tapChip(this,'tube')">tube</span>
+      <span class="chip" onclick="tapChip(this,'use')">use</span>
+    </div>
+  </div>
+</div>
+
+<!-- DOUBLE VOWELS / VOWEL TEAMS -->
+<div id="double" class="section">
+  <div class="section-title">🔵 Vowel Teams</div>
+  <div class="tip">🤝 Two vowels work <strong>together</strong> to make one sound!</div>
+
+  <div class="dv-group">
+    <div class="dv-label">ai / ay</div>
+    <div class="dv-sound">👉 Long A sound (ā)</div>
+    <div class="word-chips">
+      <span class="chip" onclick="tapChip(this,'rain')">rain</span>
+      <span class="chip" onclick="tapChip(this,'train')">train</span>
+      <span class="chip" onclick="tapChip(this,'day')">day</span>
+      <span class="chip" onclick="tapChip(this,'play')">play</span>
+      <span class="chip" onclick="tapChip(this,'stay')">stay</span>
+    </div>
+  </div>
+
+  <div class="dv-group">
+    <div class="dv-label">ee / ea</div>
+    <div class="dv-sound">👉 Long E sound (ē)</div>
+    <div class="word-chips">
+      <span class="chip" onclick="tapChip(this,'feet')">feet</span>
+      <span class="chip" onclick="tapChip(this,'bee')">bee</span>
+      <span class="chip" onclick="tapChip(this,'leaf')">leaf</span>
+      <span class="chip" onclick="tapChip(this,'meat')">meat</span>
+      <span class="chip" onclick="tapChip(this,'seat')">seat</span>
+    </div>
+  </div>
+
+  <div class="dv-group">
+    <div class="dv-label">oa / ow</div>
+    <div class="dv-sound">👉 Long O sound (ō)</div>
+    <div class="word-chips">
+      <span class="chip" onclick="tapChip(this,'boat')">boat</span>
+      <span class="chip" onclick="tapChip(this,'soap')">soap</span>
+      <span class="chip" onclick="tapChip(this,'snow')">snow</span>
+      <span class="chip" onclick="tapChip(this,'grow')">grow</span>
+      <span class="chip" onclick="tapChip(this,'blow')">blow</span>
+    </div>
+  </div>
+
+  <div class="dv-group">
+    <div class="dv-label">oo</div>
+    <div class="dv-sound">👉 As in moon 🌙 or book 📚</div>
+    <div class="word-chips">
+      <span class="chip" onclick="tapChip(this,'moon')">moon</span>
+      <span class="chip" onclick="tapChip(this,'spoon')">spoon</span>
+      <span class="chip" onclick="tapChip(this,'food')">food</span>
+      <span class="chip" onclick="tapChip(this,'book')">book</span>
+      <span class="chip" onclick="tapChip(this,'look')">look</span>
+    </div>
+  </div>
+
+  <div class="dv-group">
+    <div class="dv-label">oi / oy</div>
+    <div class="dv-sound">👉 "oi" sound</div>
+    <div class="word-chips">
+      <span class="chip" onclick="tapChip(this,'coin')">coin</span>
+      <span class="chip" onclick="tapChip(this,'boil')">boil</span>
+      <span class="chip" onclick="tapChip(this,'toy')">toy</span>
+      <span class="chip" onclick="tapChip(this,'boy')">boy</span>
+      <span class="chip" onclick="tapChip(this,'joy')">joy</span>
+    </div>
+  </div>
+
+  <div class="dv-group">
+    <div class="dv-label">ou / ow</div>
+    <div class="dv-sound">👉 As in "ouch!" 😮</div>
+    <div class="word-chips">
+      <span class="chip" onclick="tapChip(this,'house')">house</span>
+      <span class="chip" onclick="tapChip(this,'mouse')">mouse</span>
+      <span class="chip" onclick="tapChip(this,'cloud')">cloud</span>
+      <span class="chip" onclick="tapChip(this,'cow')">cow</span>
+      <span class="chip" onclick="tapChip(this,'town')">town</span>
+    </div>
+  </div>
+
+  <div class="dv-group">
+    <div class="dv-label">au / aw</div>
+    <div class="dv-sound">👉 "aw" sound</div>
+    <div class="word-chips">
+      <span class="chip" onclick="tapChip(this,'saw')">saw</span>
+      <span class="chip" onclick="tapChip(this,'draw')">draw</span>
+      <span class="chip" onclick="tapChip(this,'claw')">claw</span>
+      <span class="chip" onclick="tapChip(this,'August')">August</span>
+    </div>
+  </div>
+
+  <div class="dv-group">
+    <div class="dv-label">ei / eigh</div>
+    <div class="dv-sound">👉 Long A sound</div>
+    <div class="word-chips">
+      <span class="chip" onclick="tapChip(this,'vein')">vein</span>
+      <span class="chip" onclick="tapChip(this,'rein')">rein</span>
+      <span class="chip" onclick="tapChip(this,'eight')">eight</span>
+      <span class="chip" onclick="tapChip(this,'weight')">weight</span>
+    </div>
+  </div>
+</div>
+
+<!-- QUIZ -->
+<div id="quiz" class="section">
+  <div class="section-title">⭐ Quiz Time!</div>
+
+  <!-- TOPIC SELECTOR -->
+  <div id="quizSetup">
+    <div class="tip">👆 Pick what you want to practice today!</div>
+
+    <div style="display:grid;gap:10px;margin-bottom:16px;">
+      <div class="topic-row" id="topic-short">
+        <label class="topic-card" style="border-color:var(--short-color)">
+          <input type="checkbox" value="short" checked onchange="updateTopicLabel()">
+          <span class="topic-icon">🔴</span>
+          <span class="topic-name">Short Vowels</span>
+          <span class="topic-eg">cat, bed, sit, hot, cup</span>
+        </label>
+      </div>
+      <div class="topic-row" id="topic-long">
+        <label class="topic-card" style="border-color:var(--long-color)">
+          <input type="checkbox" value="long" checked onchange="updateTopicLabel()">
+          <span class="topic-icon">🟣</span>
+          <span class="topic-name">Long Vowels</span>
+          <span class="topic-eg">cake, tree, bike, home, tune</span>
+        </label>
+      </div>
+      <div class="topic-row" id="topic-double">
+        <label class="topic-card" style="border-color:var(--double-color)">
+          <input type="checkbox" value="double" checked onchange="updateTopicLabel()">
+          <span class="topic-icon">🔵</span>
+          <span class="topic-name">Vowel Teams</span>
+          <span class="topic-eg">rain, moon, boy, house, leaf</span>
+        </label>
+      </div>
+    </div>
+
+    <button class="next-btn" id="startQuizBtn" onclick="startQuiz()">▶️ Start Quiz!</button>
+    <div id="topicWarning" style="color:#E53935;font-weight:700;text-align:center;margin-top:8px;display:none;">Please pick at least one topic! 🙏</div>
+  </div>
+
+  <!-- QUIZ PLAY -->
+  <div id="quizPlay" style="display:none;">
+    <div class="score-bar">
+      <span>⭐ Score</span>
+      <span class="score-num" id="scoreDisplay">0</span>
+      <span>/ <span id="totalDisplay">0</span></span>
+      <button onclick="backToSetup()" style="font-family:'Baloo 2',cursive;background:#90CAF9;border:none;padding:6px 12px;border-radius:20px;cursor:pointer;font-weight:700;">⬅️ Change</button>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-question" id="quizQ">What kind of vowel does this word have?</div>
+      <div class="quiz-word" id="quizWord">cat</div>
+      <div class="quiz-options" id="quizOptions"></div>
+      <div class="quiz-result" id="quizResult"></div>
+    </div>
+
+    <button class="next-btn" onclick="nextQuestion()">Next Word ➡️</button>
+  </div>
+</div>
+
+<script>
+  // Tab switching
+  function showTab(id) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.querySelector('.tab-btn.' + (id === 'quiz' ? 'quiz' : id === 'short' ? 'short' : id === 'long' ? 'long' : 'double')).classList.add('active');
+
+  }
+
+  // Speak word
+  function speak(word) {
+    if ('speechSynthesis' in window) {
+      const u = new SpeechSynthesisUtterance(word);
+      u.rate = 0.8;
+      u.pitch = 1.2;
+      window.speechSynthesis.speak(u);
+    }
+  }
+
+  // Tap chip
+  function tapChip(el, word) {
+    el.classList.toggle('tapped');
+    speak(word);
+  }
+
+  // All quiz data with topic tags
+  const allQuizData = [
+    // Short vowels
+    { topic:'short', word:'cat',  answer:'Short A', options:['Short A','Long A','Short E','Short O'] },
+    { topic:'short', word:'map',  answer:'Short A', options:['Short A','Long A','Short I','Short U'] },
+    { topic:'short', word:'hand', answer:'Short A', options:['Short A','Long A','Short E','Vowel Team'] },
+    { topic:'short', word:'bed',  answer:'Short E', options:['Short E','Long E','Short A','Short O'] },
+    { topic:'short', word:'ten',  answer:'Short E', options:['Short E','Long E','Short I','Short U'] },
+    { topic:'short', word:'leg',  answer:'Short E', options:['Short E','Long E','Short A','Vowel Team'] },
+    { topic:'short', word:'sit',  answer:'Short I', options:['Short I','Long I','Short A','Short E'] },
+    { topic:'short', word:'fish', answer:'Short I', options:['Short I','Long I','Short O','Short U'] },
+    { topic:'short', word:'milk', answer:'Short I', options:['Short I','Long I','Short E','Vowel Team'] },
+    { topic:'short', word:'dog',  answer:'Short O', options:['Short O','Long O','Short U','Short A'] },
+    { topic:'short', word:'top',  answer:'Short O', options:['Short O','Long O','Short I','Short E'] },
+    { topic:'short', word:'sock', answer:'Short O', options:['Short O','Long O','Short U','Vowel Team'] },
+    { topic:'short', word:'cup',  answer:'Short U', options:['Short U','Long U','Short O','Short A'] },
+    { topic:'short', word:'sun',  answer:'Short U', options:['Short U','Long U','Short I','Short E'] },
+    { topic:'short', word:'duck', answer:'Short U', options:['Short U','Long U','Short O','Vowel Team'] },
+    // Long vowels
+    { topic:'long', word:'cake',  answer:'Long A', options:['Long A','Short A','Long E','Vowel Team'] },
+    { topic:'long', word:'name',  answer:'Long A', options:['Long A','Short A','Long O','Short I'] },
+    { topic:'long', word:'kite',  answer:'Long I', options:['Long I','Short I','Long A','Vowel Team'] },
+    { topic:'long', word:'bike',  answer:'Long I', options:['Long I','Short I','Long E','Short O'] },
+    { topic:'long', word:'home',  answer:'Long O', options:['Long O','Short O','Long A','Vowel Team'] },
+    { topic:'long', word:'tune',  answer:'Long U', options:['Long U','Short U','Long O','Short A'] },
+    { topic:'long', word:'me',    answer:'Long E', options:['Long E','Short E','Long A','Vowel Team'] },
+    { topic:'long', word:'go',    answer:'Long O', options:['Long O','Short O','Long U','Short U'] },
+    { topic:'long', word:'hi',    answer:'Long I', options:['Long I','Short I','Long O','Short A'] },
+    { topic:'long', word:'cube',  answer:'Long U', options:['Long U','Short U','Long A','Short I'] },
+    // Vowel teams
+    { topic:'double', word:'rain',  answer:'Vowel Team (ai)', options:['Vowel Team (ai)','Short A','Long A','Short I'] },
+    { topic:'double', word:'day',   answer:'Vowel Team (ay)', options:['Vowel Team (ay)','Short A','Long A','Short E'] },
+    { topic:'double', word:'feet',  answer:'Vowel Team (ee)', options:['Vowel Team (ee)','Short E','Long E','Short I'] },
+    { topic:'double', word:'leaf',  answer:'Vowel Team (ea)', options:['Vowel Team (ea)','Short E','Long E','Short A'] },
+    { topic:'double', word:'boat',  answer:'Vowel Team (oa)', options:['Vowel Team (oa)','Short O','Long O','Short A'] },
+    { topic:'double', word:'snow',  answer:'Vowel Team (ow)', options:['Vowel Team (ow)','Short O','Long O','Short U'] },
+    { topic:'double', word:'moon',  answer:'Vowel Team (oo)', options:['Vowel Team (oo)','Short O','Long O','Short U'] },
+    { topic:'double', word:'book',  answer:'Vowel Team (oo)', options:['Vowel Team (oo)','Short O','Long O','Short U'] },
+    { topic:'double', word:'boy',   answer:'Vowel Team (oy)', options:['Vowel Team (oy)','Short O','Long O','Short U'] },
+    { topic:'double', word:'coin',  answer:'Vowel Team (oi)', options:['Vowel Team (oi)','Short O','Long O','Short I'] },
+    { topic:'double', word:'house', answer:'Vowel Team (ou)', options:['Vowel Team (ou)','Short O','Long O','Short U'] },
+    { topic:'double', word:'cow',   answer:'Vowel Team (ow)', options:['Vowel Team (ow)','Short O','Long O','Short U'] },
+    { topic:'double', word:'saw',   answer:'Vowel Team (aw)', options:['Vowel Team (aw)','Short A','Long A','Short O'] },
+    { topic:'double', word:'eight', answer:'Vowel Team (eigh)', options:['Vowel Team (eigh)','Short E','Long A','Vowel Team (ee)'] },
+  ];
+
+  let currentQ = 0, score = 0, total = 0, answered = false;
+  let shuffled = [];
+
+  function shuffle(arr) {
+    return arr.slice().sort(() => Math.random() - 0.5);
+  }
+
+  function getSelectedTopics() {
+    return Array.from(document.querySelectorAll('#quizSetup input[type=checkbox]:checked'))
+      .map(cb => cb.value);
+  }
+
+  function updateTopicLabel() { /* live feedback could go here */ }
+
+  function startQuiz() {
+    const topics = getSelectedTopics();
+    if (topics.length === 0) {
+      document.getElementById('topicWarning').style.display = 'block';
+      return;
+    }
+    document.getElementById('topicWarning').style.display = 'none';
+    const filtered = allQuizData.filter(q => topics.includes(q.topic));
+    shuffled = shuffle(filtered);
+    currentQ = 0; score = 0; total = 0; answered = false;
+    updateScore();
+    document.getElementById('quizSetup').style.display = 'none';
+    document.getElementById('quizPlay').style.display = 'block';
+    renderQuestion();
+  }
+
+  function backToSetup() {
+    document.getElementById('quizSetup').style.display = 'block';
+    document.getElementById('quizPlay').style.display = 'none';
+  }
+
+  function renderQuestion() {
+    if (currentQ >= shuffled.length) currentQ = 0;
+    const q = shuffled[currentQ];
+    document.getElementById('quizWord').textContent = q.word;
+    document.getElementById('quizResult').textContent = '';
+    speak(q.word);
+
+    const opts = shuffle(q.options);
+    const container = document.getElementById('quizOptions');
+    container.innerHTML = '';
+    answered = false;
+
+    opts.forEach(opt => {
+      const btn = document.createElement('button');
+      btn.className = 'quiz-btn';
+      btn.textContent = opt;
+      btn.onclick = () => checkAnswer(btn, opt, q.answer, container);
+      container.appendChild(btn);
+    });
+  }
+
+  function checkAnswer(btn, chosen, correct, container) {
+    if (answered) return;
+    answered = true;
+    total++;
+
+    const allBtns = container.querySelectorAll('.quiz-btn');
+    allBtns.forEach(b => {
+      b.disabled = true;
+      if (b.textContent === correct) b.classList.add('correct');
+    });
+
+    const result = document.getElementById('quizResult');
+    if (chosen === correct) {
+      score++;
+      btn.classList.add('correct');
+      result.textContent = '🎉 Wah, correct! Shabash! 🌟';
+      speak('Correct! Great job!');
+    } else {
+      btn.classList.add('wrong');
+      result.textContent = '❌ Oops! It is ' + correct + '. Try again!';
+      speak('The answer is ' + correct);
+    }
+    updateScore();
+  }
+
+  function nextQuestion() {
+    currentQ++;
+    renderQuestion();
+  }
+
+  function updateScore() {
+    document.getElementById('scoreDisplay').textContent = score;
+    document.getElementById('totalDisplay').textContent = total;
+  }
+</script>
+</body>
+</html>
