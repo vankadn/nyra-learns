@@ -48,6 +48,13 @@ worksheets/generate.py PDF generator (reportlab). Reads the same JSON files.
           "id": "kebab-case-id", "label": "string",
           "defaultEmoji": "🐾",
           "note": "optional — shown as a tip in the UI for exceptions/rules",
+          "teacherNotes": {
+            "howToSay": "Plain English description of mouth position and sound",
+            "simpleRule": "The actual phonics rule in one sentence",
+            "indianDadTip": "Comparison to Hindi/Telugu sounds, common traps for Indian speakers",
+            "commonMistake": "What to watch out for",
+            "exampleSentence": "A fun sentence using words from this item"
+          },
           "words": [
             { "word": "cat",    "emoji": "🐱", "level": "easy"   },
             { "word": "clap",   "emoji": "👏", "level": "medium" },
@@ -166,3 +173,32 @@ follows, not a way to invoke the Python script.
 **Out of scope for v1:** server-side generation, saving past worksheets,
 mixing word counts per individual item within a category (count is per
 category only).
+
+## Feature spec: teacher notes (tap to reveal + optional PDF inclusion)
+
+**Why:** The parent (non-native English speaker) needs reference notes while
+sitting with Nyra. Notes must not clutter Nyra's view but be one tap away.
+
+**teacherNotes fields in JSON (all optional, render what exists):**
+- `howToSay` — mouth position and sound description
+- `simpleRule` — the phonics rule in one sentence
+- `indianDadTip` — Hindi/Telugu comparison, traps for Indian speakers
+- `commonMistake` — what to watch out for
+- `exampleSentence` — fun sentence using words from this item
+
+**App UI:**
+- Each item in the Learn tab has a small "Notes" button (e.g. 📋)
+- Tapping reveals/hides a notes panel below that item
+- Notes panel shows all available fields in a clean card layout
+- Default state: hidden. No clutter for Nyra.
+- The short `tip` and `rule` at section level stay always visible (unchanged).
+
+**PDF worksheet:**
+- "Include teaching notes" checkbox in the Worksheet tab (default: unchecked)
+- When checked: each section gets a small boxed notes panel at the top
+  showing `simpleRule` + `indianDadTip` + `commonMistake` only
+- `howToSay` and `exampleSentence` omitted from PDF (space constraint)
+- Notes box: light background, smaller font, dashed border — visually distinct
+
+**Data responsibility:** teacherNotes content is generated in the claude.ai
+project chat. Do not write or edit teacherNotes in Claude Code.

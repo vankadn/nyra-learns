@@ -536,6 +536,70 @@
     user-select: none;
   }
   .ws-level-cb-label input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--plum); cursor: pointer; }
+
+  /* ── Teacher notes ── */
+  .tn-btn {
+    font-family: 'Baloo 2', cursive;
+    font-size: 0.72rem;
+    background: #E8EAF6;
+    border: 1.5px solid #9FA8DA;
+    border-radius: 20px;
+    padding: 2px 10px;
+    cursor: pointer;
+    font-weight: 700;
+    color: #3949AB;
+    margin-left: 8px;
+    vertical-align: middle;
+    transition: background 0.15s;
+  }
+  .tn-btn:hover, .tn-btn.open { background: #C5CAE9; }
+
+  .tn-panel {
+    margin-top: 8px;
+    background: #F0F4FF;
+    border: 1.5px dashed #9FA8DA;
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 0.82rem;
+    color: #37474F;
+    line-height: 1.55;
+  }
+  .tn-panel[hidden] { display: none; }
+  .tn-field { margin-bottom: 4px; }
+  .tn-field:last-child { margin-bottom: 0; }
+  .tn-label { font-weight: 700; color: #3949AB; margin-right: 3px; }
+
+  .team-group-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .team-group-head .team-label { margin-bottom: 0; }
+
+  /* ── Worksheet notes checkbox ── */
+  .ws-notes-row {
+    display: flex;
+    align-items: center;
+    background: white;
+    border-radius: 14px;
+    padding: 10px 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .ws-notes-row label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-family: 'Baloo 2', cursive;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--ink);
+    user-select: none;
+  }
+  .ws-notes-row input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--plum); cursor: pointer; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -629,6 +693,46 @@ function setupShowMore(container) {
   });
 }
 
+function renderTeacherNotesHTML(item) {
+  const tn = item.teacherNotes;
+  if (!tn) return { btn: '', panel: '' };
+  const fields = [
+    ['🗣️', 'How to say it', tn.howToSay],
+    ['📏', 'Rule', tn.simpleRule],
+    ['🇮🇳', 'Indian English tip', tn.indianDadTip],
+    ['⚠️', 'Watch out', tn.commonMistake],
+    ['💬', 'Example', tn.exampleSentence],
+  ].filter(([,,v]) => v);
+  if (!fields.length) return { btn: '', panel: '' };
+  const panelId = `tn-${item.id}`;
+  const btn = `<button class="tn-btn" data-panel="${panelId}">📋 Notes</button>`;
+  const panel = `<div class="tn-panel" id="${panelId}" hidden>` +
+    fields.map(([icon, label, val]) =>
+      `<div class="tn-field"><span class="tn-label">${icon} ${label}:</span> ${val}</div>`
+    ).join('') +
+    `</div>`;
+  return { btn, panel };
+}
+
+function setupTeacherNotes(container) {
+  container.querySelectorAll('.tn-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const panel = document.getElementById(btn.dataset.panel);
+      if (!panel) return;
+      const isHidden = panel.hasAttribute('hidden');
+      if (isHidden) {
+        panel.removeAttribute('hidden');
+        btn.classList.add('open');
+        btn.textContent = '📋 ▲';
+      } else {
+        panel.setAttribute('hidden', '');
+        btn.classList.remove('open');
+        btn.textContent = '📋 Notes';
+      }
+    });
+  });
+}
+
 function renderVowelSection(sec) {
   const div = document.createElement('div');
   div.id = 'sec-' + sec.id;
@@ -666,20 +770,22 @@ function renderVowelSection(sec) {
 
   for (const item of sec.items) {
     const groupEmoji = item.defaultEmoji || sec.defaultEmoji || DEFAULT_EMOJI;
+    const { btn: tnBtn, panel: tnPanel } = renderTeacherNotesHTML(item);
     html += `<div class="word-group" style="border-left-color:${sec.color}">
-      <h3>${groupEmoji} ${item.label}</h3>`;
+      <h3>${groupEmoji} ${item.label}${tnBtn}</h3>`;
     if (item.rule) html += `<div class="item-rule">📌 ${item.rule}</div>`;
     if (item.note) html += `<div class="item-note">💡 ${item.note}</div>`;
     html += `<div class="word-chips">`;
     for (const wordObj of item.words) {
       html += renderChip(wordObj, item, sec);
     }
-    html += `</div></div>`;
+    html += `</div>${tnPanel}</div>`;
   }
 
   div.innerHTML = html;
   setupChipListeners(div);
   setupShowMore(div);
+  setupTeacherNotes(div);
   return div;
 }
 
@@ -692,20 +798,24 @@ function renderTeamsSection(sec) {
   if (sec.tip) html += `<div class="tip">🤝 ${sec.tip}</div>`;
 
   for (const item of sec.items) {
+    const { btn: tnBtn, panel: tnPanel } = renderTeacherNotesHTML(item);
     html += `<div class="team-group">
-      <div class="team-label" style="background:${sec.color}">${item.label}</div>
+      <div class="team-group-head">
+        <div class="team-label" style="background:${sec.color}">${item.label}</div>${tnBtn}
+      </div>
       <div class="team-sound">👉 ${item.sound}</div>`;
     if (item.note) html += `<div class="item-note">💡 ${item.note}</div>`;
     html += `<div class="word-chips">`;
     for (const wordObj of item.words) {
       html += renderChip(wordObj, item, sec);
     }
-    html += `</div></div>`;
+    html += `</div>${tnPanel}</div>`;
   }
 
   div.innerHTML = html;
   setupChipListeners(div);
   setupShowMore(div);
+  setupTeacherNotes(div);
   return div;
 }
 
@@ -922,6 +1032,12 @@ function renderWorksheetSection(sections) {
     <label class="ws-level-cb-label"><input type="checkbox" class="ws-level-cb" value="medium" checked> ⭐⭐ Medium</label>
     <label class="ws-level-cb-label"><input type="checkbox" class="ws-level-cb" value="hard"> ⭐⭐⭐ Hard</label>
   </div>
+  <div class="ws-notes-row">
+    <label>
+      <input type="checkbox" id="wsIncludeNotes">
+      📋 Include teaching notes in PDF
+    </label>
+  </div>
   <div class="ws-count-row">
     <span>Words per category:</span>
     <input type="number" id="wsWordCount" value="25" min="1" max="200">
@@ -1002,6 +1118,10 @@ async function loadEmojiImage(emoji) {
 
 // ── PDF generation ──────────────────────────────────────────────────────────
 
+function hexToRgb(hex) {
+  return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
+}
+
 async function generateWorksheetPDF(sections) {
   const statusEl = document.getElementById('wsStatus');
   if (!window.jspdf) {
@@ -1012,38 +1132,52 @@ async function generateWorksheetPDF(sections) {
 
   const wordCount = Math.max(1, parseInt(document.getElementById('wsWordCount').value, 10) || 25);
   const selectedLevels = Array.from(document.querySelectorAll('.ws-level-cb:checked')).map(cb => cb.value);
+  const includeNotes = document.getElementById('wsIncludeNotes').checked;
 
-  const selectedSections = [];
+  // Build render blocks: per-item (with tn) when notes on, per-section when off
+  const renderBlocks = [];
+
   for (const sec of sections) {
     const checkedItems = Array.from(
       document.querySelectorAll(`.ws-item-cb[data-sec="${sec.id}"]:checked`)
     ).map(cb => cb.dataset.item);
     if (checkedItems.length === 0) continue;
 
-    let words = [];
-    for (const item of sec.items) {
-      if (checkedItems.includes(item.id)) {
-        for (const wObj of item.words) {
-          if (!selectedLevels.length || selectedLevels.includes(wObj.level || 'easy')) {
-            words.push({ word: wObj.word, emoji: getEmoji(wObj, item, sec) });
+    if (includeNotes) {
+      for (const item of sec.items) {
+        if (!checkedItems.includes(item.id)) continue;
+        let words = item.words
+          .filter(w => !selectedLevels.length || selectedLevels.includes(w.level || 'easy'))
+          .map(w => ({ word: w.word, emoji: getEmoji(w, item, sec) }));
+        if (!words.length) continue;
+        words = shuffle(words).slice(0, wordCount);
+        renderBlocks.push({ label: item.label, rgb: hexToRgb(sec.color), words, tn: item.teacherNotes || null });
+      }
+    } else {
+      let words = [];
+      for (const item of sec.items) {
+        if (checkedItems.includes(item.id)) {
+          for (const wObj of item.words) {
+            if (!selectedLevels.length || selectedLevels.includes(wObj.level || 'easy')) {
+              words.push({ word: wObj.word, emoji: getEmoji(wObj, item, sec) });
+            }
           }
         }
       }
+      if (!words.length) continue;
+      words = shuffle(words).slice(0, wordCount);
+      renderBlocks.push({ label: sec.title, rgb: hexToRgb(sec.color), words, tn: null });
     }
-    if (words.length === 0) continue;
-
-    words = shuffle(words).slice(0, wordCount);
-    selectedSections.push({ sec, words });
   }
 
-  if (selectedSections.length === 0) {
+  if (renderBlocks.length === 0) {
     statusEl.textContent = 'Please select at least one category!';
     return;
   }
 
   // Pre-fetch emoji images
   statusEl.textContent = 'Loading emoji…';
-  const allEmoji = [...new Set(selectedSections.flatMap(({ words }) => words.map(w => w.emoji)))];
+  const allEmoji = [...new Set(renderBlocks.flatMap(b => b.words.map(w => w.emoji)))];
   await Promise.all(allEmoji.map(e => loadEmojiImage(e)));
   statusEl.textContent = '';
 
@@ -1056,21 +1190,19 @@ async function generateWorksheetPDF(sections) {
   const cols = 4;
   const gapX = 3;
   const cellW = (workW - gapX * (cols - 1)) / cols;
-  const cellH = 26;   // taller: emoji (9mm) + word + write-line
+  const cellH = 26;
   const gapY = 3;
   const hdrH = 9;
-  const emojiSz = 9;  // mm
+  const emojiSz = 9;
 
   // Title block
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
   doc.text("Nyra's Spelling Worksheet", pageW / 2, mT, { align: 'center' });
-
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   doc.text(today, pageW / 2, mT + 6, { align: 'center' });
-
   doc.setFontSize(9);
   doc.setTextColor(130, 130, 130);
   doc.text('Name: _________________________', mL, mT + 13);
@@ -1078,27 +1210,72 @@ async function generateWorksheetPDF(sections) {
 
   let y = mT + 20;
 
-  for (const { sec, words } of selectedSections) {
-    const hex = sec.color;
-    const rr = parseInt(hex.slice(1, 3), 16);
-    const gg = parseInt(hex.slice(3, 5), 16);
-    const bb = parseInt(hex.slice(5, 7), 16);
+  for (const { label, rgb, words, tn } of renderBlocks) {
+    const [rr, gg, bb] = rgb;
 
-    // Keep header + first row together
-    if (y + hdrH + cellH + gapY > pageH - mB) {
+    // Compute notes box height upfront so we can keep header+notes+first-row together
+    let notesBoxH = 0;
+    let rendNoteLines = null;
+    if (tn) {
+      const noteFields = [
+        ['Rule', tn.simpleRule],
+        ['Indian tip', tn.indianDadTip],
+        ['Watch out', tn.commonMistake],
+      ].filter(([, v]) => v);
+      if (noteFields.length > 0) {
+        const nFontSz = 7.5, nLH = 4, nPadV = 2.5, nPadH = 3;
+        doc.setFontSize(nFontSz);
+        rendNoteLines = noteFields.map(([lbl, txt]) => ({
+          label: lbl + ':',
+          body: doc.splitTextToSize(txt, workW - nPadH * 2 - 10),
+        }));
+        const totalL = rendNoteLines.reduce((s, r) => s + 1 + r.body.length, 0);
+        notesBoxH = nPadV * 2 + totalL * nLH + 3;
+      }
+    }
+
+    if (y + hdrH + notesBoxH + cellH + gapY > pageH - mB) {
       doc.addPage();
       y = mT;
     }
 
-    // Section header
+    // Section/item header
     doc.setFillColor(rr, gg, bb);
     doc.roundedRect(mL, y, workW, hdrH, 2, 2, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
-    doc.text(sec.title, mL + 4, y + hdrH * 0.68);
+    doc.text(label, mL + 4, y + hdrH * 0.68);
     doc.setTextColor(0, 0, 0);
     y += hdrH + 2;
+
+    // Teacher notes box
+    if (rendNoteLines) {
+      const nFontSz = 7.5, nLH = 4, nPadV = 2.5, nPadH = 3;
+      const totalL = rendNoteLines.reduce((s, r) => s + 1 + r.body.length, 0);
+      const boxH = nPadV * 2 + totalL * nLH;
+
+      doc.setFillColor(242, 245, 255);
+      doc.setDrawColor(140, 160, 200);
+      doc.setLineWidth(0.25);
+      doc.rect(mL, y, workW, boxH, 'FD');
+
+      let cy = y + nPadV + nLH * 0.82;
+      doc.setFontSize(nFontSz);
+      for (const { label: lbl, body } of rendNoteLines) {
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(60, 80, 160);
+        doc.text(lbl, mL + nPadH, cy);
+        cy += nLH;
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(40, 40, 50);
+        for (const line of body) {
+          doc.text(line, mL + nPadH + 8, cy);
+          cy += nLH;
+        }
+      }
+      y += boxH + 3;
+    }
 
     // Word grid
     const rowCount = Math.ceil(words.length / cols);
@@ -1113,20 +1290,17 @@ async function generateWorksheetPDF(sections) {
         const { word, emoji } = words[idx];
         const x = mL + col * (cellW + gapX);
 
-        // Emoji image (centered in cell, top of cell)
         const imgData = _emojiCache.get(emoji);
         if (imgData) {
           const ex = x + (cellW - emojiSz) / 2;
           doc.addImage(imgData, 'PNG', ex, y + 1, emojiSz, emojiSz);
         }
 
-        // Word text
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(11);
         doc.setTextColor(20, 20, 20);
         doc.text(word, x + 2, y + 15);
 
-        // Write line
         doc.setDrawColor(185, 185, 185);
         doc.setLineWidth(0.3);
         doc.line(x + 2, y + 22, x + cellW - 2, y + 22);
