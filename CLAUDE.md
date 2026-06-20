@@ -129,7 +129,7 @@ python3 -c "from pdf2image import convert_from_path; [im.save(f'p{i}.png') for i
   for emoji — they will render as boxes.
 - Deploy target is Netlify Drop or GitHub Pages — no server, no build step.
 
-## Feature spec: in-app customizable PDF worksheet generator
+## Feature spec: in-app customizable PDF worksheet generator ✅ BUILT
 
 **Why:** Parent should never need to ask Claude to manually build a worksheet.
 A "Worksheet" tab inside `index.html` lets them pick content and download a
@@ -174,7 +174,7 @@ follows, not a way to invoke the Python script.
 mixing word counts per individual item within a category (count is per
 category only).
 
-## Feature spec: teacher notes (tap to reveal + optional PDF inclusion)
+## Feature spec: teacher notes (tap to reveal + optional PDF inclusion) ✅ BUILT
 
 **Why:** The parent (non-native English speaker) needs reference notes while
 sitting with Nyra. Notes must not clutter Nyra's view but be one tap away.
@@ -203,7 +203,7 @@ sitting with Nyra. Notes must not clutter Nyra's view but be one tap away.
 **Data responsibility:** teacherNotes content is generated in the claude.ai
 project chat. Do not write or edit teacherNotes in Claude Code.
 
-## Feature spec: Game 1 — Letter Tile Builder (spelling game)
+## Feature spec: Game 1 — Letter Tile Builder (spelling game) ✅ BUILT
 
 **Concept:** Build words letter-by-letter by dragging tiles into blanks,
 using an emoji as the clue.
@@ -240,7 +240,7 @@ already shared). Add a "Start Game" button.
   (secondary) as input methods — trackpad drag can be finicky for a
   5-year-old. Both always available simultaneously, no mode switch.
 
-## Feature spec: Game 2 — Match Word to Emoji (reading/recognition game)
+## Feature spec: Game 2 — Match Word to Emoji (reading/recognition game) ✅ BUILT
 
 **Concept:** Connect each written word to its matching emoji. Supports both
 in-app play and a printable worksheet — PDF export is required, not optional,
@@ -333,7 +333,7 @@ if ('speechSynthesis' in window) {
   (e.g. any games added later should reuse this same `speak()` function,
   not redefine their own).
 
-## Fix: navigation restructure — Games launcher grid
+## Fix: navigation restructure — Games launcher grid ✅ DONE
 
 **Problem:** The top tab bar currently lists every section AND every game as
 a flat row (Short Vowels, Long Vowels, Vowel Teams, Spelling Rules, Quiz,
@@ -421,3 +421,33 @@ from level.
 **Data:** no new vowels.json fields needed — uses word, emoji, and level
 exactly as they already exist. Blank positions are computed at game-start
 time in JS, not stored in data.
+
+## Implementation note: shared tile-tray mechanics ✅ DONE
+
+`sharedRenderStrip`, `sharedRenderTray`, `sharedWireBlanks`, `sharedTryPlace`,
+and `pickBlankPositions` were extracted from Game 1 and are now the single
+implementation used by both Letter Builder and Missing Letter. Game 1 was
+refactored to call these helpers; behavior is unchanged. Any future tile-tray
+game should call these shared functions rather than reimplementing them.
+
+## Fix: Play Again draws fresh words ✅ DONE
+
+Play Again in all games (Letter Builder, Word Match, Missing Letter) calls
+`getSelectorWords(DATA.sections, secEl, prefix)` fresh — it re-reads the
+hidden-but-intact selector DOM to return a new random sample from the same
+category/level/count settings the user chose, not a reshuffle of the previous
+word list. `getSelectorWords` also returns `level` on each word object (needed
+by Missing Letter for blank-count calculation).
+
+## Fix: emoji tap-to-replay TTS ✅ DONE
+
+Tapping any emoji in the three tile games replays TTS for that word:
+- **Progress strip chips** (Letter Builder + Missing Letter): `data-word`
+  attribute + click listener added in `sharedRenderStrip` — covers all chips
+  including done ones.
+- **Active clue emoji** (`#g1-emoji`, `#g3-emoji`): `onclick` set in each
+  game's `refreshActive` call — replays the current word.
+- **Word Match emoji column**: unmatched emoji taps speak via `g2HandleTap`;
+  matched (green) emoji speak via the `pointerdown` handler before early return.
+Both `.g1-progress-chip` and `.g1-emoji-large` have `cursor: pointer` so the
+tappable affordance is visually obvious.
