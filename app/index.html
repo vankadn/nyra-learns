@@ -1890,10 +1890,11 @@ async function generateMatchPDF(words) {
   for (let i = 0; i < words.length; i++) {
     doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(20, 20, 20);
     doc.text(words[i].word, mL + 3, y + rowH / 2 + 2);
+    const leftDotX = mL + 3 + doc.getTextWidth(words[i].word) + 4;
 
     doc.setFillColor(100, 100, 220);
-    doc.circle(mL + colW - 2, y + rowH / 2, dotR, 'F');
-    doc.circle(rightColX + 2,  y + rowH / 2, dotR, 'F');
+    doc.circle(leftDotX, y + rowH / 2, dotR, 'F');
+    doc.circle(rightColX + 2, y + rowH / 2, dotR, 'F');
 
     const imgData = _emojiCache.get(words[emojiOrder[i]].emoji);
     if (imgData) doc.addImage(imgData, 'PNG', rightColX + 6, y + (rowH - emojiSz) / 2, emojiSz, emojiSz);
