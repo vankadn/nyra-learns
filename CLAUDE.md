@@ -202,3 +202,222 @@ sitting with Nyra. Notes must not clutter Nyra's view but be one tap away.
 
 **Data responsibility:** teacherNotes content is generated in the claude.ai
 project chat. Do not write or edit teacherNotes in Claude Code.
+
+## Feature spec: Game 1 — Letter Tile Builder (spelling game)
+
+**Concept:** Build words letter-by-letter by dragging tiles into blanks,
+using an emoji as the clue.
+
+**Setup screen:** reuse the existing category/item/level/word-count selector
+component from the Worksheet tab (extract into a shared component if not
+already shared). Add a "Start Game" button.
+
+**Gameplay:**
+- Show the selected emoji set as a progress strip at the top (all words in
+  the round, always visible).
+- Only ONE word is "active" at a time — its emoji is highlighted/enlarged,
+  with empty letter blanks underneath matching that word's length.
+- A single shared letter tray below contains ALL letters from ALL words in
+  the round, shuffled together — decoy letters from other words are
+  intentional, she has to pick the right ones for the active word.
+- Drag a letter tile from the tray into a blank slot:
+  - Correct letter, correct slot -> tile snaps in, stays.
+  - Wrong letter -> tile snaps in, turns red, shakes, then bounces back to
+    the tray (does not stay in the wrong slot).
+- When a word is fully and correctly filled:
+  - Play a short upbeat chime via Web Audio API (oscillator-generated tone —
+    do not fetch external audio files, app stays dependency-free).
+  - That emoji gets a checkmark badge, becomes visually "done" (dimmed or
+    green ring), stays visible in the strip, no longer interactive.
+  - Auto-advance to the next incomplete emoji.
+- After the last word: celebration animation (confetti-style CSS, reuse
+  existing visual language) + "Play Again" button back to setup screen.
+
+**Letter tray mechanics:**
+- Letters shuffled (not grouped by word).
+- Placed letters are removed from the tray.
+- Support BOTH drag-and-drop (primary) AND tap-to-select-then-tap-target
+  (secondary) as input methods — trackpad drag can be finicky for a
+  5-year-old. Both always available simultaneously, no mode switch.
+
+## Feature spec: Game 2 — Match Word to Emoji (reading/recognition game)
+
+**Concept:** Connect each written word to its matching emoji. Supports both
+in-app play and a printable worksheet — PDF export is required, not optional,
+for this game.
+
+**Setup screen:** same shared selector component as Game 1. Provide both a
+"Start Game" button (in-app) and a "Generate PDF" button from the same screen.
+
+**App gameplay:**
+- Two columns: words (text only) on the left, emoji on the right, right
+  column shuffled so matches aren't aligned by row.
+- Primary interaction: drag from word to emoji (or emoji to word) to draw a
+  connecting line.
+- Secondary interaction: tap a word, then tap an emoji to connect — a full
+  alternative to drag, not just an error fallback.
+- Correct match: line locks green, checkmark, soft positive sound (reuse
+  Game 1's chime).
+- Incorrect match: line flashes red, disappears, both items return to
+  unmatched state, retry immediately.
+- All pairs matched -> same celebration state as Game 1.
+
+**PDF mode:**
+- Reuse the existing client-side jsPDF setup from the Worksheet tab.
+- Two columns on the page: words down the left, emoji (via the existing
+  Twemoji image approach) down the right in a different shuffled order than
+  the left.
+- Leave clear space between columns for a hand-drawn pencil line.
+- Instruction line at top: "Draw a line to match each word to its picture!"
+- Filename pattern: `Nyra-Match-<date>.pdf`, consistent with
+  `Nyra-Worksheet-<date>.pdf`.
+
+## Shared requirements for both games
+
+- New tabs alongside Learn / Quiz / Worksheet.
+- Reuse the existing category/item/level selector — do not duplicate it.
+- Use the existing emoji fallback chain — never show a broken/empty emoji.
+- No new vowels.json fields needed — both games work from word, emoji, and
+  level as they already exist.
+- No hardcoded words in game code — stay fully data-driven.
+- Sound effects via Web Audio API only (generated tones) — no external audio
+  files, keeps the app dependency-free per the static/no-build-step rule.
+
+## Fix: TTS voice selection (current voice sounds robotic)
+
+**Problem:** `speak()` in `app/index.html` creates a `SpeechSynthesisUtterance`
+with no explicit `voice` set, so it falls back to whatever the browser
+considers default (on the parent's Mac/Chrome this was "Daniel — en-GB",
+not ideal for a kid's app, and voice selection can be inconsistent across
+machines/browsers since `getVoices()` loads asynchronously).
+
+**Fix:** Explicitly select a clear, pleasant US English voice with a
+fallback chain, instead of leaving it to the browser default.
+
+```javascript
+let cachedVoice = null;
+
+function pickVoice() {
+  const voices = speechSynthesis.getVoices();
+  if (!voices.length) return null;
+  const preferred = ['Samantha', 'Google US English', 'Karen', 'Moira', 'Ava'];
+  for (const name of preferred) {
+    const v = voices.find(v => v.name === name);
+    if (v) return v;
+  }
+  // fallback: any en-US voice
+  return voices.find(v => v.lang === 'en-US') || voices[0];
+}
+
+function speak(text) {
+  if (!('speechSynthesis' in window)) return;
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 0.8; u.pitch = 1.2;
+  if (cachedVoice) u.voice = cachedVoice;
+  window.speechSynthesis.speak(u);
+}
+
+// Voices load async — cache once available, re-cache on change
+if ('speechSynthesis' in window) {
+  cachedVoice = pickVoice();
+  speechSynthesis.onvoiceschanged = () => { cachedVoice = pickVoice(); };
+}
+```
+
+**Notes:**
+- `Samantha` is the standard, clear US English voice bundled on every Mac —
+  prefer it first.
+- This is a client-side-only fix, no new dependency, consistent with the
+  app's static architecture.
+- Apply this same fix anywhere else `speak()`/TTS is called in the app
+  (e.g. any games added later should reuse this same `speak()` function,
+  not redefine their own).
+
+## Fix: navigation restructure — Games launcher grid
+
+**Problem:** The top tab bar currently lists every section AND every game as
+a flat row (Short Vowels, Long Vowels, Vowel Teams, Spelling Rules, Quiz,
+Builder, Worksheet...). This breaks down as more games are added — it
+already looks cramped with just one game (Letter Builder) added. Quiz and
+all games need to move out of the flat tab row into a dedicated picker.
+
+**New top bar structure (only these items remain as direct tabs):**
+- Short Vowels
+- Long Vowels
+- Vowel Teams
+- C, K, and CK Spelling Rules
+- Worksheet
+- **Games** (new single tab — replaces Quiz, Builder, and all future games)
+
+**Games tab behavior:**
+- Clicking "Games" replaces the current top tab bar with a grid of game
+  picker cards (full takeover of that area, not a modal/popup).
+- Each card represents one game/quiz mode: Quiz, Letter Builder, and any
+  future games (Match Word to Emoji, etc.) — each shown as its own card
+  with an icon, name, and short one-line description.
+- Clicking a card opens that game's setup screen as normal.
+- A "Back to Games" button (or similar) from within any game/quiz returns
+  to the picker grid.
+- A separate "Back to Learn" or similar affordance returns to the normal
+  top tab bar (Short Vowels / Long Vowels / etc.), restoring it to view.
+- Existing Quiz functionality and Letter Builder functionality are
+  unchanged — only their entry point moves (from a top-level tab into a
+  card inside the Games grid).
+
+**Why this approach:** A flat tab bar doesn't scale past a handful of items.
+A picker grid scales indefinitely — adding game 3, 4, 5+ later just means
+adding more cards to the grid, never touching the top bar again.
+
+**Out of scope for this fix:** per-game PDF export (Letter Builder and future
+games getting their own downloadable worksheet) is a separate follow-up, not
+part of this navigation change.
+
+## Feature spec: Game 3 — Missing Letter (fill-in-the-blank spelling game) ✅ BUILT
+
+**Concept:** Same underlying mechanic as Letter Builder, but words start
+mostly filled in with only some letters blanked out — a lighter-weight
+spelling/recognition step between Letter Builder (full spelling) and reading.
+
+**Setup screen:** same shared selector component as Letter Builder and
+Match Word to Emoji (category/item/level/word-count). Add a "Start Game"
+button. This game goes into the Games picker grid as its own card, not a
+new top-level tab (per the navigation restructure already specced above).
+
+**Blank count scales with level:**
+- `easy` words: 1 letter blanked out
+- `medium` words: 2 letters blanked out
+- `hard` words: 3 letters blanked out
+- Blanked letter positions within the word are randomized each round (not
+  always the same position, e.g. not always the middle letter).
+
+**Gameplay (mirrors Letter Builder's structure):**
+- Progress strip of all words/emoji in the round at the top, one "active"
+  word at a time, same highlight/enlarge treatment as Letter Builder.
+- Active word displayed with most letters already shown, blanks only where
+  letters are missing (e.g. easy word "cat" with 1 blank might show `c a _`
+  or `_ a t` — varies by random position).
+- A single shared letter tray below, containing the letters needed to fill
+  ALL blanks across ALL words in the round, shuffled together with decoys
+  from other words' blanks — same mechanic as Letter Builder's tray, just
+  with fewer total tiles needed per word since most letters are pre-filled.
+- Same input methods: drag-and-drop (primary) and tap-to-select-then-tap-
+  target (secondary), both always available.
+- Same correctness feedback as Letter Builder: correct letter snaps into
+  its blank and stays; wrong letter snaps in, turns red, shakes, bounces
+  back to the tray.
+- Same completion feedback per word: chime (reuse Letter Builder's Web
+  Audio API tone), checkmark badge on that word's emoji in the progress
+  strip, word marked done/non-interactive, auto-advance to next active word.
+- Same end-of-round celebration + "Play Again" as Letter Builder.
+
+**Implementation note:** this game shares almost all mechanics with Letter
+Builder (progress strip, shared tray, drag/tap input, success/error
+feedback, celebration). Strongly prefer extracting the shared tile-tray
+interaction logic into reusable functions/components rather than
+duplicating Letter Builder's code wholesale — the only real differences are
+(a) how many letters are pre-filled vs blanked, and (b) blank count derived
+from level.
+
+**Data:** no new vowels.json fields needed — uses word, emoji, and level
+exactly as they already exist. Blank positions are computed at game-start
+time in JS, not stored in data.

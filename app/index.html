@@ -600,6 +600,269 @@
     user-select: none;
   }
   .ws-notes-row input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--plum); cursor: pointer; }
+
+  /* ── Game 1: Letter Tile Builder ── */
+  .g1-progress-strip {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 10px 4px 4px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+
+  .g1-progress-chip {
+    font-size: 2rem;
+    width: 54px;
+    height: 54px;
+    border-radius: 14px;
+    background: white;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    position: relative;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 3px solid transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  .g1-progress-chip.active {
+    transform: scale(1.18);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+    border-color: var(--plum);
+  }
+
+  .g1-progress-chip.done {
+    opacity: 0.6;
+    border-color: #43A047;
+  }
+
+  .g1-progress-chip.done::after {
+    content: '✓';
+    position: absolute;
+    top: -8px; right: -8px;
+    background: #43A047;
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 900;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    line-height: 18px;
+    text-align: center;
+  }
+
+  .g1-active-area {
+    background: white;
+    border-radius: 20px;
+    padding: 18px 14px;
+    text-align: center;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    margin-bottom: 12px;
+  }
+
+  .g1-emoji-large { font-size: 4rem; line-height: 1.2; margin-bottom: 14px; cursor: pointer; }
+
+  .g1-blanks {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .g1-blank {
+    width: 44px; height: 52px;
+    border: 3px dashed #C5CAE9;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Baloo 2', cursive;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--ink);
+    background: #F8F9FF;
+    transition: border-color 0.15s, background 0.15s;
+    cursor: pointer;
+  }
+
+  .g1-blank.drag-over { border-color: var(--plum); background: #EDE7F6; }
+
+  .g1-blank.filled { border-style: solid; border-color: #43A047; background: #E8F5E9; }
+
+  .g1-tray-label {
+    font-family: 'Baloo 2', cursive;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #888;
+    text-align: center;
+    margin-bottom: 6px;
+  }
+
+  .g1-tray {
+    background: white;
+    border-radius: 18px;
+    padding: 14px 12px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    min-height: 64px;
+  }
+
+  .g1-tile {
+    width: 44px; height: 52px;
+    background: var(--plum);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Baloo 2', cursive;
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: white;
+    cursor: grab;
+    box-shadow: 0 4px 0 #6A1B9A;
+    transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+    user-select: none;
+  }
+
+  .g1-tile:active { transform: translateY(2px); box-shadow: 0 2px 0 #6A1B9A; }
+
+  .g1-tile.selected {
+    background: #F9A825;
+    box-shadow: 0 4px 0 #F57F17;
+    transform: translateY(-4px);
+  }
+
+  .g1-tile.wrong {
+    background: #E53935;
+    box-shadow: 0 2px 0 #B71C1C;
+    animation: g1Shake 0.4s ease;
+  }
+
+  @keyframes g1Shake {
+    0%, 100% { transform: translateX(0); }
+    20%       { transform: translateX(-6px); }
+    40%       { transform: translateX(6px); }
+    60%       { transform: translateX(-4px); }
+    80%       { transform: translateX(4px); }
+  }
+
+  .g1-confetti-piece {
+    position: fixed;
+    border-radius: 2px;
+    animation: g1Fall linear forwards;
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  @keyframes g1Fall {
+    0%   { transform: translateY(-20px) rotate(0deg);   opacity: 1; }
+    100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+  }
+
+  .g1-celebrate-card {
+    text-align: center;
+    padding: 30px 20px;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  }
+
+  /* ── Game 2: Match Word to Emoji ── */
+  .g2-play-area {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    background: white;
+    border-radius: 18px;
+    padding: 16px 12px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+    margin-bottom: 12px;
+    touch-action: none;
+    min-height: 100px;
+  }
+  .g2-words-col { display: flex; flex-direction: column; gap: 10px; width: 38%; }
+  .g2-emoji-col { display: flex; flex-direction: column; gap: 10px; width: 38%; margin-left: auto; }
+  .g2-svg-overlay {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none; overflow: visible;
+  }
+  .g2-word-item {
+    background: #F3F4FF; border: 2px solid #C5CAE9; border-radius: 12px;
+    padding: 10px 10px; font-family: 'Baloo 2', cursive; font-size: 1.05rem;
+    font-weight: 700; color: var(--ink); cursor: pointer; text-align: center;
+    user-select: none; touch-action: none;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  }
+  .g2-emoji-item {
+    background: white; border: 2px solid #E0E0E0; border-radius: 12px;
+    padding: 8px 6px; font-size: 2rem; cursor: pointer; text-align: center;
+    user-select: none; touch-action: none; line-height: 1.3;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  }
+  .g2-word-item.selected  { background: #EDE7F6; border-color: var(--plum); transform: scale(1.04); }
+  .g2-emoji-item.selected { background: #EDE7F6; border-color: var(--plum); transform: scale(1.04); }
+  .g2-word-item.matched   { background: #E8F5E9; border-color: #43A047; color: #1B5E20; cursor: default; }
+  .g2-emoji-item.matched  { background: #E8F5E9; border-color: #43A047; cursor: default; }
+  .g2-word-item.g2-dragging, .g2-emoji-item.g2-dragging { opacity: 0.65; }
+
+  /* ── Game 3: Missing Letter ── */
+  .g3-prefilled {
+    width: 44px; height: 52px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Baloo 2', cursive; font-size: 1.5rem; font-weight: 800;
+    color: #9E9E9E;
+    border-bottom: 3px solid #C5CAE9;
+  }
+
+  /* ── Games launcher ── */
+  .games-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-top: 8px;
+  }
+
+  .game-card {
+    background: white;
+    border-radius: 18px;
+    padding: 22px 14px;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+    border: 3px solid transparent;
+    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+    user-select: none;
+  }
+
+  .game-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.13); border-color: var(--plum); }
+  .game-card:active { transform: scale(0.97); }
+
+  .game-card-icon { font-size: 3rem; margin-bottom: 8px; }
+  .game-card-name { font-family: 'Baloo 2', cursive; font-size: 1.2rem; font-weight: 800; color: var(--ink); margin-bottom: 4px; }
+  .game-card-desc { font-size: 0.82rem; color: #777; line-height: 1.4; }
+
+  .back-btn {
+    font-family: 'Baloo 2', cursive;
+    font-size: 0.88rem;
+    font-weight: 700;
+    background: #EDE7F6;
+    border: 2px solid #B39DDB;
+    border-radius: 50px;
+    padding: 6px 16px;
+    cursor: pointer;
+    color: #4527A0;
+    margin-bottom: 14px;
+    transition: background 0.15s;
+    display: inline-block;
+  }
+  .back-btn:hover { background: #D1C4E9; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -844,7 +1107,8 @@ function renderQuizSection(quizData, sections) {
   div.id = 'sec-quiz';
   div.className = 'section';
 
-  let html = `<div class="section-title">⭐ Quiz Time!</div>
+  let html = `<button class="back-btn" id="quizBackBtn">← Games</button>
+  <div class="section-title">⭐ Quiz Time!</div>
   <div id="quizSetup">
     <div class="tip">👆 Pick what you want to practice today!</div>
     <div style="display:grid;gap:10px;margin-bottom:4px;">`;
@@ -887,6 +1151,8 @@ function renderQuizSection(quizData, sections) {
   </div>`;
 
   div.innerHTML = html;
+
+  div.querySelector('#quizBackBtn').addEventListener('click', () => showGames());
 
   div.querySelectorAll('.lvl-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -993,6 +1259,90 @@ function updateScore() {
   document.getElementById('totalDisplay').textContent = total;
 }
 
+// ── Shared selector component ───────────────────────────────────────────────
+
+function buildSelectorHTML(sections, prefix, opts = {}) {
+  const {
+    defaultCount = 25,
+    minCount = 1,
+    maxCount = 200,
+    countLabel = 'Words per category:',
+  } = opts;
+  let html = `<div id="${prefix}-categories">`;
+  for (const sec of sections) {
+    html += `<div class="ws-section-box">
+      <div class="ws-section-header">
+        <label class="ws-sec-check-wrap">
+          <input type="checkbox" class="${prefix}-sec-cb" data-sec="${sec.id}" checked>
+          <span class="ws-color-dot" style="background:${sec.color}"></span>
+          <span class="ws-section-name">${sec.title}</span>
+        </label>
+        <button class="ws-expand-btn" data-sec="${sec.id}" type="button">&#9654;</button>
+      </div>
+      <div class="ws-items-list" id="${prefix}-items-${sec.id}" hidden>`;
+    for (const item of sec.items) {
+      html += `<label class="ws-item-label">
+          <input type="checkbox" class="${prefix}-item-cb" data-sec="${sec.id}" data-item="${item.id}" checked>
+          ${item.label}
+        </label>`;
+    }
+    html += `</div></div>`;
+  }
+  html += `</div>
+  <div class="ws-level-row">
+    <span>Levels:</span>
+    <label class="ws-level-cb-label"><input type="checkbox" class="${prefix}-level-cb" value="easy" checked> ⭐ Easy</label>
+    <label class="ws-level-cb-label"><input type="checkbox" class="${prefix}-level-cb" value="medium" checked> ⭐⭐ Medium</label>
+    <label class="ws-level-cb-label"><input type="checkbox" class="${prefix}-level-cb" value="hard"> ⭐⭐⭐ Hard</label>
+  </div>
+  <div class="ws-count-row">
+    <span>${countLabel}</span>
+    <input type="number" id="${prefix}-word-count" value="${defaultCount}" min="${minCount}" max="${maxCount}">
+  </div>`;
+  return html;
+}
+
+function setupSelector(containerEl, prefix) {
+  containerEl.querySelectorAll('.ws-expand-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const itemsList = document.getElementById(`${prefix}-items-${btn.dataset.sec}`);
+      if (!itemsList) return;
+      const opening = itemsList.hidden;
+      itemsList.hidden = !opening;
+      btn.classList.toggle('open', opening);
+    });
+  });
+  containerEl.querySelectorAll(`.${prefix}-sec-cb`).forEach(cb => {
+    cb.addEventListener('change', () => {
+      containerEl.querySelectorAll(`.${prefix}-item-cb[data-sec="${cb.dataset.sec}"]`).forEach(icb => {
+        icb.checked = cb.checked;
+      });
+    });
+  });
+}
+
+function getSelectorWords(sections, containerEl, prefix) {
+  const selectedLevels = Array.from(
+    containerEl.querySelectorAll(`.${prefix}-level-cb:checked`)
+  ).map(cb => cb.value);
+  const wordCount = Math.max(1, parseInt(containerEl.querySelector(`#${prefix}-word-count`).value, 10) || 5);
+  let words = [];
+  for (const sec of sections) {
+    const checkedItems = Array.from(
+      containerEl.querySelectorAll(`.${prefix}-item-cb[data-sec="${sec.id}"]:checked`)
+    ).map(cb => cb.dataset.item);
+    for (const item of sec.items) {
+      if (!checkedItems.includes(item.id)) continue;
+      for (const wObj of item.words) {
+        if (!selectedLevels.length || selectedLevels.includes(wObj.level || 'easy')) {
+          words.push({ word: wObj.word, emoji: getEmoji(wObj, item, sec), level: wObj.level || 'easy' });
+        }
+      }
+    }
+  }
+  return shuffle(words).slice(0, wordCount);
+}
+
 // ── Worksheet ──────────────────────────────────────────────────────────────
 
 function renderWorksheetSection(sections) {
@@ -1000,69 +1350,19 @@ function renderWorksheetSection(sections) {
   div.id = 'sec-worksheet';
   div.className = 'section';
 
-  let html = `<div class="section-title">Worksheet Generator</div>
+  div.innerHTML = `<div class="section-title">Worksheet Generator</div>
   <div class="tip">📝 Pick categories, set word count, then download your PDF!</div>
-  <div id="wsCategories">`;
-
-  for (const sec of sections) {
-    html += `<div class="ws-section-box">
-      <div class="ws-section-header">
-        <label class="ws-sec-check-wrap">
-          <input type="checkbox" class="ws-sec-cb" data-sec="${sec.id}" checked>
-          <span class="ws-color-dot" style="background:${sec.color}"></span>
-          <span class="ws-section-name">${sec.title}</span>
-        </label>
-        <button class="ws-expand-btn" data-sec="${sec.id}" type="button">&#9654;</button>
-      </div>
-      <div class="ws-items-list" id="wsItems-${sec.id}" hidden>`;
-
-    for (const item of sec.items) {
-      html += `<label class="ws-item-label">
-          <input type="checkbox" class="ws-item-cb" data-sec="${sec.id}" data-item="${item.id}" checked>
-          ${item.label}
-        </label>`;
-    }
-    html += `</div></div>`;
-  }
-
-  html += `</div>
-  <div class="ws-level-row">
-    <span>Levels:</span>
-    <label class="ws-level-cb-label"><input type="checkbox" class="ws-level-cb" value="easy" checked> ⭐ Easy</label>
-    <label class="ws-level-cb-label"><input type="checkbox" class="ws-level-cb" value="medium" checked> ⭐⭐ Medium</label>
-    <label class="ws-level-cb-label"><input type="checkbox" class="ws-level-cb" value="hard"> ⭐⭐⭐ Hard</label>
-  </div>
+  ${buildSelectorHTML(sections, 'ws', { defaultCount: 25, minCount: 1, maxCount: 200, countLabel: 'Words per category:' })}
   <div class="ws-notes-row">
     <label>
       <input type="checkbox" id="wsIncludeNotes">
       📋 Include teaching notes in PDF
     </label>
   </div>
-  <div class="ws-count-row">
-    <span>Words per category:</span>
-    <input type="number" id="wsWordCount" value="25" min="1" max="200">
-  </div>
   <button class="next-btn" id="wsGenerateBtn" type="button">&#128196; Download PDF</button>
   <div class="ws-status" id="wsStatus"></div>`;
 
-  div.innerHTML = html;
-
-  div.querySelectorAll('.ws-expand-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const itemsList = document.getElementById('wsItems-' + btn.dataset.sec);
-      const opening = itemsList.hidden;
-      itemsList.hidden = !opening;
-      btn.classList.toggle('open', opening);
-    });
-  });
-
-  div.querySelectorAll('.ws-sec-cb').forEach(cb => {
-    cb.addEventListener('change', () => {
-      div.querySelectorAll(`.ws-item-cb[data-sec="${cb.dataset.sec}"]`).forEach(icb => {
-        icb.checked = cb.checked;
-      });
-    });
-  });
+  setupSelector(div, 'ws');
 
   div.querySelector('#wsGenerateBtn').addEventListener('click', async () => {
     const btn = div.querySelector('#wsGenerateBtn');
@@ -1130,7 +1430,7 @@ async function generateWorksheetPDF(sections) {
   }
   statusEl.textContent = '';
 
-  const wordCount = Math.max(1, parseInt(document.getElementById('wsWordCount').value, 10) || 25);
+  const wordCount = Math.max(1, parseInt(document.getElementById('ws-word-count').value, 10) || 25);
   const selectedLevels = Array.from(document.querySelectorAll('.ws-level-cb:checked')).map(cb => cb.value);
   const includeNotes = document.getElementById('wsIncludeNotes').checked;
 
@@ -1314,6 +1614,759 @@ async function generateWorksheetPDF(sections) {
   doc.save(`Nyra-Worksheet-${dateStr}.pdf`);
 }
 
+// ── Game 2: Match Word to Emoji ─────────────────────────────────────────────
+
+let g2Words = [];
+let g2EmojiOrder = [];
+let g2Selected = null;
+let g2MatchedCount = 0;
+let g2MatchedEmoji = new Set();
+let g2LastWords = [];
+
+function renderGame2Section(sections) {
+  const div = document.createElement('div');
+  div.id = 'sec-game2';
+  div.className = 'section';
+  div.innerHTML = `
+    <button class="back-btn" id="g2BackBtn">← Games</button>
+    <div class="section-title">🔗 Word Match</div>
+    <div id="g2-setup">
+      <div class="tip">🎮 Match each word to its picture!</div>
+      ${buildSelectorHTML(sections, 'g2', { defaultCount: 5, minCount: 2, maxCount: 10, countLabel: 'Words per round:' })}
+      <div style="display:flex;gap:10px;margin-top:14px;">
+        <button class="next-btn" id="g2StartBtn" style="flex:1;">▶️ Start Game!</button>
+        <button class="next-btn" id="g2PdfBtn" style="flex:1;background:#2E7D32;box-shadow:0 5px 0 #1B5E20;">📄 Get PDF</button>
+      </div>
+      <div id="g2SetupErr" class="ws-status"></div>
+    </div>
+    <div id="g2-play" style="display:none;"></div>
+  `;
+  setupSelector(div, 'g2');
+  div.querySelector('#g2BackBtn').addEventListener('click', () => showGames());
+  div.querySelector('#g2StartBtn').addEventListener('click', () => {
+    const words = getSelectorWords(sections, div, 'g2');
+    const err = div.querySelector('#g2SetupErr');
+    if (!words.length) { err.textContent = 'No words found — try selecting more categories or levels!'; return; }
+    err.textContent = '';
+    startGame2(div, words);
+  });
+  div.querySelector('#g2PdfBtn').addEventListener('click', async () => {
+    const words = getSelectorWords(sections, div, 'g2');
+    const err = div.querySelector('#g2SetupErr');
+    if (!words.length) { err.textContent = 'No words found — try selecting more categories or levels!'; return; }
+    err.textContent = '';
+    const btn = div.querySelector('#g2PdfBtn');
+    btn.disabled = true; btn.textContent = '⏳ Preparing…';
+    try { await generateMatchPDF(words); }
+    catch (e) { err.textContent = 'Error generating PDF. Please try again.'; console.error(e); }
+    finally { btn.disabled = false; btn.textContent = '📄 Get PDF'; }
+  });
+  return div;
+}
+
+function startGame2(containerEl, words) {
+  g2LastWords = words;
+  g2Words = words.map(({ word, emoji }) => ({ word, emoji, matched: false }));
+  g2EmojiOrder = shuffle([...Array(words.length).keys()]);
+  g2Selected = null;
+  g2MatchedCount = 0;
+  g2MatchedEmoji = new Set();
+
+  containerEl.querySelector('#g2-setup').style.display = 'none';
+  const playEl = containerEl.querySelector('#g2-play');
+  playEl.style.display = 'block';
+  playEl.innerHTML = `
+    <div class="tip" style="font-size:0.82rem;margin-bottom:8px;">💡 Tap a word, then tap its picture — or drag to connect!</div>
+    <div class="g2-play-area" id="g2-play-area">
+      <svg class="g2-svg-overlay" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div class="g2-words-col" id="g2-words-col"></div>
+      <div class="g2-emoji-col" id="g2-emoji-col"></div>
+    </div>
+  `;
+
+  const playArea = playEl.querySelector('#g2-play-area');
+  g2Words.forEach((w, i) => {
+    const el = document.createElement('div');
+    el.className = 'g2-word-item';
+    el.dataset.wordIdx = String(i);
+    el.textContent = w.word;
+    playArea.querySelector('#g2-words-col').appendChild(el);
+  });
+  g2EmojiOrder.forEach((wordIdx, pos) => {
+    const el = document.createElement('div');
+    el.className = 'g2-emoji-item';
+    el.dataset.emojiPos = String(pos);
+    el.textContent = g2Words[wordIdx].emoji;
+    playArea.querySelector('#g2-emoji-col').appendChild(el);
+  });
+
+  g2SetupPointerEvents(playArea);
+}
+
+function g2SetupPointerEvents(playArea) {
+  let ds = null; // drag state
+
+  playArea.addEventListener('pointerdown', e => {
+    const item = e.target.closest('.g2-word-item, .g2-emoji-item');
+    if (!item) return;
+    if (item.classList.contains('matched')) {
+      if (item.classList.contains('g2-emoji-item'))
+        speak(g2Words[g2EmojiOrder[parseInt(item.dataset.emojiPos, 10)]].word);
+      return;
+    }
+    playArea.setPointerCapture(e.pointerId);
+    const type = item.classList.contains('g2-word-item') ? 'word' : 'emoji';
+    const idx = type === 'word' ? parseInt(item.dataset.wordIdx, 10) : parseInt(item.dataset.emojiPos, 10);
+    ds = { type, idx, item, startX: e.clientX, startY: e.clientY, isDragging: false };
+  });
+
+  playArea.addEventListener('pointermove', e => {
+    if (!ds) return;
+    if (!ds.isDragging) {
+      if (Math.hypot(e.clientX - ds.startX, e.clientY - ds.startY) < 8) return;
+      ds.isDragging = true;
+      ds.item.classList.add('g2-dragging');
+    }
+    const cr = playArea.getBoundingClientRect();
+    const er = ds.item.getBoundingClientRect();
+    const x1 = ds.type === 'word' ? er.right - cr.left : er.left - cr.left;
+    const y1 = er.top + er.height / 2 - cr.top;
+    const svg = playArea.querySelector('.g2-svg-overlay');
+    let ln = svg.querySelector('#g2-drag-line');
+    if (!ln) {
+      ln = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      ln.id = 'g2-drag-line';
+      ln.setAttribute('stroke', '#9C27B0');
+      ln.setAttribute('stroke-width', '3');
+      ln.setAttribute('stroke-dasharray', '8,4');
+      ln.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(ln);
+    }
+    ln.setAttribute('x1', x1); ln.setAttribute('y1', y1);
+    ln.setAttribute('x2', e.clientX - cr.left); ln.setAttribute('y2', e.clientY - cr.top);
+  });
+
+  playArea.addEventListener('pointerup', e => {
+    if (!ds) return;
+    try { playArea.releasePointerCapture(e.pointerId); } catch (_) {}
+    playArea.querySelector('#g2-drag-line')?.remove();
+    ds.item.classList.remove('g2-dragging');
+
+    if (ds.isDragging) {
+      const hit = document.elementFromPoint(e.clientX, e.clientY)?.closest('.g2-word-item, .g2-emoji-item');
+      if (hit && !hit.classList.contains('matched')) {
+        const tType = hit.classList.contains('g2-word-item') ? 'word' : 'emoji';
+        if (tType !== ds.type) {
+          const wi = ds.type === 'word' ? ds.idx : parseInt(hit.dataset.wordIdx, 10);
+          const ep = ds.type === 'emoji' ? ds.idx : parseInt(hit.dataset.emojiPos, 10);
+          g2TryMatch(wi, ep, playArea);
+        }
+      }
+    } else {
+      g2HandleTap(ds.type, ds.idx, ds.item, playArea);
+    }
+    ds = null;
+  });
+
+  playArea.addEventListener('pointercancel', () => {
+    if (!ds) return;
+    playArea.querySelector('#g2-drag-line')?.remove();
+    ds.item.classList.remove('g2-dragging');
+    ds = null;
+  });
+}
+
+function g2HandleTap(type, idx, el, playArea) {
+  if (type === 'emoji') speak(g2Words[g2EmojiOrder[idx]].word);
+  if (!g2Selected) {
+    g2Selected = { type, idx, el };
+    el.classList.add('selected');
+    return;
+  }
+  if (g2Selected.type === type) {
+    g2Selected.el.classList.remove('selected');
+    g2Selected = g2Selected.idx === idx ? null : { type, idx, el };
+    if (g2Selected) el.classList.add('selected');
+    return;
+  }
+  g2Selected.el.classList.remove('selected');
+  const wi = g2Selected.type === 'word' ? g2Selected.idx : idx;
+  const ep = g2Selected.type === 'emoji' ? g2Selected.idx : idx;
+  g2Selected = null;
+  g2TryMatch(wi, ep, playArea);
+}
+
+function g2TryMatch(wordIdx, emojiPos, playArea) {
+  if (g2Words[wordIdx].matched || g2MatchedEmoji.has(emojiPos)) return;
+  const wordEl = playArea.querySelector(`.g2-word-item[data-word-idx="${wordIdx}"]`);
+  const emojiEl = playArea.querySelector(`.g2-emoji-item[data-emoji-pos="${emojiPos}"]`);
+  if (!wordEl || !emojiEl) return;
+
+  const cr = playArea.getBoundingClientRect();
+  const wr = wordEl.getBoundingClientRect();
+  const er = emojiEl.getBoundingClientRect();
+  const x1 = wr.right - cr.left,   y1 = wr.top + wr.height / 2 - cr.top;
+  const x2 = er.left - cr.left,    y2 = er.top + er.height / 2 - cr.top;
+
+  const svg = playArea.querySelector('.g2-svg-overlay');
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+  line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+  line.setAttribute('stroke-width', '4'); line.setAttribute('stroke-linecap', 'round');
+
+  if (wordIdx === g2EmojiOrder[emojiPos]) {
+    g2Words[wordIdx].matched = true;
+    g2MatchedEmoji.add(emojiPos);
+    line.setAttribute('stroke', '#43A047');
+    svg.appendChild(line);
+    wordEl.classList.add('matched');
+    emojiEl.classList.add('matched');
+    playChime(659, 0.35);
+    g2MatchedCount++;
+    if (g2MatchedCount === g2Words.length) setTimeout(g2Celebrate, 700);
+  } else {
+    line.setAttribute('stroke', '#E53935');
+    svg.appendChild(line);
+    setTimeout(() => {
+      line.style.transition = 'opacity 0.2s';
+      line.style.opacity = '0';
+      setTimeout(() => line.remove(), 220);
+    }, 400);
+  }
+}
+
+function g2Celebrate() {
+  const playEl = document.getElementById('g2-play');
+  if (!playEl) return;
+  playChime(784, 0.15);
+  setTimeout(() => playChime(988, 0.15), 160);
+  setTimeout(() => playChime(1175, 0.3), 300);
+  const colors = ['#FFD54F','#9C27B0','#1565C0','#43A047','#E53935','#FF7043'];
+  for (let i = 0; i < 60; i++) {
+    const p = document.createElement('div');
+    p.className = 'g1-confetti-piece';
+    p.style.cssText = `left:${Math.random()*100}vw;top:0;background:${colors[i%colors.length]};` +
+      `width:${6+Math.random()*8}px;height:${6+Math.random()*8}px;` +
+      `animation-duration:${1.5+Math.random()*2}s;animation-delay:${Math.random()*0.5}s;`;
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 3500);
+  }
+  playEl.innerHTML = `
+    <div class="g1-celebrate-card">
+      <div style="font-size:4rem;margin-bottom:8px;">🎉</div>
+      <div style="font-family:'Baloo 2',cursive;font-size:2rem;color:var(--plum);margin-bottom:6px;">Excellent!</div>
+      <div style="font-family:'Baloo 2',cursive;font-size:1.1rem;color:#555;margin-bottom:20px;">You matched all the words! Shabash! ⭐</div>
+      <button class="next-btn" id="g2PlayAgain">🔄 Play Again!</button>
+    </div>`;
+  document.getElementById('g2PlayAgain').addEventListener('click', () => {
+    const secEl = document.getElementById('sec-game2');
+    startGame2(secEl, getSelectorWords(DATA.sections, secEl, 'g2'));
+  });
+}
+
+async function generateMatchPDF(words) {
+  if (!window.jspdf) throw new Error('PDF library not loaded');
+  await Promise.all([...new Set(words.map(w => w.emoji))].map(e => loadEmojiImage(e)));
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'letter', orientation: 'portrait' });
+  const pageW = 215.9;
+  const mL = 20, mT = 20;
+  const colW = 68;
+  const midGap = pageW - mL * 2 - colW * 2; // ~40mm for pencil lines
+  const rightColX = mL + colW + midGap;
+  const rowH = 20, emojiSz = 11, dotR = 1.8;
+
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
+  doc.text('Draw a line to match each word to its picture!', pageW / 2, mT, { align: 'center' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+  doc.setTextColor(130, 130, 130);
+  doc.text('Name: _________________________', mL, mT + 9);
+  doc.setTextColor(0, 0, 0);
+
+  const emojiOrder = shuffle([...Array(words.length).keys()]);
+  let y = mT + 18;
+
+  for (let i = 0; i < words.length; i++) {
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(20, 20, 20);
+    doc.text(words[i].word, mL + 3, y + rowH / 2 + 2);
+
+    doc.setFillColor(100, 100, 220);
+    doc.circle(mL + colW - 2, y + rowH / 2, dotR, 'F');
+    doc.circle(rightColX + 2,  y + rowH / 2, dotR, 'F');
+
+    const imgData = _emojiCache.get(words[emojiOrder[i]].emoji);
+    if (imgData) doc.addImage(imgData, 'PNG', rightColX + 6, y + (rowH - emojiSz) / 2, emojiSz, emojiSz);
+
+    y += rowH + 5;
+  }
+
+  doc.save(`Nyra-Match-${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
+// ── Games launcher ──────────────────────────────────────────────────────────
+
+let lastLearnTab = null;
+
+function showGames() {
+  document.getElementById('tabBar').style.display = 'none';
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-games').classList.add('active');
+  document.getElementById('sec-games').classList.add('active');
+}
+
+function showGame(id) {
+  document.getElementById('tabBar').style.display = 'none';
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('sec-' + id).classList.add('active');
+}
+
+function showLearn(id) {
+  document.getElementById('tabBar').style.display = '';
+  showTab(id || lastLearnTab || DATA.sections[0].id);
+}
+
+function renderGamesSection() {
+  const div = document.createElement('div');
+  div.id = 'sec-games';
+  div.className = 'section';
+  div.innerHTML = `
+    <button class="back-btn" id="gamesBackToLearn">← Back to Learning</button>
+    <div class="section-title">🎮 Games</div>
+    <div class="games-grid">
+      <div class="game-card" id="gc-quiz">
+        <div class="game-card-icon">⭐</div>
+        <div class="game-card-name">Quiz</div>
+        <div class="game-card-desc">Guess which vowel group each word belongs to</div>
+      </div>
+      <div class="game-card" id="gc-game1">
+        <div class="game-card-icon">🔤</div>
+        <div class="game-card-name">Letter Builder</div>
+        <div class="game-card-desc">Spell words by dragging letter tiles into blanks</div>
+      </div>
+      <div class="game-card" id="gc-game2">
+        <div class="game-card-icon">🔗</div>
+        <div class="game-card-name">Word Match</div>
+        <div class="game-card-desc">Connect each word to its matching picture</div>
+      </div>
+      <div class="game-card" id="gc-game3">
+        <div class="game-card-icon">✏️</div>
+        <div class="game-card-name">Missing Letter</div>
+        <div class="game-card-desc">Fill in the missing letters to complete each word</div>
+      </div>
+    </div>
+  `;
+  div.querySelector('#gamesBackToLearn').addEventListener('click', () => showLearn());
+  div.querySelector('#gc-quiz').addEventListener('click', () => showGame('quiz'));
+  div.querySelector('#gc-game1').addEventListener('click', () => showGame('game1'));
+  div.querySelector('#gc-game2').addEventListener('click', () => showGame('game2'));
+  div.querySelector('#gc-game3').addEventListener('click', () => showGame('game3'));
+  return div;
+}
+
+// ── Shared tile-tray mechanics ───────────────────────────────────────────────
+
+function sharedRenderStrip(words, activeIdx, stripId) {
+  const el = document.getElementById(stripId);
+  if (!el) return;
+  el.innerHTML = words.map((w, i) => {
+    const cls = w.done ? 'done' : (i === activeIdx ? 'active' : '');
+    return `<div class="g1-progress-chip ${cls}" data-word="${w.word}">${w.emoji}</div>`;
+  }).join('');
+  el.querySelectorAll('.g1-progress-chip').forEach(chip =>
+    chip.addEventListener('click', () => speak(chip.dataset.word))
+  );
+}
+
+function sharedRenderTray(tiles, getSelectedId, trayId, setSelectedId) {
+  const tray = document.getElementById(trayId);
+  if (!tray) return;
+  tray.innerHTML = '';
+  tiles.filter(t => !t.placed).forEach(tile => {
+    const el = document.createElement('div');
+    el.className = 'g1-tile' + (getSelectedId() === tile.id ? ' selected' : '');
+    el.textContent = tile.letter;
+    el.draggable = true;
+    el.dataset.tileId = String(tile.id);
+    el.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('text/plain', String(tile.id));
+      setSelectedId(null);
+      tray.querySelectorAll('.g1-tile').forEach(t => t.classList.remove('selected'));
+    });
+    el.addEventListener('click', () => {
+      const cur = getSelectedId();
+      const next = cur === tile.id ? null : tile.id;
+      setSelectedId(next);
+      tray.querySelectorAll('.g1-tile').forEach(t => t.classList.remove('selected'));
+      if (next !== null) el.classList.add('selected');
+    });
+    tray.appendChild(el);
+  });
+}
+
+function sharedWireBlanks(blanksEl, getSelectedId, onPlace) {
+  blanksEl.querySelectorAll('.g1-blank:not(.filled)').forEach(blank => {
+    blank.addEventListener('dragover', e => { e.preventDefault(); blank.classList.add('drag-over'); });
+    blank.addEventListener('dragleave', () => blank.classList.remove('drag-over'));
+    blank.addEventListener('drop', e => {
+      e.preventDefault();
+      blank.classList.remove('drag-over');
+      onPlace(parseInt(e.dataTransfer.getData('text/plain'), 10), parseInt(blank.dataset.pos, 10));
+    });
+    blank.addEventListener('click', () => {
+      const sel = getSelectedId();
+      if (sel !== null) onPlace(sel, parseInt(blank.dataset.pos, 10));
+    });
+  });
+}
+
+function sharedTryPlace(tileId, pos, tiles, blanks, trayId, onCorrect) {
+  const tile = tiles.find(t => t.id === tileId);
+  if (!tile || tile.placed) return;
+  const blank = blanks[pos];
+  if (!blank || blank.filled || blank.prefilled) return;
+  if (tile.letter === blank.letter) {
+    onCorrect(tile, blank);
+  } else {
+    const tray = document.getElementById(trayId);
+    if (tray) {
+      tray.querySelectorAll('.g1-tile').forEach(t => t.classList.remove('selected'));
+      const tileEl = tray.querySelector(`[data-tile-id="${tileId}"]`);
+      if (tileEl) {
+        tileEl.classList.add('wrong');
+        setTimeout(() => tileEl.classList.remove('wrong'), 450);
+      }
+    }
+  }
+}
+
+function pickBlankPositions(word, level) {
+  const counts = { easy: 1, medium: 2, hard: 3 };
+  const count = Math.min(counts[level] || 1, word.length - 1);
+  return new Set(shuffle([...Array(word.length).keys()]).slice(0, count));
+}
+
+// ── Game 1: Letter Tile Builder ─────────────────────────────────────────────
+
+let g1Words = [];
+let g1Tiles = [];
+let g1ActiveIdx = 0;
+let g1SelectedTile = null;
+let g1TileCounter = 0;
+let g1LastWords = [];
+
+function playChime(freq, dur) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(0.35, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + dur);
+  } catch (e) {}
+}
+
+function renderGame1Section(sections) {
+  const div = document.createElement('div');
+  div.id = 'sec-game1';
+  div.className = 'section';
+  div.innerHTML = `
+    <button class="back-btn" id="g1BackBtn">← Games</button>
+    <div class="section-title">🔤 Letter Builder</div>
+    <div id="g1-setup">
+      <div class="tip">🎮 Pick words, then spell them using letter tiles!</div>
+      ${buildSelectorHTML(sections, 'g1', { defaultCount: 5, minCount: 2, maxCount: 10, countLabel: 'Words per round:' })}
+      <button class="next-btn" id="g1StartBtn" style="margin-top:14px;">▶️ Start Game!</button>
+      <div id="g1SetupErr" class="ws-status"></div>
+    </div>
+    <div id="g1-play" style="display:none;"></div>
+  `;
+  setupSelector(div, 'g1');
+  div.querySelector('#g1BackBtn').addEventListener('click', () => showGames());
+  div.querySelector('#g1StartBtn').addEventListener('click', () => {
+    const words = getSelectorWords(sections, div, 'g1');
+    const err = div.querySelector('#g1SetupErr');
+    if (!words.length) {
+      err.textContent = 'No words found — try selecting more categories or levels!';
+      return;
+    }
+    err.textContent = '';
+    startGame1(div, words);
+  });
+  return div;
+}
+
+function startGame1(containerEl, words) {
+  g1LastWords = words;
+  g1TileCounter = 0;
+  g1SelectedTile = null;
+  g1ActiveIdx = 0;
+  g1Words = words.map(({ word, emoji }) => ({
+    word,
+    emoji,
+    blanks: word.toUpperCase().split('').map(ch => ({ letter: ch, filled: false })),
+    done: false,
+  }));
+  g1Tiles = shuffle(
+    g1Words.flatMap(w =>
+      w.word.toUpperCase().split('').map(ch => ({ id: g1TileCounter++, letter: ch, placed: false }))
+    )
+  );
+  containerEl.querySelector('#g1-setup').style.display = 'none';
+  const playEl = containerEl.querySelector('#g1-play');
+  playEl.style.display = 'block';
+  playEl.innerHTML = `
+    <div class="g1-progress-strip" id="g1-strip"></div>
+    <div class="g1-active-area">
+      <div class="g1-emoji-large" id="g1-emoji"></div>
+      <div class="g1-blanks" id="g1-blanks"></div>
+    </div>
+    <div class="tip" style="margin-bottom:8px;font-size:0.82rem;">💡 Drag a tile onto a blank, or tap a tile then tap a blank!</div>
+    <div class="g1-tray-label">Letter tiles</div>
+    <div class="g1-tray" id="g1-tray"></div>
+  `;
+  g1RefreshStrip();
+  g1RefreshActive();
+  g1RefreshTray();
+  speak(g1Words[0].word);
+}
+
+function g1RefreshStrip() {
+  sharedRenderStrip(g1Words, g1ActiveIdx, 'g1-strip');
+}
+
+function g1RefreshActive() {
+  const emojiEl = document.getElementById('g1-emoji');
+  const blanksEl = document.getElementById('g1-blanks');
+  if (!emojiEl || !blanksEl) return;
+  const w = g1Words[g1ActiveIdx];
+  emojiEl.textContent = w.emoji;
+  emojiEl.onclick = () => speak(w.word);
+  blanksEl.innerHTML = w.blanks.map((b, pos) =>
+    `<div class="g1-blank${b.filled ? ' filled' : ''}" data-pos="${pos}">${b.filled ? b.letter : ''}</div>`
+  ).join('');
+  sharedWireBlanks(blanksEl, () => g1SelectedTile, g1TryPlace);
+}
+
+function g1RefreshTray() {
+  sharedRenderTray(g1Tiles, () => g1SelectedTile, 'g1-tray', id => { g1SelectedTile = id; });
+}
+
+function g1TryPlace(tileId, pos) {
+  g1SelectedTile = null;
+  sharedTryPlace(tileId, pos, g1Tiles, g1Words[g1ActiveIdx].blanks, 'g1-tray', (tile, blank) => {
+    tile.placed = true;
+    blank.filled = true;
+    g1RefreshActive();
+    g1RefreshTray();
+    const word = g1Words[g1ActiveIdx];
+    if (word.blanks.every(b => b.filled)) {
+      word.done = true;
+      playChime(659, 0.35);
+      setTimeout(() => { g1RefreshStrip(); g1Advance(); }, 550);
+    }
+  });
+}
+
+function g1Advance() {
+  let next = g1Words.findIndex((w, i) => !w.done && i > g1ActiveIdx);
+  if (next === -1) next = g1Words.findIndex(w => !w.done);
+  if (next === -1) { g1Celebrate(); return; }
+  g1ActiveIdx = next;
+  g1RefreshStrip();
+  g1RefreshActive();
+  speak(g1Words[g1ActiveIdx].word);
+}
+
+function g1Celebrate() {
+  const playEl = document.getElementById('g1-play');
+  if (!playEl) return;
+  playChime(784, 0.15);
+  setTimeout(() => playChime(988, 0.15), 160);
+  setTimeout(() => playChime(1175, 0.3), 300);
+  const colors = ['#FFD54F','#9C27B0','#1565C0','#43A047','#E53935','#FF7043'];
+  for (let i = 0; i < 60; i++) {
+    const p = document.createElement('div');
+    p.className = 'g1-confetti-piece';
+    p.style.cssText = `left:${Math.random()*100}vw;top:0;background:${colors[i % colors.length]};` +
+      `width:${6+Math.random()*8}px;height:${6+Math.random()*8}px;` +
+      `animation-duration:${1.5+Math.random()*2}s;animation-delay:${Math.random()*0.5}s;`;
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 3500);
+  }
+  playEl.innerHTML = `
+    <div class="g1-celebrate-card">
+      <div style="font-size:4rem;margin-bottom:8px;">🎉</div>
+      <div style="font-family:'Baloo 2',cursive;font-size:2rem;color:var(--plum);margin-bottom:6px;">Amazing!</div>
+      <div style="font-family:'Baloo 2',cursive;font-size:1.1rem;color:#555;margin-bottom:20px;">
+        You spelled all the words! Shabash! ⭐
+      </div>
+      <button class="next-btn" id="g1PlayAgain">🔄 Play Again!</button>
+    </div>`;
+  document.getElementById('g1PlayAgain').addEventListener('click', () => {
+    const secEl = document.getElementById('sec-game1');
+    startGame1(secEl, getSelectorWords(DATA.sections, secEl, 'g1'));
+  });
+}
+
+// ── Game 3: Missing Letter ───────────────────────────────────────────────────
+
+let g3Words = [];
+let g3Tiles = [];
+let g3ActiveIdx = 0;
+let g3SelectedTile = null;
+let g3TileCounter = 0;
+
+function renderGame3Section(sections) {
+  const div = document.createElement('div');
+  div.id = 'sec-game3';
+  div.className = 'section';
+  div.innerHTML = `
+    <button class="back-btn" id="g3BackBtn">← Games</button>
+    <div class="section-title">✏️ Missing Letter</div>
+    <div id="g3-setup">
+      <div class="tip">🎮 Fill in the missing letters to complete each word!</div>
+      ${buildSelectorHTML(sections, 'g3', { defaultCount: 5, minCount: 2, maxCount: 10, countLabel: 'Words per round:' })}
+      <button class="next-btn" id="g3StartBtn" style="margin-top:14px;">▶️ Start Game!</button>
+      <div id="g3SetupErr" class="ws-status"></div>
+    </div>
+    <div id="g3-play" style="display:none;"></div>
+  `;
+  setupSelector(div, 'g3');
+  div.querySelector('#g3BackBtn').addEventListener('click', () => showGames());
+  div.querySelector('#g3StartBtn').addEventListener('click', () => {
+    const words = getSelectorWords(sections, div, 'g3');
+    const err = div.querySelector('#g3SetupErr');
+    if (!words.length) { err.textContent = 'No words found — try selecting more categories or levels!'; return; }
+    err.textContent = '';
+    startGame3(div, words);
+  });
+  return div;
+}
+
+function startGame3(containerEl, words) {
+  g3TileCounter = 0;
+  g3SelectedTile = null;
+  g3ActiveIdx = 0;
+  g3Words = words.map(({ word, emoji, level = 'easy' }) => {
+    const blankPos = pickBlankPositions(word, level);
+    return {
+      word, emoji, level, done: false,
+      blanks: word.toUpperCase().split('').map((ch, i) => ({
+        letter: ch,
+        filled: !blankPos.has(i),
+        prefilled: !blankPos.has(i),
+      })),
+    };
+  });
+  g3Tiles = shuffle(
+    g3Words.flatMap(w =>
+      w.blanks.filter(b => !b.prefilled).map(b => ({ id: g3TileCounter++, letter: b.letter, placed: false }))
+    )
+  );
+
+  containerEl.querySelector('#g3-setup').style.display = 'none';
+  const playEl = containerEl.querySelector('#g3-play');
+  playEl.style.display = 'block';
+  playEl.innerHTML = `
+    <div class="g1-progress-strip" id="g3-strip"></div>
+    <div class="g1-active-area">
+      <div class="g1-emoji-large" id="g3-emoji"></div>
+      <div class="g1-blanks" id="g3-blanks"></div>
+    </div>
+    <div class="tip" style="margin-bottom:8px;font-size:0.82rem;">💡 Drag a tile onto a blank, or tap a tile then tap the blank!</div>
+    <div class="g1-tray-label">Missing letters</div>
+    <div class="g1-tray" id="g3-tray"></div>
+  `;
+  g3RefreshStrip();
+  g3RefreshActive();
+  g3RefreshTray();
+  speak(g3Words[0].word);
+}
+
+function g3RefreshStrip() {
+  sharedRenderStrip(g3Words, g3ActiveIdx, 'g3-strip');
+}
+
+function g3RefreshActive() {
+  const emojiEl = document.getElementById('g3-emoji');
+  const blanksEl = document.getElementById('g3-blanks');
+  if (!emojiEl || !blanksEl) return;
+  const w = g3Words[g3ActiveIdx];
+  emojiEl.textContent = w.emoji;
+  emojiEl.onclick = () => speak(w.word);
+  blanksEl.innerHTML = w.blanks.map((b, pos) => {
+    if (b.prefilled) return `<div class="g3-prefilled" data-pos="${pos}">${b.letter}</div>`;
+    return `<div class="g1-blank${b.filled ? ' filled' : ''}" data-pos="${pos}">${b.filled ? b.letter : ''}</div>`;
+  }).join('');
+  sharedWireBlanks(blanksEl, () => g3SelectedTile, g3TryPlace);
+}
+
+function g3RefreshTray() {
+  sharedRenderTray(g3Tiles, () => g3SelectedTile, 'g3-tray', id => { g3SelectedTile = id; });
+}
+
+function g3TryPlace(tileId, pos) {
+  g3SelectedTile = null;
+  sharedTryPlace(tileId, pos, g3Tiles, g3Words[g3ActiveIdx].blanks, 'g3-tray', (tile, blank) => {
+    tile.placed = true;
+    blank.filled = true;
+    g3RefreshActive();
+    g3RefreshTray();
+    const word = g3Words[g3ActiveIdx];
+    if (word.blanks.filter(b => !b.prefilled).every(b => b.filled)) {
+      word.done = true;
+      playChime(659, 0.35);
+      setTimeout(() => { g3RefreshStrip(); g3Advance(); }, 550);
+    }
+  });
+}
+
+function g3Advance() {
+  let next = g3Words.findIndex((w, i) => !w.done && i > g3ActiveIdx);
+  if (next === -1) next = g3Words.findIndex(w => !w.done);
+  if (next === -1) { g3Celebrate(); return; }
+  g3ActiveIdx = next;
+  g3RefreshStrip();
+  g3RefreshActive();
+  speak(g3Words[g3ActiveIdx].word);
+}
+
+function g3Celebrate() {
+  const playEl = document.getElementById('g3-play');
+  if (!playEl) return;
+  playChime(784, 0.15);
+  setTimeout(() => playChime(988, 0.15), 160);
+  setTimeout(() => playChime(1175, 0.3), 300);
+  const colors = ['#FFD54F','#9C27B0','#1565C0','#43A047','#E53935','#FF7043'];
+  for (let i = 0; i < 60; i++) {
+    const p = document.createElement('div');
+    p.className = 'g1-confetti-piece';
+    p.style.cssText = `left:${Math.random()*100}vw;top:0;background:${colors[i % colors.length]};` +
+      `width:${6+Math.random()*8}px;height:${6+Math.random()*8}px;` +
+      `animation-duration:${1.5+Math.random()*2}s;animation-delay:${Math.random()*0.5}s;`;
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 3500);
+  }
+  playEl.innerHTML = `
+    <div class="g1-celebrate-card">
+      <div style="font-size:4rem;margin-bottom:8px;">🎉</div>
+      <div style="font-family:'Baloo 2',cursive;font-size:2rem;color:var(--plum);margin-bottom:6px;">Brilliant!</div>
+      <div style="font-family:'Baloo 2',cursive;font-size:1.1rem;color:#555;margin-bottom:20px;">You found all the missing letters! Shabash! ⭐</div>
+      <button class="next-btn" id="g3PlayAgain">🔄 Play Again!</button>
+    </div>`;
+  document.getElementById('g3PlayAgain').addEventListener('click', () => {
+    const secEl = document.getElementById('sec-game3');
+    startGame3(secEl, getSelectorWords(DATA.sections, secEl, 'g3'));
+  });
+}
+
 // ── Init ────────────────────────────────────────────────────────────────────
 
 async function init() {
@@ -1329,7 +2382,7 @@ async function init() {
     btn.className = 'tab-btn' + (i === 0 ? ' active' : '');
     btn.style.background = sec.color;
     btn.textContent = sec.icon + ' ' + sec.title;
-    btn.addEventListener('click', () => showTab(sec.id));
+    btn.addEventListener('click', () => { lastLearnTab = sec.id; showTab(sec.id); });
     tabBar.appendChild(btn);
 
     let secEl;
@@ -1342,15 +2395,13 @@ async function init() {
     content.appendChild(secEl);
   });
 
-  const quizBtn = document.createElement('button');
-  quizBtn.id = 'btn-quiz';
-  quizBtn.className = 'tab-btn';
-  quizBtn.style.background = '#E65100';
-  quizBtn.textContent = '⭐ Quiz!';
-  quizBtn.addEventListener('click', () => showTab('quiz'));
-  tabBar.appendChild(quizBtn);
-
-  content.appendChild(renderQuizSection(buildQuizData(DATA.sections), DATA.sections));
+  const gamesBtn = document.createElement('button');
+  gamesBtn.id = 'btn-games';
+  gamesBtn.className = 'tab-btn';
+  gamesBtn.style.background = '#6A1B9A';
+  gamesBtn.textContent = '🎮 Games';
+  gamesBtn.addEventListener('click', () => showGames());
+  tabBar.appendChild(gamesBtn);
 
   const wsBtn = document.createElement('button');
   wsBtn.id = 'btn-worksheet';
@@ -1360,6 +2411,11 @@ async function init() {
   wsBtn.addEventListener('click', () => showTab('worksheet'));
   tabBar.appendChild(wsBtn);
 
+  content.appendChild(renderGamesSection());
+  content.appendChild(renderQuizSection(buildQuizData(DATA.sections), DATA.sections));
+  content.appendChild(renderGame1Section(DATA.sections));
+  content.appendChild(renderGame2Section(DATA.sections));
+  content.appendChild(renderGame3Section(DATA.sections));
   content.appendChild(renderWorksheetSection(DATA.sections));
 }
 
