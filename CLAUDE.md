@@ -283,13 +283,22 @@ for this game.
 - Sound effects via Web Audio API only (generated tones) — no external audio
   files, keeps the app dependency-free per the static/no-build-step rule.
 
-## Fix: TTS voice selection (current voice sounds robotic)
+## Fix: TTS voice selection (current voice sounds robotic) ✅ DONE
 
 **Problem:** `speak()` in `app/index.html` creates a `SpeechSynthesisUtterance`
 with no explicit `voice` set, so it falls back to whatever the browser
 considers default (on the parent's Mac/Chrome this was "Daniel — en-GB",
 not ideal for a kid's app, and voice selection can be inconsistent across
 machines/browsers since `getVoices()` loads asynchronously).
+
+**Scope note:** by the time this fix is applied, `speak()` is called from
+more places than when this was first written — at minimum: word chips in
+the Learn tab, the active clue emoji in Letter Builder/Missing Letter
+(`#g1-emoji`, `#g3-emoji`), progress strip chips in both tile games, and the
+Word Match emoji column (see "Fix: emoji tap-to-replay TTS" above). All of
+these must go through the SAME single `speak()` function below — do not let
+any of these call sites construct their own `SpeechSynthesisUtterance`
+separately or they'll bypass the voice fix.
 
 **Fix:** Explicitly select a clear, pleasant US English voice with a
 fallback chain, instead of leaving it to the browser default.
@@ -326,12 +335,16 @@ if ('speechSynthesis' in window) {
 
 **Notes:**
 - `Samantha` is the standard, clear US English voice bundled on every Mac —
-  prefer it first.
+  confirmed present and preferred on the parent's actual machine via
+  `speechSynthesis.getVoices()` — prefer it first.
 - This is a client-side-only fix, no new dependency, consistent with the
   app's static architecture.
-- Apply this same fix anywhere else `speak()`/TTS is called in the app
-  (e.g. any games added later should reuse this same `speak()` function,
-  not redefine their own).
+- Apply this same fix anywhere `speak()`/TTS is called in the app, including
+  all game call sites listed in the scope note above — there should be ONE
+  `speak()` implementation in the whole codebase, not one per game.
+- After applying, verify by tapping a word chip and an emoji in each game —
+  all should sound like the same voice (Samantha, on this machine), not a
+  mix of different system voices.
 
 ## Fix: navigation restructure — Games launcher grid ✅ DONE
 
