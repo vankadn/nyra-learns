@@ -863,6 +863,14 @@
     display: inline-block;
   }
   .back-btn:hover { background: #D1C4E9; }
+
+  .g-print-btn {
+    background: #EDE7F6; border: none; border-radius: 8px;
+    font-size: 1rem; cursor: pointer; padding: 5px 12px;
+    font-family: 'Baloo 2', cursive; font-weight: 700; color: var(--plum);
+    margin-bottom: 6px;
+  }
+  .g-print-btn:hover { background: #D1C4E9; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -1676,6 +1684,7 @@ function startGame2(containerEl, words) {
   const playEl = containerEl.querySelector('#g2-play');
   playEl.style.display = 'block';
   playEl.innerHTML = `
+    <div style="text-align:right;"><button class="g-print-btn" id="g2-print-btn" title="Print these words">🖨️ PDF</button></div>
     <div class="tip" style="font-size:0.82rem;margin-bottom:8px;">💡 Tap a word, then tap its picture — or drag to connect!</div>
     <div class="g2-play-area" id="g2-play-area">
       <svg class="g2-svg-overlay" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -1683,6 +1692,7 @@ function startGame2(containerEl, words) {
       <div class="g2-emoji-col" id="g2-emoji-col"></div>
     </div>
   `;
+  playEl.querySelector('#g2-print-btn').addEventListener('click', () => generateMatchPDF(g2Words));
 
   const playArea = playEl.querySelector('#g2-play-area');
   g2Words.forEach((w, i) => {
@@ -1905,6 +1915,85 @@ async function generateMatchPDF(words) {
   doc.save(`Nyra-Match-${new Date().toISOString().slice(0, 10)}.pdf`);
 }
 
+async function generateSpellItPDF(words) {
+  if (!window.jspdf) throw new Error('PDF library not loaded');
+  await Promise.all([...new Set(words.map(w => w.emoji))].map(e => loadEmojiImage(e)));
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'letter', orientation: 'portrait' });
+  const pageW = 215.9, mL = 20, mT = 20;
+  const emojiSz = 14, emojiGap = 6;
+  const boxH = 16, boxW = 12, boxGap = 3;
+  const rowH = 22, rowGap = 5;
+
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
+  doc.text('Spell the word!', pageW / 2, mT, { align: 'center' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+  doc.setTextColor(130, 130, 130);
+  doc.text('Name: _________________________', mL, mT + 9);
+  doc.setTextColor(0, 0, 0);
+
+  let y = mT + 18;
+  for (const w of words) {
+    const imgData = _emojiCache.get(w.emoji);
+    if (imgData) doc.addImage(imgData, 'PNG', mL, y + (rowH - emojiSz) / 2, emojiSz, emojiSz);
+    let x = mL + emojiSz + emojiGap;
+    for (const _ of w.word.toUpperCase()) {
+      doc.setDrawColor(120, 120, 120); doc.setLineWidth(0.5);
+      doc.rect(x, y + (rowH - boxH) / 2, boxW, boxH);
+      x += boxW + boxGap;
+    }
+    y += rowH + rowGap;
+  }
+
+  doc.save(`Nyra-SpellIt-${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
+async function generateMissingLetterPDF(words) {
+  if (!window.jspdf) throw new Error('PDF library not loaded');
+  await Promise.all([...new Set(words.map(w => w.emoji))].map(e => loadEmojiImage(e)));
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'letter', orientation: 'portrait' });
+  const pageW = 215.9, mL = 20, mT = 20;
+  const emojiSz = 14, emojiGap = 6;
+  const boxH = 16, boxW = 12, boxGap = 3;
+  const rowH = 22, rowGap = 5;
+
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
+  doc.text('Fill in the missing letters!', pageW / 2, mT, { align: 'center' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+  doc.setTextColor(130, 130, 130);
+  doc.text('Name: _________________________', mL, mT + 9);
+  doc.setTextColor(0, 0, 0);
+
+  let y = mT + 18;
+  for (const w of words) {
+    const blankPos = pickBlankPositions(w.word, w.level || 'easy');
+    const imgData = _emojiCache.get(w.emoji);
+    if (imgData) doc.addImage(imgData, 'PNG', mL, y + (rowH - emojiSz) / 2, emojiSz, emojiSz);
+    let x = mL + emojiSz + emojiGap;
+    w.word.toUpperCase().split('').forEach((ch, i) => {
+      doc.setDrawColor(120, 120, 120); doc.setLineWidth(0.5);
+      if (blankPos.has(i)) {
+        doc.setFillColor(255, 255, 255);
+        doc.rect(x, y + (rowH - boxH) / 2, boxW, boxH, 'FD');
+      } else {
+        doc.setFillColor(235, 235, 235);
+        doc.rect(x, y + (rowH - boxH) / 2, boxW, boxH, 'FD');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+        doc.setTextColor(100, 100, 100);
+        doc.text(ch, x + boxW / 2, y + rowH / 2 + 2.5, { align: 'center' });
+        doc.setTextColor(0, 0, 0);
+      }
+      x += boxW + boxGap;
+    });
+    y += rowH + rowGap;
+  }
+
+  doc.save(`Nyra-MissingLetter-${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
 // ── Games launcher ──────────────────────────────────────────────────────────
 
 let lastLearnTab = null;
@@ -2083,7 +2172,10 @@ function renderGame1Section(sections) {
     <div id="g1-setup">
       <div class="tip">🎮 Pick words, then spell them using letter tiles!</div>
       ${buildSelectorHTML(sections, 'g1', { defaultCount: 5, minCount: 2, maxCount: 10, countLabel: 'Words per round:' })}
-      <button class="next-btn" id="g1StartBtn" style="margin-top:14px;">▶️ Start Game!</button>
+      <div style="display:flex;gap:10px;margin-top:14px;">
+        <button class="next-btn" id="g1StartBtn" style="flex:1;">▶️ Start Game!</button>
+        <button class="next-btn" id="g1PdfBtn" style="flex:1;background:#2E7D32;box-shadow:0 5px 0 #1B5E20;">📄 Get PDF</button>
+      </div>
       <div id="g1SetupErr" class="ws-status"></div>
     </div>
     <div id="g1-play" style="display:none;"></div>
@@ -2093,12 +2185,16 @@ function renderGame1Section(sections) {
   div.querySelector('#g1StartBtn').addEventListener('click', () => {
     const words = getSelectorWords(sections, div, 'g1');
     const err = div.querySelector('#g1SetupErr');
-    if (!words.length) {
-      err.textContent = 'No words found — try selecting more categories or levels!';
-      return;
-    }
+    if (!words.length) { err.textContent = 'No words found — try selecting more categories or levels!'; return; }
     err.textContent = '';
     startGame1(div, words);
+  });
+  div.querySelector('#g1PdfBtn').addEventListener('click', async () => {
+    const words = getSelectorWords(sections, div, 'g1');
+    const err = div.querySelector('#g1SetupErr');
+    if (!words.length) { err.textContent = 'No words found — try selecting more categories or levels!'; return; }
+    err.textContent = '';
+    try { await generateSpellItPDF(words); } catch (e) { err.textContent = 'PDF error: ' + e.message; }
   });
   return div;
 }
@@ -2123,6 +2219,7 @@ function startGame1(containerEl, words) {
   const playEl = containerEl.querySelector('#g1-play');
   playEl.style.display = 'block';
   playEl.innerHTML = `
+    <div style="text-align:right;"><button class="g-print-btn" id="g1-print-btn" title="Print these words">🖨️ PDF</button></div>
     <div class="g1-progress-strip" id="g1-strip"></div>
     <div class="g1-active-area">
       <div class="g1-emoji-large" id="g1-emoji"></div>
@@ -2132,6 +2229,9 @@ function startGame1(containerEl, words) {
     <div class="g1-tray-label">Letter tiles</div>
     <div class="g1-tray" id="g1-tray"></div>
   `;
+  playEl.querySelector('#g1-print-btn').addEventListener('click', () =>
+    generateSpellItPDF(g1Words.map(w => ({ word: w.word, emoji: w.emoji, level: w.level || 'easy' })))
+  );
   g1RefreshStrip();
   g1RefreshActive();
   g1RefreshTray();
@@ -2234,7 +2334,10 @@ function renderGame3Section(sections) {
     <div id="g3-setup">
       <div class="tip">🎮 Fill in the missing letters to complete each word!</div>
       ${buildSelectorHTML(sections, 'g3', { defaultCount: 5, minCount: 2, maxCount: 10, countLabel: 'Words per round:' })}
-      <button class="next-btn" id="g3StartBtn" style="margin-top:14px;">▶️ Start Game!</button>
+      <div style="display:flex;gap:10px;margin-top:14px;">
+        <button class="next-btn" id="g3StartBtn" style="flex:1;">▶️ Start Game!</button>
+        <button class="next-btn" id="g3PdfBtn" style="flex:1;background:#2E7D32;box-shadow:0 5px 0 #1B5E20;">📄 Get PDF</button>
+      </div>
       <div id="g3SetupErr" class="ws-status"></div>
     </div>
     <div id="g3-play" style="display:none;"></div>
@@ -2247,6 +2350,13 @@ function renderGame3Section(sections) {
     if (!words.length) { err.textContent = 'No words found — try selecting more categories or levels!'; return; }
     err.textContent = '';
     startGame3(div, words);
+  });
+  div.querySelector('#g3PdfBtn').addEventListener('click', async () => {
+    const words = getSelectorWords(sections, div, 'g3');
+    const err = div.querySelector('#g3SetupErr');
+    if (!words.length) { err.textContent = 'No words found — try selecting more categories or levels!'; return; }
+    err.textContent = '';
+    try { await generateMissingLetterPDF(words); } catch (e) { err.textContent = 'PDF error: ' + e.message; }
   });
   return div;
 }
@@ -2276,6 +2386,7 @@ function startGame3(containerEl, words) {
   const playEl = containerEl.querySelector('#g3-play');
   playEl.style.display = 'block';
   playEl.innerHTML = `
+    <div style="text-align:right;"><button class="g-print-btn" id="g3-print-btn" title="Print these words">🖨️ PDF</button></div>
     <div class="g1-progress-strip" id="g3-strip"></div>
     <div class="g1-active-area">
       <div class="g1-emoji-large" id="g3-emoji"></div>
@@ -2285,6 +2396,9 @@ function startGame3(containerEl, words) {
     <div class="g1-tray-label">Missing letters</div>
     <div class="g1-tray" id="g3-tray"></div>
   `;
+  playEl.querySelector('#g3-print-btn').addEventListener('click', () =>
+    generateMissingLetterPDF(g3Words.map(w => ({ word: w.word, emoji: w.emoji, level: w.level || 'easy' })))
+  );
   g3RefreshStrip();
   g3RefreshActive();
   g3RefreshTray();
