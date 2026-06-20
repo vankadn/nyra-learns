@@ -451,3 +451,36 @@ Tapping any emoji in the three tile games replays TTS for that word:
   matched (green) emoji speak via the `pointerdown` handler before early return.
 Both `.g1-progress-chip` and `.g1-emoji-large` have `cursor: pointer` so the
 tappable affordance is visually obvious.
+
+## Fix: Word Match PDF dot placement ✅ DONE
+
+Left connection dot is now placed 4mm after the word text using
+`doc.getTextWidth()` rather than at a fixed 68mm column edge. Eliminates
+the large dead gap between short words and their dot.
+
+## Feature: PDF export for all games ✅ BUILT
+
+Every game now has a "📄 Get PDF" button on its setup screen and a "🖨️ PDF"
+icon in the top-right of the play area (active during a round, disappears on
+the celebration card).
+
+| Game | PDF filename | Content |
+|---|---|---|
+| Letter Builder | `Nyra-SpellIt-<date>.pdf` | Emoji + empty letter boxes (one per letter) + scrambled tiles |
+| Word Match | `Nyra-Match-<date>.pdf` | Two-column match sheet (unchanged) |
+| Missing Letter | `Nyra-MissingLetter-<date>.pdf` | Emoji + grey pre-filled boxes + empty blank boxes + missing-letter tiles |
+
+**Per-row scrambled letter tiles (design decision):**
+Rather than a shared letter pool on the right half of the page, each word row
+gets its own scrambled tiles immediately to the right of its boxes. This keeps
+the visual connection between word and letters obvious for a 5-year-old — no
+scanning the whole page to find which letters belong to which word.
+
+- **SpellIt tiles**: all letters of the word shuffled (yellow rounded tiles)
+- **MissingLetter tiles**: only the blanked letter(s) for that word — 1 tile
+  for easy, 2 for medium, 3 for hard (same `pickBlankPositions` used by the
+  game engine)
+- Tiles wrap to a second row automatically for long words; row height expands
+  dynamically so nothing overlaps
+- Tile style: light yellow background (`#FFF9C4`), purple border — visually
+  distinct from the white answer boxes
