@@ -272,118 +272,34 @@ for this game.
 - Filename pattern: `Nyra-Match-<date>.pdf`, consistent with
   `Nyra-Worksheet-<date>.pdf`.
 
-## Shared requirements for both games
+## Shared requirements for all games
 
-- New tabs alongside Learn / Quiz / Worksheet.
-- Reuse the existing category/item/level selector — do not duplicate it.
+- All games live inside the **Games picker grid** (not top-level tabs).
+- Reuse `buildSelectorHTML` / `getSelectorWords` — do not duplicate the selector.
 - Use the existing emoji fallback chain — never show a broken/empty emoji.
-- No new vowels.json fields needed — both games work from word, emoji, and
-  level as they already exist.
+- No new `vowels.json` fields needed — all games work from `word`, `emoji`, `level`.
 - No hardcoded words in game code — stay fully data-driven.
-- Sound effects via Web Audio API only (generated tones) — no external audio
-  files, keeps the app dependency-free per the static/no-build-step rule.
+- Sound effects via Web Audio API only (generated tones) — no external audio files.
+- All TTS goes through the single shared `speak()` — never construct a separate
+  `SpeechSynthesisUtterance` elsewhere or it bypasses the voice fix.
 
-## Fix: TTS voice selection (current voice sounds robotic) ✅ DONE
+## Fix: TTS voice selection ✅ DONE
 
-**Problem:** `speak()` in `app/index.html` creates a `SpeechSynthesisUtterance`
-with no explicit `voice` set, so it falls back to whatever the browser
-considers default (on the parent's Mac/Chrome this was "Daniel — en-GB",
-not ideal for a kid's app, and voice selection can be inconsistent across
-machines/browsers since `getVoices()` loads asynchronously).
-
-**Scope note:** by the time this fix is applied, `speak()` is called from
-more places than when this was first written — at minimum: word chips in
-the Learn tab, the active clue emoji in Letter Builder/Missing Letter
-(`#g1-emoji`, `#g3-emoji`), progress strip chips in both tile games, and the
-Word Match emoji column (see "Fix: emoji tap-to-replay TTS" above). All of
-these must go through the SAME single `speak()` function below — do not let
-any of these call sites construct their own `SpeechSynthesisUtterance`
-separately or they'll bypass the voice fix.
-
-**Fix:** Explicitly select a clear, pleasant US English voice with a
-fallback chain, instead of leaving it to the browser default.
-
-```javascript
-let cachedVoice = null;
-
-function pickVoice() {
-  const voices = speechSynthesis.getVoices();
-  if (!voices.length) return null;
-  const preferred = ['Samantha', 'Google US English', 'Karen', 'Moira', 'Ava'];
-  for (const name of preferred) {
-    const v = voices.find(v => v.name === name);
-    if (v) return v;
-  }
-  // fallback: any en-US voice
-  return voices.find(v => v.lang === 'en-US') || voices[0];
-}
-
-function speak(text) {
-  if (!('speechSynthesis' in window)) return;
-  const u = new SpeechSynthesisUtterance(text);
-  u.rate = 0.8; u.pitch = 1.2;
-  if (cachedVoice) u.voice = cachedVoice;
-  window.speechSynthesis.speak(u);
-}
-
-// Voices load async — cache once available, re-cache on change
-if ('speechSynthesis' in window) {
-  cachedVoice = pickVoice();
-  speechSynthesis.onvoiceschanged = () => { cachedVoice = pickVoice(); };
-}
-```
-
-**Notes:**
-- `Samantha` is the standard, clear US English voice bundled on every Mac —
-  confirmed present and preferred on the parent's actual machine via
-  `speechSynthesis.getVoices()` — prefer it first.
-- This is a client-side-only fix, no new dependency, consistent with the
-  app's static architecture.
-- Apply this same fix anywhere `speak()`/TTS is called in the app, including
-  all game call sites listed in the scope note above — there should be ONE
-  `speak()` implementation in the whole codebase, not one per game.
-- After applying, verify by tapping a word chip and an emoji in each game —
-  all should sound like the same voice (Samantha, on this machine), not a
-  mix of different system voices.
+`speak()` uses `cachedVoice` (set by `pickVoice()`) with preferred chain:
+`['Samantha', 'Google US English', 'Karen', 'Moira', 'Ava']` → any `en-US` →
+first available. Cached at page load; re-cached on `onvoiceschanged` (voices
+load async). On the parent's Mac this locks onto **Samantha** — clear, friendly
+US English. Single `speak()` covers all call sites: word chips, quiz, progress
+strip taps, active clue emoji, Word Match emoji column.
 
 ## Fix: navigation restructure — Games launcher grid ✅ DONE
 
-**Problem:** The top tab bar currently lists every section AND every game as
-a flat row (Short Vowels, Long Vowels, Vowel Teams, Spelling Rules, Quiz,
-Builder, Worksheet...). This breaks down as more games are added — it
-already looks cramped with just one game (Letter Builder) added. Quiz and
-all games need to move out of the flat tab row into a dedicated picker.
-
-**New top bar structure (only these items remain as direct tabs):**
-- Short Vowels
-- Long Vowels
-- Vowel Teams
-- C, K, and CK Spelling Rules
-- Worksheet
-- **Games** (new single tab — replaces Quiz, Builder, and all future games)
-
-**Games tab behavior:**
-- Clicking "Games" replaces the current top tab bar with a grid of game
-  picker cards (full takeover of that area, not a modal/popup).
-- Each card represents one game/quiz mode: Quiz, Letter Builder, and any
-  future games (Match Word to Emoji, etc.) — each shown as its own card
-  with an icon, name, and short one-line description.
-- Clicking a card opens that game's setup screen as normal.
-- A "Back to Games" button (or similar) from within any game/quiz returns
-  to the picker grid.
-- A separate "Back to Learn" or similar affordance returns to the normal
-  top tab bar (Short Vowels / Long Vowels / etc.), restoring it to view.
-- Existing Quiz functionality and Letter Builder functionality are
-  unchanged — only their entry point moves (from a top-level tab into a
-  card inside the Games grid).
-
-**Why this approach:** A flat tab bar doesn't scale past a handful of items.
-A picker grid scales indefinitely — adding game 3, 4, 5+ later just means
-adding more cards to the grid, never touching the top bar again.
-
-**Out of scope for this fix:** per-game PDF export (Letter Builder and future
-games getting their own downloadable worksheet) is a separate follow-up, not
-part of this navigation change.
+Top bar has exactly six items: Short Vowels, Long Vowels, Vowel Teams,
+C/K/CK Spelling Rules, Worksheet, **Games**. Clicking Games replaces the tab
+area with a picker grid — one card per game (icon + name + description). Each
+card opens its setup screen. Every game has a "Back to Games" button; the grid
+has "Back to Learn". Adding a future game = adding a card, never touching the
+top bar. Navigation functions: `showGames()`, `showGame(id)`, `showLearn(id)`.
 
 ## Feature spec: Game 3 — Missing Letter (fill-in-the-blank spelling game) ✅ BUILT
 
