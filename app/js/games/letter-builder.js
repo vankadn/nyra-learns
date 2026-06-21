@@ -8,6 +8,7 @@ import { generateSpellItPDF } from '../pdf/game-pdf.js';
 
 let _sections = null;
 let _praises = [];
+let _theme = null;
 let g1Words = [];
 let g1Tiles = [];
 let g1ActiveIdx = 0;
@@ -15,7 +16,7 @@ let g1SelectedTile = null;
 let g1TileCounter = 0;
 let g1CorrectWords = [];
 
-export function renderGame1Section(sections, praises = []) {
+export function renderGame1Section(sections, praises = [], stickerThemes = []) {
   _sections = sections;
   _praises = praises;
   return renderGameSection({
@@ -27,6 +28,8 @@ export function renderGame1Section(sections, praises = []) {
     tip: '🎮 Pick words, then spell them using letter tiles!',
     pdfFn: generateSpellItPDF,
     startFn: startGame1,
+    stickerThemes,
+    onThemeChange: t => { _theme = t; },
   });
 }
 
@@ -61,7 +64,7 @@ function startGame1(containerEl, words) {
     <div class="g1-tray" id="g1-tray"></div>
   `;
   playEl.querySelector('#g1-print-btn').addEventListener('click', () =>
-    generateSpellItPDF(g1Words.map(w => ({ word: w.word, emoji: w.emoji, level: w.level || 'easy' })))
+    generateSpellItPDF(g1Words.map(w => ({ word: w.word, emoji: w.emoji, level: w.level || 'easy' })), { theme: _theme })
   );
   g1RefreshStrip();
   g1RefreshActive();

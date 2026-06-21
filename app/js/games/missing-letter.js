@@ -8,6 +8,7 @@ import { generateMissingLetterPDF } from '../pdf/game-pdf.js';
 
 let _sections = null;
 let _praises = [];
+let _theme = null;
 let g3Words = [];
 let g3Tiles = [];
 let g3ActiveIdx = 0;
@@ -15,7 +16,7 @@ let g3SelectedTile = null;
 let g3TileCounter = 0;
 let g3CorrectWords = [];
 
-export function renderGame3Section(sections, praises = []) {
+export function renderGame3Section(sections, praises = [], stickerThemes = []) {
   _sections = sections;
   _praises = praises;
   return renderGameSection({
@@ -27,6 +28,8 @@ export function renderGame3Section(sections, praises = []) {
     tip: '🎮 Fill in the missing letters to complete each word!',
     pdfFn: generateMissingLetterPDF,
     startFn: startGame3,
+    stickerThemes,
+    onThemeChange: t => { _theme = t; },
   });
 }
 
@@ -67,7 +70,7 @@ function startGame3(containerEl, words) {
     <div class="g1-tray" id="g3-tray"></div>
   `;
   playEl.querySelector('#g3-print-btn').addEventListener('click', () =>
-    generateMissingLetterPDF(g3Words.map(w => ({ word: w.word, emoji: w.emoji, level: w.level || 'easy' })))
+    generateMissingLetterPDF(g3Words.map(w => ({ word: w.word, emoji: w.emoji, level: w.level || 'easy' })), { theme: _theme })
   );
   g3RefreshStrip();
   g3RefreshActive();

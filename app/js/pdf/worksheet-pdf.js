@@ -1,4 +1,4 @@
-import { emojiCache, loadEmojiImage, hexToRgb } from './pdf-utils.js';
+import { emojiCache, loadEmojiImage, hexToRgb, drawCornerStickers } from './pdf-utils.js';
 import { getEmoji } from '../emoji.js';
 import { shuffle } from '../utils.js';
 import { buildSelectorHTML, setupSelector } from '../selector.js';
@@ -246,26 +246,7 @@ async function generateWorksheetPDF(sections, theme = null) {
     y += 5;
   }
 
-  // Draw corner stickers on every page
-  if (theme) {
-    const csz = 12;
-    const corners = [
-      [2, 2],
-      [pageW - csz - 2, 2],
-      [2, pageH - csz - 2],
-      [pageW - csz - 2, pageH - csz - 2],
-    ];
-    const numPages = doc.internal.getNumberOfPages();
-    for (let p = 1; p <= numPages; p++) {
-      doc.setPage(p);
-      theme.emoji.forEach((e, i) => {
-        const img = emojiCache.get(e);
-        if (!img) return;
-        const [cx, cy] = corners[i % corners.length];
-        doc.addImage(img, 'PNG', cx, cy, csz, csz);
-      });
-    }
-  }
+  drawCornerStickers(doc, theme, pageW, pageH);
 
   const dateStr = new Date().toISOString().slice(0, 10);
   doc.save(`Nyra-Worksheet-${dateStr}.pdf`);

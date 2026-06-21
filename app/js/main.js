@@ -54,14 +54,15 @@ async function init() {
   tabBar.appendChild(wsBtn);
 
   const praises = DATA.completionPraises || [];
+  const stickerThemes = DATA.stickerThemes || [];
   content.appendChild(renderGamesSection());
   content.appendChild(renderQuizSection(buildQuizData(DATA.sections), DATA.sections));
-  content.appendChild(renderGame1Section(DATA.sections, praises));
-  content.appendChild(renderGame2Section(DATA.sections, praises));
-  content.appendChild(renderGame3Section(DATA.sections, praises));
-  content.appendChild(renderGame4Section(DATA.sections, praises));
-  content.appendChild(renderGame5Section(DATA.sections, praises));
-  content.appendChild(renderWorksheetSection(DATA.sections, DATA.stickerThemes || []));
+  content.appendChild(renderGame1Section(DATA.sections, praises, stickerThemes));
+  content.appendChild(renderGame2Section(DATA.sections, praises, stickerThemes));
+  content.appendChild(renderGame3Section(DATA.sections, praises, stickerThemes));
+  content.appendChild(renderGame4Section(DATA.sections, praises, stickerThemes));
+  content.appendChild(renderGame5Section(DATA.sections, praises, stickerThemes));
+  content.appendChild(renderWorksheetSection(DATA.sections, stickerThemes));
 }
 
 init();

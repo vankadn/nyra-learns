@@ -7,13 +7,14 @@ import { generateMatchPDF } from '../pdf/game-pdf.js';
 
 let _sections = null;
 let _praises = [];
+let _theme = null;
 let g2Words = [];
 let g2EmojiOrder = [];
 let g2Selected = null;
 let g2MatchedCount = 0;
 let g2MatchedEmoji = new Set();
 
-export function renderGame2Section(sections, praises = []) {
+export function renderGame2Section(sections, praises = [], stickerThemes = []) {
   _sections = sections;
   _praises = praises;
   return renderGameSection({
@@ -25,6 +26,8 @@ export function renderGame2Section(sections, praises = []) {
     tip: '🎮 Match each word to its picture!',
     pdfFn: generateMatchPDF,
     startFn: startGame2,
+    stickerThemes,
+    onThemeChange: t => { _theme = t; },
   });
 }
 
@@ -47,7 +50,7 @@ function startGame2(containerEl, words) {
       <div class="g2-emoji-col" id="g2-emoji-col"></div>
     </div>
   `;
-  playEl.querySelector('#g2-print-btn').addEventListener('click', () => generateMatchPDF(g2Words));
+  playEl.querySelector('#g2-print-btn').addEventListener('click', () => generateMatchPDF(g2Words, { theme: _theme }));
 
   const playArea = playEl.querySelector('#g2-play-area');
   g2Words.forEach((w, i) => {

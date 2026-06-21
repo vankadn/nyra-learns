@@ -33,3 +33,24 @@ export async function loadEmojiImage(emoji) {
 export function hexToRgb(hex) {
   return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
 }
+
+export function drawCornerStickers(doc, theme, pageW, pageH) {
+  if (!theme) return;
+  const csz = 12;
+  const corners = [
+    [2, 2],
+    [pageW - csz - 2, 2],
+    [2, pageH - csz - 2],
+    [pageW - csz - 2, pageH - csz - 2],
+  ];
+  const numPages = doc.internal.getNumberOfPages();
+  for (let p = 1; p <= numPages; p++) {
+    doc.setPage(p);
+    theme.emoji.forEach((e, i) => {
+      const img = emojiCache.get(e);
+      if (!img) return;
+      const [cx, cy] = corners[i % corners.length];
+      doc.addImage(img, 'PNG', cx, cy, csz, csz);
+    });
+  }
+}

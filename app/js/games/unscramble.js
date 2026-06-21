@@ -8,13 +8,14 @@ import { generateUnscramblePDF } from '../pdf/game-pdf.js';
 
 let _sections = null;
 let _praises = [];
+let _theme = null;
 let g4Words = [];
 let g4ActiveIdx = 0;
 let g4SelectedTile = null;
 let g4SeqState = null;
 let g4CorrectWords = [];
 
-export function renderGame4Section(sections, praises = []) {
+export function renderGame4Section(sections, praises = [], stickerThemes = []) {
   _sections = sections;
   _praises = praises;
   return renderGameSection({
@@ -26,6 +27,8 @@ export function renderGame4Section(sections, praises = []) {
     tip: '🎮 Put the letters in the right order to spell the word!',
     pdfFn: generateUnscramblePDF,
     startFn: startGame4,
+    stickerThemes,
+    onThemeChange: t => { _theme = t; },
   });
 }
 
@@ -49,7 +52,7 @@ function startGame4(containerEl, words) {
     <div class="g1-tray" id="g4-tray"></div>
   `;
   playEl.querySelector('#g4-print-btn').addEventListener('click', () =>
-    generateUnscramblePDF(g4Words.map(w => ({ word: w.word, emoji: w.emoji, level: w.level || 'easy' })))
+    generateUnscramblePDF(g4Words.map(w => ({ word: w.word, emoji: w.emoji, level: w.level || 'easy' })), { theme: _theme })
   );
   g4RefreshStrip();
   g4LoadActive();

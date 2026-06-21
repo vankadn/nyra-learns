@@ -8,15 +8,26 @@ import { generateSentenceBuilderPDF } from '../pdf/game-pdf.js';
 
 let _sections = null;
 let _praises = [];
+let _theme = null;
 let g5Sentences = [];
 let g5ActiveIdx = 0;
 let g5SelectedTile = null;
 let g5SeqState = null;
 let g5CorrectWords = [];
 
-export function renderGame5Section(sections, praises = []) {
+export function renderGame5Section(sections, praises = [], stickerThemes = []) {
   _sections = sections;
   _praises = praises;
+
+  const themePickerHTML = stickerThemes.length ? `
+    <div class="ws-theme-label">🎨 Corner stickers (optional):</div>
+    <div class="ws-theme-row">${stickerThemes.map(t =>
+      `<div class="ws-theme-card" data-theme-id="${t.id}">
+         <div class="ws-theme-card-emoji">${t.emoji[0]}</div>
+         <div>${t.label}</div>
+       </div>`
+    ).join('')}</div>` : '';
+
   const div = document.createElement('div');
   div.id = 'sec-game5';
   div.className = 'section';
@@ -26,6 +37,7 @@ export function renderGame5Section(sections, praises = []) {
     <div id="g5-setup">
       <div class="tip">🎮 Put the words in the right order to build the sentence!</div>
       ${buildSelectorHTML(sections, 'g5', { showCount: false })}
+      ${themePickerHTML}
       <div style="display:flex;gap:10px;margin-top:14px;">
         <button class="next-btn" id="g5StartBtn" style="flex:1;">▶️ Start!</button>
         <button class="next-btn" id="g5PdfBtn" style="flex:1;background:#2E7D32;box-shadow:0 5px 0 #1B5E20;">📄 Get PDF</button>
@@ -35,6 +47,18 @@ export function renderGame5Section(sections, praises = []) {
     <div id="g5-play" style="display:none;"></div>
   `;
   setupSelector(div, 'g5');
+
+  if (stickerThemes.length) {
+    div.querySelectorAll('.ws-theme-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const tid = card.dataset.themeId;
+        _theme = _theme?.id === tid ? null : stickerThemes.find(t => t.id === tid);
+        div.querySelectorAll('.ws-theme-card').forEach(c => c.classList.remove('selected'));
+        if (_theme) card.classList.add('selected');
+      });
+    });
+  }
+
   div.querySelector('#g5BackBtn').addEventListener('click', () => showGames());
   div.querySelector('#g5StartBtn').addEventListener('click', () => {
     const sentences = getSelectorSentences(sections, div, 'g5');
@@ -50,7 +74,7 @@ export function renderGame5Section(sections, praises = []) {
     err.textContent = '';
     const btn = div.querySelector('#g5PdfBtn');
     btn.disabled = true; btn.textContent = '⏳ Preparing…';
-    try { await generateSentenceBuilderPDF(sentences); }
+    try { await generateSentenceBuilderPDF(sentences, { theme: _theme }); }
     catch (e) { err.textContent = 'PDF error: ' + e.message; console.error(e); }
     finally { btn.disabled = false; btn.textContent = '📄 Get PDF'; }
   });
@@ -79,7 +103,7 @@ function startGame5(containerEl, sentences) {
     <div class="g1-tray" id="g5-tray"></div>
   `;
   playEl.querySelector('#g5-print-btn').addEventListener('click', () =>
-    generateSentenceBuilderPDF(g5Sentences.map(s => ({ words: s.words, level: s.level })))
+    generateSentenceBuilderPDF(g5Sentences.map(s => ({ words: s.words, level: s.level })), { theme: _theme })
   );
   g5UpdateProgress();
   g5LoadActive();

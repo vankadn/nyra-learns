@@ -1,13 +1,14 @@
-import { emojiCache, loadEmojiImage } from './pdf-utils.js';
+import { emojiCache, loadEmojiImage, drawCornerStickers } from './pdf-utils.js';
 import { shuffle, pickBlankPositions } from '../utils.js';
 
-export async function generateMatchPDF(words) {
+export async function generateMatchPDF(words, { theme } = {}) {
   if (!window.jspdf) throw new Error('PDF library not loaded');
   await Promise.all([...new Set(words.map(w => w.emoji))].map(e => loadEmojiImage(e)));
+  if (theme) await Promise.all(theme.emoji.map(e => loadEmojiImage(e)));
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'mm', format: 'letter', orientation: 'portrait' });
-  const pageW = 215.9;
+  const pageW = 215.9, pageH = 279.4;
   const mL = 20, mT = 20;
   const colW = 68;
   const midGap = pageW - mL * 2 - colW * 2;
@@ -39,16 +40,18 @@ export async function generateMatchPDF(words) {
     y += rowH + 5;
   }
 
+  drawCornerStickers(doc, theme, pageW, pageH);
   doc.save(`Nyra-Match-${new Date().toISOString().slice(0, 10)}.pdf`);
 }
 
-export async function generateSpellItPDF(words, { title = 'Spell the word!', filename } = {}) {
+export async function generateSpellItPDF(words, { title = 'Spell the word!', filename, theme } = {}) {
   if (!window.jspdf) throw new Error('PDF library not loaded');
   await Promise.all([...new Set(words.map(w => w.emoji))].map(e => loadEmojiImage(e)));
+  if (theme) await Promise.all(theme.emoji.map(e => loadEmojiImage(e)));
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'mm', format: 'letter', orientation: 'portrait' });
-  const pageW = 215.9, mL = 20, mT = 20;
+  const pageW = 215.9, pageH = 279.4, mL = 20, mT = 20;
   const usableW = pageW - mL * 2;
   const emojiSz = 14, emojiGap = 6;
   const boxH = 16, boxW = 10, boxGap = 3;
@@ -98,23 +101,26 @@ export async function generateSpellItPDF(words, { title = 'Spell the word!', fil
     y += rowH + rowGap;
   }
 
+  drawCornerStickers(doc, theme, pageW, pageH);
   doc.save(filename || `Nyra-SpellIt-${new Date().toISOString().slice(0, 10)}.pdf`);
 }
 
-export function generateUnscramblePDF(words) {
+export function generateUnscramblePDF(words, { theme } = {}) {
   return generateSpellItPDF(words, {
     title: 'Unscramble the letters!',
     filename: `Nyra-Unscramble-${new Date().toISOString().slice(0, 10)}.pdf`,
+    theme,
   });
 }
 
-export async function generateMissingLetterPDF(words) {
+export async function generateMissingLetterPDF(words, { theme } = {}) {
   if (!window.jspdf) throw new Error('PDF library not loaded');
   await Promise.all([...new Set(words.map(w => w.emoji))].map(e => loadEmojiImage(e)));
+  if (theme) await Promise.all(theme.emoji.map(e => loadEmojiImage(e)));
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'mm', format: 'letter', orientation: 'portrait' });
-  const pageW = 215.9, mL = 20, mT = 20;
+  const pageW = 215.9, pageH = 279.4, mL = 20, mT = 20;
   const usableW = pageW - mL * 2;
   const emojiSz = 14, emojiGap = 6;
   const boxH = 16, boxW = 10, boxGap = 3;
@@ -174,14 +180,16 @@ export async function generateMissingLetterPDF(words) {
     y += rowH + rowGap;
   }
 
+  drawCornerStickers(doc, theme, pageW, pageH);
   doc.save(`Nyra-MissingLetter-${new Date().toISOString().slice(0, 10)}.pdf`);
 }
 
-export async function generateSentenceBuilderPDF(sentences) {
+export async function generateSentenceBuilderPDF(sentences, { theme } = {}) {
   if (!window.jspdf) throw new Error('PDF library not loaded');
+  if (theme) await Promise.all(theme.emoji.map(e => loadEmojiImage(e)));
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'mm', format: 'letter', orientation: 'portrait' });
-  const pageW = 215.9, mL = 20, mT = 20;
+  const pageW = 215.9, pageH = 279.4, mL = 20, mT = 20;
   const chipH = 12, slotH = 14, chipPadX = 4, chipGap = 3, rowGap = 10;
 
   doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
@@ -224,5 +232,6 @@ export async function generateSentenceBuilderPDF(sentences) {
     y += chipH + slotH + 4 + rowGap;
   }
 
+  drawCornerStickers(doc, theme, pageW, pageH);
   doc.save(`Nyra-SentenceBuilder-${new Date().toISOString().slice(0, 10)}.pdf`);
 }

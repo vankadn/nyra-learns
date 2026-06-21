@@ -59,7 +59,18 @@ export function celebrate(playElId, title, subtitle, onPlayAgain) {
   document.getElementById(btnId).addEventListener('click', onPlayAgain);
 }
 
-export function renderGameSection({ sections, id, prefix, icon, title, tip, pdfFn, startFn }) {
+export function renderGameSection({ sections, id, prefix, icon, title, tip, pdfFn, startFn, stickerThemes = [], onThemeChange = null }) {
+  let selectedTheme = null;
+
+  const themePickerHTML = stickerThemes.length ? `
+    <div class="ws-theme-label">🎨 Corner stickers (optional):</div>
+    <div class="ws-theme-row">${stickerThemes.map(t =>
+      `<div class="ws-theme-card" data-theme-id="${t.id}">
+         <div class="ws-theme-card-emoji">${t.emoji[0]}</div>
+         <div>${t.label}</div>
+       </div>`
+    ).join('')}</div>` : '';
+
   const div = document.createElement('div');
   div.id = `sec-${id}`;
   div.className = 'section';
@@ -69,6 +80,7 @@ export function renderGameSection({ sections, id, prefix, icon, title, tip, pdfF
     <div id="${prefix}-setup">
       <div class="tip">${tip}</div>
       ${buildSelectorHTML(sections, prefix, { defaultCount: 5, minCount: 2, maxCount: 10, countLabel: 'Words per round:' })}
+      ${themePickerHTML}
       <div style="display:flex;gap:10px;margin-top:14px;">
         <button class="next-btn" id="${prefix}StartBtn" style="flex:1;">▶️ Start Game!</button>
         <button class="next-btn" id="${prefix}PdfBtn" style="flex:1;background:#2E7D32;box-shadow:0 5px 0 #1B5E20;">📄 Get PDF</button>
@@ -78,6 +90,18 @@ export function renderGameSection({ sections, id, prefix, icon, title, tip, pdfF
     <div id="${prefix}-play" style="display:none;"></div>
   `;
   setupSelector(div, prefix);
+
+  if (stickerThemes.length) {
+    div.querySelectorAll('.ws-theme-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const tid = card.dataset.themeId;
+        selectedTheme = selectedTheme?.id === tid ? null : stickerThemes.find(t => t.id === tid);
+        div.querySelectorAll('.ws-theme-card').forEach(c => c.classList.remove('selected'));
+        if (selectedTheme) card.classList.add('selected');
+        if (onThemeChange) onThemeChange(selectedTheme);
+      });
+    });
+  }
 
   div.querySelector(`#${prefix}BackBtn`).addEventListener('click', () => showGames());
 
@@ -96,7 +120,7 @@ export function renderGameSection({ sections, id, prefix, icon, title, tip, pdfF
     err.textContent = '';
     const btn = div.querySelector(`#${prefix}PdfBtn`);
     btn.disabled = true; btn.textContent = '⏳ Preparing…';
-    try { await pdfFn(words); }
+    try { await pdfFn(words, { theme: selectedTheme }); }
     catch (e) { err.textContent = 'PDF error: ' + e.message; console.error(e); }
     finally { btn.disabled = false; btn.textContent = '📄 Get PDF'; }
   });
