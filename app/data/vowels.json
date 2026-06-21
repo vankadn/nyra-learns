@@ -5,16 +5,30 @@
     "version": "4.1"
   },
   "completionPraises": [
-    "Amazing work, Nyra! 🌟",
-    "You're a star reader! ⭐",
-    "Shabash! Keep going! 💪",
-    "Wow, look at you go! 🚀",
-    "Super smart! 🧠",
-    "You did it! So proud! 🥳",
-    "Reading champion! 🏆",
-    "Nyra the word wizard! 🪄",
-    "Incredible! You're on fire! 🔥",
-    "That was brilliant! 💎"
+    "WOW you're a word wizard! 🧙‍♀️✨",
+    "BOOM! Brain power level: UNICORN 🦄💥",
+    "You did that! *mic drop* 🎤⬇️",
+    "Whoa whoa WHOA. Genius alert! 🚨🧠",
+    "That was so good my screen is doing a happy dance 💃📱",
+    "You + words = unstoppable duo 🦸‍♀️📚",
+    "Ta-da! ✨ You're basically magic now",
+    "High five in the air, I can't reach you 🙌",
+    "Nyra smash word puzzle! 💪🔤",
+    "Okay show-off, do that again 😏🎉",
+    "Sparkles incoming... 🌟🌟🌟 because you EARNED it",
+    "You're cooking now! 🍳🔥 (with words, not eggs)",
+    "Plot twist: you're amazing 📖😲",
+    "Confetti cannon says: GREAT JOB 🎊🎊",
+    "That deserves a silly dance break 🕺",
+    "Bleep bloop, robot brain impressed 🤖✅"
+  ],
+  "stickerThemes": [
+    { "id": "unicorn",   "label": "Unicorn Land",    "emoji": ["🦄","🌈","✨","💖"] },
+    { "id": "princess",  "label": "Princess Mode",   "emoji": ["👑","🏰","💎","🎀"] },
+    { "id": "underwater","label": "Mermaid Sea",     "emoji": ["🧜‍♀️","🐚","🐬","🌊"] },
+    { "id": "space",     "label": "Galaxy Girl",     "emoji": ["🚀","🌙","⭐","👩‍🚀"] },
+    { "id": "garden",    "label": "Flower Garden",   "emoji": ["🌸","🦋","🐝","🌻"] },
+    { "id": "rainbow",   "label": "Rainbow Pop",     "emoji": ["🌈","🍭","🎈","🌟"] }
   ],
   "sections": [
     {

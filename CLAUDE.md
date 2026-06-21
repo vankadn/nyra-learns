@@ -177,6 +177,11 @@ change any JS module or `generate.py` to add subject-specific logic.
 
 ## Data inventory — vowels.json
 
+**Top-level arrays** (not inside `sections`):
+- `completionPraises` — 16 strings, read by `showReplay()` in `game-shell.js`
+- `stickerThemes` — 6 themes (unicorn, princess, underwater, space, garden, rainbow),
+  read by `renderWorksheetSection()` for the PDF theme picker
+
 All items have 30 words (20 for `ei-eigh`). Sentences listed below are what
 currently exists; items with `— none` still need sentences generated in the
 claude.ai project chat.
@@ -744,3 +749,41 @@ completion moment in the current flow. Tap-early guard: click listener deferred 
 to prevent accidental tap-through from the last tile placement.
 
 **Build order:** Independent of g4/g5 — no dependencies in either direction.
+
+## Feature spec: PDF Sticker Themes (📝 planned)
+
+**What it is:** A theme picker on the Worksheet tab (before "Generate PDF") that adds
+emoji corner/border decorations to the printed worksheet. Tap a theme card to select it,
+tap again to deselect. Defaults to no theme (clean worksheet). Purely decorative — no
+change to word cells or layout logic.
+
+**Data:** `stickerThemes` top-level array in `vowels.json` (already added). Each theme:
+```json
+{ "id": "unicorn", "label": "Unicorn Land", "emoji": ["🦄","🌈","✨","💖"] }
+```
+Read from `DATA.stickerThemes` — never hardcode theme ids or emoji in JS.
+
+**UI (Worksheet tab):**
+- Add a theme picker row above the "Generate PDF" button.
+- One small card per theme: theme emoji (first emoji in the array) + label.
+- Single-select: tapping a card selects it (highlighted border); tapping the selected
+  card deselects it (back to no theme). No "none" card needed — deselecting achieves it.
+- State is local to the Worksheet tab session, not persisted.
+
+**PDF decoration layer (`worksheet-pdf.js`):**
+- If a theme is selected, draw its 4 emoji as corner decorations: top-left, top-right,
+  bottom-left, bottom-right of the page, just inside the margin.
+- Use the existing Twemoji PNG pipeline (`loadEmojiImage` from `pdf-utils.js`) —
+  same approach as word-cell emoji. No new asset work.
+- Emoji size: ~12mm. Position: `mL - 4` / `pageW - mL - 8` for X; `mT - 4` /
+  `pageH - mB - 8` for Y (adjust to taste — keep clear of the word grid).
+- If no theme selected, PDF output is identical to current (no regressions).
+- The 4 theme emoji map to corners in order: [top-left, top-right, bottom-left,
+  bottom-right]. Cycle through the array if fewer than 4 emoji (wrap with `% length`).
+
+**Threading:** `DATA.stickerThemes` is already available in `main.js`. Pass it into
+`renderWorksheetSection(DATA.sections, DATA.stickerThemes)` — same pattern as praises.
+`worksheet-pdf.js`'s `generateWorksheetPDF(words, opts)` already accepts an `opts` bag;
+add `opts.theme` (the selected theme object or null).
+
+**No regressions:** if `opts.theme` is null/undefined, PDF is byte-identical to current output.
