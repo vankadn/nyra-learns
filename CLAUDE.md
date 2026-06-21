@@ -4,7 +4,7 @@
 
 A data-driven learning toolkit for Nyra (age 5): a self-contained HTML
 web app (interactive, no build step) plus a PDF worksheet generator. Currently
-covers English vowels (short, long, vowel teams, OU/OW). Designed to extend to
+covers English vowels (short, long, vowel teams, OU/OW), consonant digraphs (sh, ch, th, ph), and consonant blends (pl, br, cl, cr, fl). Designed to extend to
 other subjects (e.g. Telugu, Maths) by adding new data files — not new code.
 
 ## Why this structure
@@ -222,6 +222,23 @@ claude.ai project chat.
 | `use-ck` | CK — after a short vowel | — none |
 | `use-k` | K — after consonant, vowel team, or long vowel | — none |
 | `use-c` | C — before a, o, u or start of most words | — none |
+
+**Consonant Digraphs** (`consonant-digraphs`) — sh/ch/th 24 words each; ph 14 words (Greek-origin words rarer at this level, same reasoning as ei-eigh having 20)
+| Item | Label | Sentences |
+|---|---|---|
+| `sh` | Sh — /sh/ | — none |
+| `ch` | Ch — /ch/ | — none |
+| `th` | Th — /th/ | — none |
+| `ph` | Ph — /f/ | — none |
+
+**Consonant Blends** (`consonant-blends`) — 18 words each (smaller usable kindergarten-level vocabulary for l/r blends)
+| Item | Label | Sentences |
+|---|---|---|
+| `pl` | Pl — /pl/ | — none |
+| `br` | Br — /br/ | — none |
+| `cl` | Cl — /cl/ | — none |
+| `cr` | Cr — /cr/ | — none |
+| `fl` | Fl — /fl/ | — none |
 
 ## Workflow split (where to ask what)
 
