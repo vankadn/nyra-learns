@@ -3,7 +3,9 @@ import { getEmoji } from '../emoji.js';
 import { shuffle } from '../utils.js';
 import { buildSelectorHTML, setupSelector } from '../selector.js';
 
-export function renderWorksheetSection(sections) {
+export function renderWorksheetSection(sections, stickerThemes = []) {
+  let selectedTheme = null;
+
   const div = document.createElement('div');
   div.id = 'sec-worksheet';
   div.className = 'section';
@@ -17,17 +19,39 @@ export function renderWorksheetSection(sections) {
       📋 Include teaching notes in PDF
     </label>
   </div>
+  <div id="wsThemePicker"></div>
   <button class="next-btn" id="wsGenerateBtn" type="button">&#128196; Download PDF</button>
   <div class="ws-status" id="wsStatus"></div>`;
 
   setupSelector(div, 'ws');
+
+  if (stickerThemes.length) {
+    const pickerEl = div.querySelector('#wsThemePicker');
+    pickerEl.innerHTML = `
+      <div class="ws-theme-label">🎨 Corner stickers (optional):</div>
+      <div class="ws-theme-row">${stickerThemes.map(t =>
+        `<div class="ws-theme-card" id="wst-${t.id}" data-theme-id="${t.id}">
+           <div class="ws-theme-card-emoji">${t.emoji[0]}</div>
+           <div>${t.label}</div>
+         </div>`
+      ).join('')}</div>`;
+
+    pickerEl.querySelectorAll('.ws-theme-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const tid = card.dataset.themeId;
+        selectedTheme = selectedTheme?.id === tid ? null : stickerThemes.find(t => t.id === tid);
+        pickerEl.querySelectorAll('.ws-theme-card').forEach(c => c.classList.remove('selected'));
+        if (selectedTheme) card.classList.add('selected');
+      });
+    });
+  }
 
   div.querySelector('#wsGenerateBtn').addEventListener('click', async () => {
     const btn = div.querySelector('#wsGenerateBtn');
     btn.disabled = true;
     btn.textContent = '⏳ Preparing…';
     try {
-      await generateWorksheetPDF(sections);
+      await generateWorksheetPDF(sections, selectedTheme);
     } catch (err) {
       document.getElementById('wsStatus').textContent = 'Error generating PDF. Please try again.';
       console.error(err);
@@ -40,7 +64,7 @@ export function renderWorksheetSection(sections) {
   return div;
 }
 
-async function generateWorksheetPDF(sections) {
+async function generateWorksheetPDF(sections, theme = null) {
   const statusEl = document.getElementById('wsStatus');
   if (!window.jspdf) {
     statusEl.textContent = 'PDF library not loaded — please try again in a moment.';
@@ -95,6 +119,7 @@ async function generateWorksheetPDF(sections) {
   statusEl.textContent = 'Loading emoji…';
   const allEmoji = [...new Set(renderBlocks.flatMap(b => b.words.map(w => w.emoji)))];
   await Promise.all(allEmoji.map(e => loadEmojiImage(e)));
+  if (theme) await Promise.all(theme.emoji.map(e => loadEmojiImage(e)));
   statusEl.textContent = '';
 
   const { jsPDF } = window.jspdf;
@@ -219,6 +244,27 @@ async function generateWorksheetPDF(sections) {
       y += cellH + gapY;
     }
     y += 5;
+  }
+
+  // Draw corner stickers on every page
+  if (theme) {
+    const csz = 12;
+    const corners = [
+      [2, 2],
+      [pageW - csz - 2, 2],
+      [2, pageH - csz - 2],
+      [pageW - csz - 2, pageH - csz - 2],
+    ];
+    const numPages = doc.internal.getNumberOfPages();
+    for (let p = 1; p <= numPages; p++) {
+      doc.setPage(p);
+      theme.emoji.forEach((e, i) => {
+        const img = emojiCache.get(e);
+        if (!img) return;
+        const [cx, cy] = corners[i % corners.length];
+        doc.addImage(img, 'PNG', cx, cy, csz, csz);
+      });
+    }
   }
 
   const dateStr = new Date().toISOString().slice(0, 10);

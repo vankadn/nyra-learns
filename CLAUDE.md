@@ -750,7 +750,7 @@ to prevent accidental tap-through from the last tile placement.
 
 **Build order:** Independent of g4/g5 — no dependencies in either direction.
 
-## Feature spec: PDF Sticker Themes (📝 planned)
+## Feature spec: PDF Sticker Themes ✅ BUILT
 
 **What it is:** A theme picker on the Worksheet tab (before "Generate PDF") that adds
 emoji corner/border decorations to the printed worksheet. Tap a theme card to select it,

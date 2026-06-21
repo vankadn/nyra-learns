@@ -594,6 +594,40 @@ header p { color: #E3F2FD; font-size: 0.95rem; margin-top: 4px; }
 }
 .ws-notes-row input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--plum); cursor: pointer; }
 
+.ws-theme-label {
+  font-family: 'Baloo 2', cursive;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 12px 0 8px;
+}
+.ws-theme-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.ws-theme-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 14px;
+  border: 3px solid transparent;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.09);
+  cursor: pointer;
+  font-family: 'Baloo 2', cursive;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #555;
+  transition: border-color 0.15s, transform 0.12s, background 0.15s;
+  user-select: none;
+}
+.ws-theme-card-emoji { font-size: 1.6rem; line-height: 1.2; margin-bottom: 3px; }
+.ws-theme-card:hover { transform: translateY(-2px); border-color: #CE93D8; }
+.ws-theme-card.selected { border-color: var(--plum); background: #F3E5F5; color: var(--plum); }
+
 /* ── Game 1: Letter Tile Builder ── */
 .g1-progress-strip {
   display: flex;

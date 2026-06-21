@@ -61,7 +61,7 @@ async function init() {
   content.appendChild(renderGame3Section(DATA.sections, praises));
   content.appendChild(renderGame4Section(DATA.sections, praises));
   content.appendChild(renderGame5Section(DATA.sections, praises));
-  content.appendChild(renderWorksheetSection(DATA.sections));
+  content.appendChild(renderWorksheetSection(DATA.sections, DATA.stickerThemes || []));
 }
 
 init();
