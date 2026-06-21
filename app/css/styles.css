@@ -1,0 +1,866 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Baloo+2:wght@700;800&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --sun: #FFD54F;
+  --plum: #9C27B0;
+  --ink: #1A237E;
+}
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: linear-gradient(180deg, #B3E5FC 0%, #E1F5FE 60%, #C8E6C9 100%);
+  min-height: 100vh;
+  color: var(--ink);
+  padding-bottom: 40px;
+}
+
+header {
+  background: linear-gradient(135deg, var(--plum), #1565C0);
+  padding: 18px 20px 14px;
+  text-align: center;
+  border-bottom: 5px solid var(--sun);
+}
+
+header h1 {
+  font-family: 'Baloo 2', cursive;
+  font-size: 2rem;
+  color: white;
+  text-shadow: 2px 3px 0 rgba(0,0,0,0.2);
+  letter-spacing: 1px;
+}
+
+header p { color: #E3F2FD; font-size: 0.95rem; margin-top: 4px; }
+
+.tabs {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px 16px 0;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  font-family: 'Baloo 2', cursive;
+  font-size: 1rem;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  font-weight: 700;
+  color: white;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+}
+
+.tab-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,0.2); }
+
+.tab-btn.active {
+  transform: translateY(-3px) scale(1.06);
+  box-shadow: 0 7px 0 rgba(0,0,0,0.2);
+  outline: 3px solid var(--sun);
+}
+
+.section {
+  display: none;
+  padding: 20px 16px;
+  max-width: 520px;
+  margin: 0 auto;
+  animation: popIn 0.3s ease;
+}
+.section.active { display: block; }
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.section-title {
+  font-family: 'Baloo 2', cursive;
+  font-size: 1.5rem;
+  text-align: center;
+  margin-bottom: 16px;
+  color: var(--ink);
+}
+
+.tip {
+  background: #E8F5E9;
+  border-left: 4px solid #81C784;
+  border-radius: 0 10px 10px 0;
+  padding: 10px 14px;
+  font-size: 0.88rem;
+  color: #2E7D32;
+  margin-bottom: 12px;
+}
+
+.rule-box {
+  background: linear-gradient(135deg, #FFF9C4, #FFFDE7);
+  border: 2px dashed #F9A825;
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #5D4037;
+}
+
+/* Vowel grid */
+.vowel-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.vowel-card {
+  background: white;
+  border-radius: 14px;
+  padding: 10px 4px;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 4px 0 rgba(0,0,0,0.12);
+  transition: transform 0.15s;
+  border: 3px solid transparent;
+}
+.vowel-card:active { transform: scale(0.95); }
+.vowel-card .letter { font-family: 'Baloo 2', cursive; font-size: 2rem; line-height: 1; font-weight: 800; }
+.vowel-card .word   { font-size: 0.72rem; color: #555; margin-top: 3px; }
+
+/* Magic E demo */
+.magic-e-demo {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+
+.word-transform {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  border-radius: 14px;
+  padding: 10px 16px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+  font-family: 'Baloo 2', cursive;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.word-transform .arrow  { color: #999; }
+.word-transform .magic-e { font-size: 0.8em; vertical-align: super; }
+
+/* Word groups */
+.word-group {
+  background: white;
+  border-radius: 18px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+  border-left: 6px solid #ccc;
+}
+
+.word-group h3 { font-family: 'Baloo 2', cursive; font-size: 1.1rem; margin-bottom: 8px; color: var(--ink); }
+
+.word-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+
+.chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #F3F4FF;
+  border-radius: 50px;
+  padding: 6px 14px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 2px solid #C5CAE9;
+  transition: background 0.15s, transform 0.1s, border-color 0.15s;
+  user-select: none;
+  min-width: 52px;
+  text-align: center;
+}
+.chip:active { transform: scale(0.93); }
+
+.chip-word  { line-height: 1.3; }
+.chip-emoji { display: none; font-size: 1.8rem; line-height: 1.1; }
+
+.chip.flipped {
+  background: var(--sun);
+  border-color: #F57F17;
+  padding: 4px 14px;
+}
+.chip.flipped .chip-word  { display: none; }
+.chip.flipped .chip-emoji { display: block; }
+
+/* Vowel team groups */
+.team-group {
+  background: white;
+  border-radius: 18px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+}
+
+.team-label {
+  display: inline-block;
+  color: white;
+  font-family: 'Baloo 2', cursive;
+  font-size: 1rem;
+  border-radius: 50px;
+  padding: 3px 14px;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.team-sound { font-size: 0.88rem; color: #777; margin-bottom: 8px; }
+
+/* Quiz */
+.quiz-card {
+  background: white;
+  border-radius: 20px;
+  padding: 22px 18px;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  margin-bottom: 16px;
+}
+
+.quiz-question { font-family: 'Baloo 2', cursive; font-size: 1.6rem; color: var(--ink); margin-bottom: 6px; }
+
+.quiz-word {
+  font-family: 'Baloo 2', cursive;
+  font-size: 3rem;
+  color: var(--plum);
+  margin: 8px 0 16px;
+  letter-spacing: 4px;
+}
+
+.quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.quiz-btn {
+  font-family: 'Baloo 2', cursive;
+  font-size: 1rem;
+  padding: 12px;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  font-weight: 700;
+  color: white;
+  background: #5C6BC0;
+  box-shadow: 0 4px 0 #3949AB;
+  transition: transform 0.1s;
+}
+.quiz-btn:active   { transform: translateY(2px); }
+.quiz-btn.correct  { background: #43A047; box-shadow: 0 4px 0 #2E7D32; }
+.quiz-btn.wrong    { background: #E53935; box-shadow: 0 4px 0 #B71C1C; }
+.quiz-btn:disabled { opacity: 0.7; cursor: default; }
+
+.quiz-result { font-family: 'Baloo 2', cursive; font-size: 1.4rem; margin-top: 14px; min-height: 40px; }
+
+.score-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  border-radius: 14px;
+  padding: 10px 16px;
+  margin-bottom: 14px;
+  font-family: 'Baloo 2', cursive;
+  font-size: 1.1rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.score-num { font-size: 1.8rem; color: var(--plum); }
+
+.next-btn {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  font-family: 'Baloo 2', cursive;
+  font-size: 1.1rem;
+  padding: 13px;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  font-weight: 800;
+  color: white;
+  background: var(--plum);
+  box-shadow: 0 5px 0 #6A1B9A;
+  transition: transform 0.1s;
+}
+.next-btn:active  { transform: translateY(3px); box-shadow: 0 2px 0 #6A1B9A; }
+.next-btn:disabled { opacity: 0.6; cursor: default; }
+
+.topic-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: white;
+  border: 3px solid #ccc;
+  border-radius: 16px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  user-select: none;
+}
+.topic-card:has(input:checked) { background: #F3F4FF; }
+.topic-card:active { transform: scale(0.98); }
+.topic-card input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--plum); cursor: pointer; flex-shrink: 0; }
+.topic-icon { font-size: 1.5rem; }
+.topic-name { font-family: 'Baloo 2', cursive; font-size: 1.1rem; font-weight: 700; color: var(--ink); flex: 1; }
+.topic-eg   { font-size: 0.78rem; color: #888; }
+
+/* Worksheet */
+.ws-section-box {
+  background: white;
+  border-radius: 18px;
+  margin-bottom: 10px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+  overflow: hidden;
+}
+
+.ws-section-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+}
+
+.ws-sec-check-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ws-sec-check-wrap input[type=checkbox] {
+  width: 20px; height: 20px;
+  accent-color: var(--plum);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.ws-color-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ws-section-name {
+  font-family: 'Baloo 2', cursive;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.ws-expand-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  color: #aaa;
+  padding: 4px 8px;
+  line-height: 1;
+  transition: transform 0.2s;
+}
+
+.ws-expand-btn.open { transform: rotate(90deg); }
+
+.ws-items-list {
+  padding: 6px 16px 12px 48px;
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ws-items-list[hidden] { display: none; }
+
+.ws-item-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #555;
+  user-select: none;
+}
+
+.ws-item-label input[type=checkbox] {
+  width: 17px; height: 17px;
+  accent-color: var(--plum);
+  cursor: pointer;
+}
+
+.ws-count-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: white;
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin: 14px 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  font-family: 'Baloo 2', cursive;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.ws-count-row input[type=number] {
+  width: 68px;
+  padding: 6px 8px;
+  border: 2px solid #C5CAE9;
+  border-radius: 10px;
+  font-family: 'Baloo 2', cursive;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: center;
+}
+
+.ws-status {
+  text-align: center;
+  font-family: 'Baloo 2', cursive;
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-top: 10px;
+  min-height: 22px;
+  color: #E53935;
+}
+
+/* ── Level filtering ── */
+.chip[data-level="medium"],
+.chip[data-level="hard"]                              { display: none; }
+.word-group.show-medium  .chip[data-level="medium"],
+.team-group.show-medium  .chip[data-level="medium"]   { display: inline-flex; }
+
+.show-more-btn {
+  display: inline-block;
+  margin-top: 6px;
+  font-family: 'Baloo 2', cursive;
+  font-size: 0.78rem;
+  background: #EDE7F6;
+  border: 2px solid #B39DDB;
+  border-radius: 50px;
+  padding: 3px 14px;
+  cursor: pointer;
+  font-weight: 700;
+  color: #4527A0;
+  transition: background 0.15s;
+}
+.show-more-btn:hover { background: #D1C4E9; }
+
+.item-note {
+  font-size: 0.8rem;
+  color: #7B1FA2;
+  background: #F3E5F5;
+  border-radius: 8px;
+  padding: 4px 8px;
+  margin-bottom: 6px;
+}
+.item-rule {
+  font-size: 0.8rem;
+  color: #BF360C;
+  background: #FFF3E0;
+  border-radius: 8px;
+  padding: 4px 8px;
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+/* ── Quiz level picker ── */
+.level-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+  background: #F5F5F5;
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+.level-pick-row > span { font-family: 'Baloo 2', cursive; font-size: 0.9rem; font-weight: 700; color: var(--ink); }
+.lvl-btn {
+  font-family: 'Baloo 2', cursive;
+  font-size: 0.85rem;
+  padding: 5px 14px;
+  border-radius: 50px;
+  border: 2px solid #ddd;
+  background: white;
+  cursor: pointer;
+  font-weight: 700;
+  color: #888;
+  transition: all 0.15s;
+}
+.lvl-btn.on-easy   { background: #C8E6C9; border-color: #43A047; color: #1B5E20; }
+.lvl-btn.on-medium { background: #FFF9C4; border-color: #F9A825; color: #5D4037; }
+.lvl-btn.on-hard   { background: #FFCDD2; border-color: #E53935; color: #B71C1C; }
+
+/* ── Worksheet level row ── */
+.ws-level-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  background: white;
+  border-radius: 14px;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  font-family: 'Baloo 2', cursive;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.ws-level-cb-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.88rem;
+  user-select: none;
+}
+.ws-level-cb-label input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--plum); cursor: pointer; }
+
+/* ── Teacher notes ── */
+.tn-btn {
+  font-family: 'Baloo 2', cursive;
+  font-size: 0.72rem;
+  background: #E8EAF6;
+  border: 1.5px solid #9FA8DA;
+  border-radius: 20px;
+  padding: 2px 10px;
+  cursor: pointer;
+  font-weight: 700;
+  color: #3949AB;
+  margin-left: 8px;
+  vertical-align: middle;
+  transition: background 0.15s;
+}
+.tn-btn:hover, .tn-btn.open { background: #C5CAE9; }
+
+.tn-panel {
+  margin-top: 8px;
+  background: #F0F4FF;
+  border: 1.5px dashed #9FA8DA;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 0.82rem;
+  color: #37474F;
+  line-height: 1.55;
+}
+.tn-panel[hidden] { display: none; }
+.tn-field { margin-bottom: 4px; }
+.tn-field:last-child { margin-bottom: 0; }
+.tn-label { font-weight: 700; color: #3949AB; margin-right: 3px; }
+
+.team-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.team-group-head .team-label { margin-bottom: 0; }
+
+/* ── Worksheet notes checkbox ── */
+.ws-notes-row {
+  display: flex;
+  align-items: center;
+  background: white;
+  border-radius: 14px;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.ws-notes-row label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-family: 'Baloo 2', cursive;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--ink);
+  user-select: none;
+}
+.ws-notes-row input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--plum); cursor: pointer; }
+
+/* ── Game 1: Letter Tile Builder ── */
+.g1-progress-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 10px 4px 4px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.g1-progress-chip {
+  font-size: 2rem;
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  position: relative;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 3px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.g1-progress-chip.active {
+  transform: scale(1.18);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+  border-color: var(--plum);
+}
+
+.g1-progress-chip.done {
+  opacity: 0.6;
+  border-color: #43A047;
+}
+
+.g1-progress-chip.done::after {
+  content: '✓';
+  position: absolute;
+  top: -8px; right: -8px;
+  background: #43A047;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 900;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  line-height: 18px;
+  text-align: center;
+}
+
+.g1-active-area {
+  background: white;
+  border-radius: 20px;
+  padding: 18px 14px;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  margin-bottom: 12px;
+}
+
+.g1-emoji-large { font-size: 4rem; line-height: 1.2; margin-bottom: 14px; cursor: pointer; }
+
+.g1-blanks {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.g1-blank {
+  width: 44px; height: 52px;
+  border: 3px dashed #C5CAE9;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Baloo 2', cursive;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--ink);
+  background: #F8F9FF;
+  transition: border-color 0.15s, background 0.15s;
+  cursor: pointer;
+}
+
+.g1-blank.drag-over { border-color: var(--plum); background: #EDE7F6; }
+
+.g1-blank.filled { border-style: solid; border-color: #43A047; background: #E8F5E9; }
+
+.g1-tray-label {
+  font-family: 'Baloo 2', cursive;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #888;
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.g1-tray {
+  background: white;
+  border-radius: 18px;
+  padding: 14px 12px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  min-height: 64px;
+}
+
+.g1-tile {
+  width: 44px; height: 52px;
+  background: var(--plum);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Baloo 2', cursive;
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: white;
+  cursor: grab;
+  box-shadow: 0 4px 0 #6A1B9A;
+  transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+  user-select: none;
+}
+
+.g1-tile:active { transform: translateY(2px); box-shadow: 0 2px 0 #6A1B9A; }
+
+.g1-tile.selected {
+  background: #F9A825;
+  box-shadow: 0 4px 0 #F57F17;
+  transform: translateY(-4px);
+}
+
+.g1-tile.wrong {
+  background: #E53935;
+  box-shadow: 0 2px 0 #B71C1C;
+  animation: g1Shake 0.4s ease;
+}
+
+@keyframes g1Shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-6px); }
+  40%       { transform: translateX(6px); }
+  60%       { transform: translateX(-4px); }
+  80%       { transform: translateX(4px); }
+}
+
+.g1-confetti-piece {
+  position: fixed;
+  border-radius: 2px;
+  animation: g1Fall linear forwards;
+  pointer-events: none;
+  z-index: 999;
+}
+
+@keyframes g1Fall {
+  0%   { transform: translateY(-20px) rotate(0deg);   opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+
+.g1-celebrate-card {
+  text-align: center;
+  padding: 30px 20px;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+}
+
+/* ── Game 2: Match Word to Emoji ── */
+.g2-play-area {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  background: white;
+  border-radius: 18px;
+  padding: 16px 12px;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+  margin-bottom: 12px;
+  touch-action: none;
+  min-height: 100px;
+}
+.g2-words-col { display: flex; flex-direction: column; gap: 10px; width: 38%; }
+.g2-emoji-col { display: flex; flex-direction: column; gap: 10px; width: 38%; margin-left: auto; }
+.g2-svg-overlay {
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none; overflow: visible;
+}
+.g2-word-item {
+  background: #F3F4FF; border: 2px solid #C5CAE9; border-radius: 12px;
+  padding: 10px 10px; font-family: 'Baloo 2', cursive; font-size: 1.05rem;
+  font-weight: 700; color: var(--ink); cursor: pointer; text-align: center;
+  user-select: none; touch-action: none;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+.g2-emoji-item {
+  background: white; border: 2px solid #E0E0E0; border-radius: 12px;
+  padding: 8px 6px; font-size: 2rem; cursor: pointer; text-align: center;
+  user-select: none; touch-action: none; line-height: 1.3;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+.g2-word-item.selected  { background: #EDE7F6; border-color: var(--plum); transform: scale(1.04); }
+.g2-emoji-item.selected { background: #EDE7F6; border-color: var(--plum); transform: scale(1.04); }
+.g2-word-item.matched   { background: #E8F5E9; border-color: #43A047; color: #1B5E20; cursor: default; }
+.g2-emoji-item.matched  { background: #E8F5E9; border-color: #43A047; cursor: default; }
+.g2-word-item.g2-dragging, .g2-emoji-item.g2-dragging { opacity: 0.65; }
+
+/* ── Game 3: Missing Letter ── */
+.g3-prefilled {
+  width: 44px; height: 52px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Baloo 2', cursive; font-size: 1.5rem; font-weight: 800;
+  color: #9E9E9E;
+  border-bottom: 3px solid #C5CAE9;
+}
+
+/* ── Games launcher ── */
+.games-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.game-card {
+  background: white;
+  border-radius: 18px;
+  padding: 22px 14px;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+  border: 3px solid transparent;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+  user-select: none;
+}
+
+.game-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.13); border-color: var(--plum); }
+.game-card:active { transform: scale(0.97); }
+
+.game-card-icon { font-size: 3rem; margin-bottom: 8px; }
+.game-card-name { font-family: 'Baloo 2', cursive; font-size: 1.2rem; font-weight: 800; color: var(--ink); margin-bottom: 4px; }
+.game-card-desc { font-size: 0.82rem; color: #777; line-height: 1.4; }
+
+.back-btn {
+  font-family: 'Baloo 2', cursive;
+  font-size: 0.88rem;
+  font-weight: 700;
+  background: #EDE7F6;
+  border: 2px solid #B39DDB;
+  border-radius: 50px;
+  padding: 6px 16px;
+  cursor: pointer;
+  color: #4527A0;
+  margin-bottom: 14px;
+  transition: background 0.15s;
+  display: inline-block;
+}
+.back-btn:hover { background: #D1C4E9; }
+
+.g-print-btn {
+  background: #EDE7F6; border: none; border-radius: 8px;
+  font-size: 1rem; cursor: pointer; padding: 5px 12px;
+  font-family: 'Baloo 2', cursive; font-weight: 700; color: var(--plum);
+  margin-bottom: 6px;
+}
+.g-print-btn:hover { background: #D1C4E9; }

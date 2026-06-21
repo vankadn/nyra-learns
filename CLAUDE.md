@@ -18,21 +18,72 @@ same JSON file, so updating one data file updates both outputs.
 Core engine code (quiz logic, rendering, PDF layout) must stay
 subject-agnostic. Subject-specific content (word lists, categories, sounds)
 lives only in `app/data/*.json`. If you find yourself hardcoding a word or a
-category name into `index.html` or `generate.py`, stop — it belongs in JSON.
+category name into a JS module or `generate.py`, stop — it belongs in JSON.
 
 ## Project layout
 
 ```
-app/index.html        Self-contained web app. No external JS dependencies.
-                       Reads app/data/*.json at load time, renders tabs/
-                       sections/quiz from it. TTS via browser SpeechSynthesis.
+app/index.html         Thin shell: <head> + header + tab bar + content div +
+                        one <script type="module" src="js/main.js">.
+                        No logic lives here — all JS is in app/js/.
+app/css/styles.css     All styles. No inline <style> in index.html.
+app/js/                ES module tree (see Module architecture below).
 app/data/*.json        One file per subject/unit. See schema below.
 worksheets/generate.py PDF generator (reportlab). Reads the same JSON files.
-                       25 words per section, compact layout — no separate
-                       blank-line table, write-line lives inside each word
-                       cell. Use KeepTogether so a section header never gets
-                       orphaned from its table across a page break.
+                        25 words per section, compact layout — no separate
+                        blank-line table, write-line lives inside each word
+                        cell. Use KeepTogether so a section header never gets
+                        orphaned from its table across a page break.
 ```
+
+## Module architecture ✅ DONE
+
+The app was refactored from a 2,600-line monolithic `index.html` into ES
+modules. No behavior changed — same UI, games, PDF output. No build step;
+browsers run ES modules natively over http (not file://).
+
+```
+app/js/
+  main.js                 Entry point: fetches JSON, builds tab bar, mounts all sections
+  nav.js                  showTab, showLearnTab, showGames, showGame, showLearn,
+                           initNav, renderGamesSection
+  learn.js                renderVowelSection, renderTeamsSection (Learn tabs)
+  quiz.js                 buildQuizData, renderQuizSection + all quiz state/logic
+  selector.js             buildSelectorHTML, setupSelector, getSelectorWords
+                           (shared by Worksheet + all games)
+  emoji.js                getEmoji(), DEFAULT_EMOJI (emoji fallback chain)
+  utils.js                shuffle(), pickBlankPositions()
+  audio/
+    tts.js                speak(), pickVoice(), cachedVoice
+    tones.js              playChime()
+  game-engine/
+    tile-tray.js          sharedRenderStrip, sharedRenderTray, sharedWireBlanks,
+                           sharedTryPlace  (used by Letter Builder + Missing Letter)
+    game-shell.js         celebrate(), renderGameSection() factory
+                           — eliminates 3x-duplicated setup screen + celebrate code
+  games/
+    letter-builder.js     Game 1
+    word-match.js         Game 2
+    missing-letter.js     Game 3
+  pdf/
+    pdf-utils.js          emojiCache, loadEmojiImage(), hexToRgb() (shared by all PDFs)
+    worksheet-pdf.js      renderWorksheetSection, generateWorksheetPDF
+    game-pdf.js           generateSpellItPDF, generateMatchPDF, generateMissingLetterPDF
+```
+
+**Key design decisions:**
+- `game-shell.js` owns `celebrate()` and `renderGameSection()` — the 3 games
+  were byte-for-byte duplicating both. Adding a new game: call `renderGameSection()`
+  and `celebrate()` with per-game strings; don't copy boilerplate.
+- `pickBlankPositions` lives in `utils.js` (pure function) so `pdf/game-pdf.js`
+  can import it without pulling in audio/DOM code from tile-tray.
+- `pdf/pdf-utils.js` holds `emojiCache` as a module singleton — both PDF modules
+  import from it and share the same cache instance automatically.
+- jsPDF loaded as a CDN UMD `<script>` (not an ES module) — accessed via
+  `window.jspdf` inside modules. No importmap needed.
+- Each game module stores `_sections` as a module-level variable set on first
+  render, so Play Again callbacks can call `getSelectorWords(_sections, ...)`
+  without needing a global `DATA` reference.
 
 ## Data file schema (app/data/*.json)
 
@@ -97,7 +148,7 @@ Both the app and the PDF generator must implement this full chain.
 Never render a broken/empty emoji slot — always fall through to the next level.
 
 Adding a new subject = adding a new JSON file matching this schema. Do not
-change `index.html` or `generate.py` to add subject-specific logic.
+change any JS module or `generate.py` to add subject-specific logic.
 
 ## Workflow split (where to ask what)
 
@@ -113,6 +164,9 @@ things, not for deciding what content or emoji go in.
 ```bash
 # Run the app locally
 python3 -m http.server 8000      # then open http://localhost:8000/app/
+# NOTE: must be served over http — opening index.html via file:// is blocked
+# by Chrome's CORS policy (ES modules + file:// = blocked). VS Code's browser
+# preview serves over localhost automatically, so it works there.
 
 # Generate a worksheet PDF from a data file
 cd worksheets && python3 generate.py --data ../app/data/vowels.json --output output/
