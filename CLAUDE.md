@@ -672,3 +672,75 @@ style, so Unscramble callers are untouched).
 **Test sentences:** a few placeholder sentences were added to `short-a` and `short-e`
 items in `vowels.json` so the game is verifiable. Real curriculum sentences should be
 generated in the claude.ai project chat and added under each item's `sentences` array.
+
+## Feature spec: "Show Dad" Replay Screen ✅ BUILT
+
+**What it is:** A post-game summary overlay that fires on completion of any game (g1–g5)
+or Quiz — same trigger point that currently fires confetti + praise. One additional screen
+in that existing flow. Not a new game, not a new top-level state.
+
+**Display sequence on trigger:**
+1. Pull a random praise line from `completionPraises` pool (new top-level array in
+   `vowels.json` — see data section below).
+2. Pull the emoji of the **last hard-tier word answered correctly** that session.
+   Fallback chain: last hard-tier correct → last medium-tier correct → last correct word
+   any tier → `DEFAULT_EMOJI`. Same fallback pattern already used for `word.emoji`.
+3. Show a kid-readable word count: `"X words today! 🎉"` where X = total correct answers
+   that session.
+4. Hold the screen ~4–5 seconds before auto-dismiss. Tap anywhere to dismiss early.
+
+**Intent:** Gives Nyra a moment to physically turn the laptop and show the parent the
+score. The 4–5 second hold is deliberate — don't skip it or make it instant.
+
+**Data: `completionPraises` array (add to `vowels.json` top level):**
+```json
+"completionPraises": [
+  "Amazing work, Nyra! 🌟",
+  "You're a star reader! ⭐",
+  "Shabash! Keep going! 💪",
+  "Wow, look at you go! 🚀",
+  "Super smart! 🧠",
+  "You did it! So proud! 🥳",
+  "Reading champion! 🏆",
+  "Nyra the word wizard! 🪄"
+]
+```
+Content to be extended in claude.ai project chat. Claude Code should read the array
+from `DATA.completionPraises` — never hardcode praise strings in JS.
+
+**Data: no other changes.** No persistence, no schema change to `sections`/`items`.
+Reads existing in-memory session state (correct-answer array + word difficulty tags).
+Discarded on dismiss — fully stateless.
+
+**Implementation:**
+- New exported function `showReplay(playElId, correctWords, onDone)` in
+  `app/js/game-engine/game-shell.js` alongside `celebrate()`.
+  - `correctWords` — array of `{ word, emoji, level }` objects from that game session.
+  - `onDone` — callback fired on dismiss (equivalent to the Play Again callback in
+    `celebrate()`).
+- Each game's completion path calls `showReplay(...)` **before** `celebrate(...)` — replay
+  screen shows first, then on dismiss it fires `celebrate()`.
+- `DATA.completionPraises` must be threaded down to `showReplay` — pass it as a param
+  rather than importing DATA into game-shell.js. Suggested: `main.js` passes it to each
+  game's render function, which stores it module-locally and passes it through to
+  `showReplay`.
+
+**Visual:**
+- Centered overlay inside the play area (not full-screen modal — same card style as the
+  celebrate screen).
+- Big emoji (the fallback-chain emoji above), praise line, count line.
+- Reuse existing confetti + `g1-celebrate-card` CSS — no new animations needed.
+- Auto-dismiss countdown is not shown visually (no timer bar) — just the 4–5 second hold.
+
+**Naming:** `showReplay()` in `game-shell.js`. No `g6` prefix — this is a shared
+overlay, same family as `celebrate()`, not a standalone game.
+
+**Implementation:** `showReplay(playElId, correctWords, praises, onDone)` added to
+`game-shell.js`. Each game's render function now accepts `(sections, praises = [])`;
+`main.js` passes `DATA.completionPraises` to all five games. Each game accumulates
+`correctWords` as `{ word, emoji, level }` during the round. Sentence Builder uses
+`'🧩'` as the emoji (sentences have no per-emoji). Quiz not wired — it has no
+completion moment in the current flow. Tap-early guard: click listener deferred 800ms
+to prevent accidental tap-through from the last tile placement.
+
+**Build order:** Independent of g4/g5 — no dependencies in either direction.

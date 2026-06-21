@@ -4,6 +4,18 @@
     "unit": "Vowels & Spelling Rules",
     "version": "4.1"
   },
+  "completionPraises": [
+    "Amazing work, Nyra! 🌟",
+    "You're a star reader! ⭐",
+    "Shabash! Keep going! 💪",
+    "Wow, look at you go! 🚀",
+    "Super smart! 🧠",
+    "You did it! So proud! 🥳",
+    "Reading champion! 🏆",
+    "Nyra the word wizard! 🪄",
+    "Incredible! You're on fire! 🔥",
+    "That was brilliant! 💎"
+  ],
   "sections": [
     {
       "id": "short-vowels",

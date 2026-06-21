@@ -2,18 +2,20 @@ import { shuffle } from '../utils.js';
 import { speak } from '../audio/tts.js';
 import { playChime } from '../audio/tones.js';
 import { getSelectorWords } from '../selector.js';
-import { celebrate, renderGameSection } from '../game-engine/game-shell.js';
+import { celebrate, renderGameSection, showReplay } from '../game-engine/game-shell.js';
 import { generateMatchPDF } from '../pdf/game-pdf.js';
 
 let _sections = null;
+let _praises = [];
 let g2Words = [];
 let g2EmojiOrder = [];
 let g2Selected = null;
 let g2MatchedCount = 0;
 let g2MatchedEmoji = new Set();
 
-export function renderGame2Section(sections) {
+export function renderGame2Section(sections, praises = []) {
   _sections = sections;
+  _praises = praises;
   return renderGameSection({
     sections,
     id: 'game2',
@@ -27,7 +29,7 @@ export function renderGame2Section(sections) {
 }
 
 function startGame2(containerEl, words) {
-  g2Words = words.map(({ word, emoji }) => ({ word, emoji, matched: false }));
+  g2Words = words.map(({ word, emoji, level }) => ({ word, emoji, level, matched: false }));
   g2EmojiOrder = shuffle([...Array(words.length).keys()]);
   g2Selected = null;
   g2MatchedCount = 0;
@@ -188,10 +190,14 @@ function g2TryMatch(wordIdx, emojiPos, playArea) {
     g2MatchedCount++;
     if (g2MatchedCount === g2Words.length) {
       setTimeout(() => {
-        celebrate('g2-play', 'Excellent!', 'You matched all the words!', () => {
+        const correctWords = g2Words.map(w => ({ word: w.word, emoji: w.emoji, level: w.level || 'easy' }));
+        const onPlayAgain = () => {
           const secEl = document.getElementById('sec-game2');
           startGame2(secEl, getSelectorWords(_sections, secEl, 'g2'));
-        });
+        };
+        showReplay('g2-play', correctWords, _praises, () =>
+          celebrate('g2-play', 'Excellent!', 'You matched all the words!', onPlayAgain)
+        );
       }, 700);
     }
   } else {

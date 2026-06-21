@@ -2,18 +2,21 @@ import { speak } from '../audio/tts.js';
 import { playChime } from '../audio/tones.js';
 import { buildSelectorHTML, setupSelector, getSelectorSentences } from '../selector.js';
 import { buildSeqState, renderSeqTiles, renderSeqSlots, wireSeqSlots, trySeqPlace } from '../game-engine/sequence.js';
-import { celebrate } from '../game-engine/game-shell.js';
+import { celebrate, showReplay } from '../game-engine/game-shell.js';
 import { showGames } from '../nav.js';
 import { generateSentenceBuilderPDF } from '../pdf/game-pdf.js';
 
 let _sections = null;
+let _praises = [];
 let g5Sentences = [];
 let g5ActiveIdx = 0;
 let g5SelectedTile = null;
 let g5SeqState = null;
+let g5CorrectWords = [];
 
-export function renderGame5Section(sections) {
+export function renderGame5Section(sections, praises = []) {
   _sections = sections;
+  _praises = praises;
   const div = document.createElement('div');
   div.id = 'sec-game5';
   div.className = 'section';
@@ -57,6 +60,7 @@ export function renderGame5Section(sections) {
 function startGame5(containerEl, sentences) {
   g5SelectedTile = null;
   g5ActiveIdx = 0;
+  g5CorrectWords = [];
   g5Sentences = sentences.map(s => ({ words: s.words, level: s.level, done: false }));
 
   containerEl.querySelector('#g5-setup').style.display = 'none';
@@ -117,6 +121,7 @@ function g5TryPlace(tileId, slotPos) {
     if (g5SeqState.slots.every(s => s.filled)) {
       const sentence = g5Sentences[g5ActiveIdx];
       sentence.done = true;
+      g5CorrectWords.push({ word: sentence.words.join(' '), emoji: '🧩', level: sentence.level || 'easy' });
       speak(sentence.words.join(' '));
       playChime(659, 0.35);
       setTimeout(() => { g5UpdateProgress(); g5Advance(); }, 900);
@@ -128,11 +133,14 @@ function g5Advance() {
   let next = g5Sentences.findIndex((s, i) => !s.done && i > g5ActiveIdx);
   if (next === -1) next = g5Sentences.findIndex(s => !s.done);
   if (next === -1) {
-    celebrate('g5-play', 'Wonderful!', 'You built all the sentences!', () => {
+    const onPlayAgain = () => {
       const secEl = document.getElementById('sec-game5');
       const sentences = getSelectorSentences(_sections, secEl, 'g5');
       if (sentences.length) startGame5(secEl, sentences);
-    });
+    };
+    showReplay('g5-play', g5CorrectWords, _praises, () =>
+      celebrate('g5-play', 'Wonderful!', 'You built all the sentences!', onPlayAgain)
+    );
     return;
   }
   g5ActiveIdx = next;

@@ -3,18 +3,21 @@ import { speak } from '../audio/tts.js';
 import { playChime } from '../audio/tones.js';
 import { getSelectorWords } from '../selector.js';
 import { sharedRenderStrip, sharedRenderTray, sharedWireBlanks, sharedTryPlace } from '../game-engine/tile-tray.js';
-import { celebrate, renderGameSection } from '../game-engine/game-shell.js';
+import { celebrate, renderGameSection, showReplay } from '../game-engine/game-shell.js';
 import { generateMissingLetterPDF } from '../pdf/game-pdf.js';
 
 let _sections = null;
+let _praises = [];
 let g3Words = [];
 let g3Tiles = [];
 let g3ActiveIdx = 0;
 let g3SelectedTile = null;
 let g3TileCounter = 0;
+let g3CorrectWords = [];
 
-export function renderGame3Section(sections) {
+export function renderGame3Section(sections, praises = []) {
   _sections = sections;
+  _praises = praises;
   return renderGameSection({
     sections,
     id: 'game3',
@@ -31,6 +34,7 @@ function startGame3(containerEl, words) {
   g3TileCounter = 0;
   g3SelectedTile = null;
   g3ActiveIdx = 0;
+  g3CorrectWords = [];
   g3Words = words.map(({ word, emoji, level = 'easy' }) => {
     const blankPos = pickBlankPositions(word, level);
     return {
@@ -103,6 +107,7 @@ function g3TryPlace(tileId, pos) {
     const word = g3Words[g3ActiveIdx];
     if (word.blanks.filter(b => !b.prefilled).every(b => b.filled)) {
       word.done = true;
+      g3CorrectWords.push({ word: word.word, emoji: word.emoji, level: word.level || 'easy' });
       speak(word.word);
       playChime(659, 0.35);
       setTimeout(() => { g3RefreshStrip(); g3Advance(); }, 550);
@@ -114,10 +119,13 @@ function g3Advance() {
   let next = g3Words.findIndex((w, i) => !w.done && i > g3ActiveIdx);
   if (next === -1) next = g3Words.findIndex(w => !w.done);
   if (next === -1) {
-    celebrate('g3-play', 'Brilliant!', 'You found all the missing letters!', () => {
+    const onPlayAgain = () => {
       const secEl = document.getElementById('sec-game3');
       startGame3(secEl, getSelectorWords(_sections, secEl, 'g3'));
-    });
+    };
+    showReplay('g3-play', g3CorrectWords, _praises, () =>
+      celebrate('g3-play', 'Brilliant!', 'You found all the missing letters!', onPlayAgain)
+    );
     return;
   }
   g3ActiveIdx = next;

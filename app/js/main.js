@@ -53,13 +53,14 @@ async function init() {
   wsBtn.addEventListener('click', () => showTab('worksheet'));
   tabBar.appendChild(wsBtn);
 
+  const praises = DATA.completionPraises || [];
   content.appendChild(renderGamesSection());
   content.appendChild(renderQuizSection(buildQuizData(DATA.sections), DATA.sections));
-  content.appendChild(renderGame1Section(DATA.sections));
-  content.appendChild(renderGame2Section(DATA.sections));
-  content.appendChild(renderGame3Section(DATA.sections));
-  content.appendChild(renderGame4Section(DATA.sections));
-  content.appendChild(renderGame5Section(DATA.sections));
+  content.appendChild(renderGame1Section(DATA.sections, praises));
+  content.appendChild(renderGame2Section(DATA.sections, praises));
+  content.appendChild(renderGame3Section(DATA.sections, praises));
+  content.appendChild(renderGame4Section(DATA.sections, praises));
+  content.appendChild(renderGame5Section(DATA.sections, praises));
   content.appendChild(renderWorksheetSection(DATA.sections));
 }
 

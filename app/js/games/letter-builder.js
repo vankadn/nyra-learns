@@ -3,18 +3,21 @@ import { speak } from '../audio/tts.js';
 import { playChime } from '../audio/tones.js';
 import { getSelectorWords } from '../selector.js';
 import { sharedRenderStrip, sharedRenderTray, sharedWireBlanks, sharedTryPlace } from '../game-engine/tile-tray.js';
-import { celebrate, renderGameSection } from '../game-engine/game-shell.js';
+import { celebrate, renderGameSection, showReplay } from '../game-engine/game-shell.js';
 import { generateSpellItPDF } from '../pdf/game-pdf.js';
 
 let _sections = null;
+let _praises = [];
 let g1Words = [];
 let g1Tiles = [];
 let g1ActiveIdx = 0;
 let g1SelectedTile = null;
 let g1TileCounter = 0;
+let g1CorrectWords = [];
 
-export function renderGame1Section(sections) {
+export function renderGame1Section(sections, praises = []) {
   _sections = sections;
+  _praises = praises;
   return renderGameSection({
     sections,
     id: 'game1',
@@ -31,8 +34,9 @@ function startGame1(containerEl, words) {
   g1TileCounter = 0;
   g1SelectedTile = null;
   g1ActiveIdx = 0;
-  g1Words = words.map(({ word, emoji }) => ({
-    word, emoji,
+  g1CorrectWords = [];
+  g1Words = words.map(({ word, emoji, level }) => ({
+    word, emoji, level,
     blanks: word.toUpperCase().split('').map(ch => ({ letter: ch, filled: false })),
     done: false,
   }));
@@ -96,6 +100,7 @@ function g1TryPlace(tileId, pos) {
     const word = g1Words[g1ActiveIdx];
     if (word.blanks.every(b => b.filled)) {
       word.done = true;
+      g1CorrectWords.push({ word: word.word, emoji: word.emoji, level: word.level || 'easy' });
       speak(word.word);
       playChime(659, 0.35);
       setTimeout(() => { g1RefreshStrip(); g1Advance(); }, 550);
@@ -107,10 +112,13 @@ function g1Advance() {
   let next = g1Words.findIndex((w, i) => !w.done && i > g1ActiveIdx);
   if (next === -1) next = g1Words.findIndex(w => !w.done);
   if (next === -1) {
-    celebrate('g1-play', 'Amazing!', 'You spelled all the words!', () => {
+    const onPlayAgain = () => {
       const secEl = document.getElementById('sec-game1');
       startGame1(secEl, getSelectorWords(_sections, secEl, 'g1'));
-    });
+    };
+    showReplay('g1-play', g1CorrectWords, _praises, () =>
+      celebrate('g1-play', 'Amazing!', 'You spelled all the words!', onPlayAgain)
+    );
     return;
   }
   g1ActiveIdx = next;

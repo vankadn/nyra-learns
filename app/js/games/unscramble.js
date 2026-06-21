@@ -3,17 +3,20 @@ import { playChime } from '../audio/tones.js';
 import { getSelectorWords } from '../selector.js';
 import { sharedRenderStrip } from '../game-engine/tile-tray.js';
 import { buildSeqState, renderSeqTiles, renderSeqSlots, wireSeqSlots, trySeqPlace } from '../game-engine/sequence.js';
-import { celebrate, renderGameSection } from '../game-engine/game-shell.js';
+import { celebrate, renderGameSection, showReplay } from '../game-engine/game-shell.js';
 import { generateUnscramblePDF } from '../pdf/game-pdf.js';
 
 let _sections = null;
+let _praises = [];
 let g4Words = [];
 let g4ActiveIdx = 0;
 let g4SelectedTile = null;
 let g4SeqState = null;
+let g4CorrectWords = [];
 
-export function renderGame4Section(sections) {
+export function renderGame4Section(sections, praises = []) {
   _sections = sections;
+  _praises = praises;
   return renderGameSection({
     sections,
     id: 'game4',
@@ -29,6 +32,7 @@ export function renderGame4Section(sections) {
 function startGame4(containerEl, words) {
   g4SelectedTile = null;
   g4ActiveIdx = 0;
+  g4CorrectWords = [];
   g4Words = words.map(({ word, emoji, level }) => ({ word, emoji, level, done: false }));
 
   containerEl.querySelector('#g4-setup').style.display = 'none';
@@ -83,6 +87,7 @@ function g4TryPlace(tileId, slotPos) {
     if (g4SeqState.slots.every(s => s.filled)) {
       const word = g4Words[g4ActiveIdx];
       word.done = true;
+      g4CorrectWords.push({ word: word.word, emoji: word.emoji, level: word.level || 'easy' });
       speak(word.word);
       playChime(659, 0.35);
       setTimeout(() => { g4RefreshStrip(); g4Advance(); }, 550);
@@ -94,10 +99,13 @@ function g4Advance() {
   let next = g4Words.findIndex((w, i) => !w.done && i > g4ActiveIdx);
   if (next === -1) next = g4Words.findIndex(w => !w.done);
   if (next === -1) {
-    celebrate('g4-play', 'Fantastic!', 'You unscrambled all the words!', () => {
+    const onPlayAgain = () => {
       const secEl = document.getElementById('sec-game4');
       startGame4(secEl, getSelectorWords(_sections, secEl, 'g4'));
-    });
+    };
+    showReplay('g4-play', g4CorrectWords, _praises, () =>
+      celebrate('g4-play', 'Fantastic!', 'You unscrambled all the words!', onPlayAgain)
+    );
     return;
   }
   g4ActiveIdx = next;

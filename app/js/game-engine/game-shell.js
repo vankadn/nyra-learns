@@ -1,6 +1,36 @@
 import { playChime } from '../audio/tones.js';
 import { buildSelectorHTML, setupSelector, getSelectorWords } from '../selector.js';
 import { showGames } from '../nav.js';
+import { DEFAULT_EMOJI } from '../emoji.js';
+
+export function showReplay(playElId, correctWords, praises, onDone) {
+  const playEl = document.getElementById(playElId);
+  if (!playEl) { onDone(); return; }
+
+  const praise = (praises && praises.length)
+    ? praises[Math.floor(Math.random() * praises.length)]
+    : 'Amazing work! 🌟';
+
+  const reversed = [...correctWords].reverse();
+  const best = reversed.find(w => w.level === 'hard')
+            || reversed.find(w => w.level === 'medium')
+            || correctWords[correctWords.length - 1];
+  const emoji = best?.emoji || DEFAULT_EMOJI;
+  const count = correctWords.length;
+
+  playEl.innerHTML = `
+    <div class="g1-celebrate-card">
+      <div style="font-family:'Baloo 2',cursive;font-size:1.1rem;color:#555;margin-bottom:10px;">${praise}</div>
+      <div style="font-size:5rem;line-height:1.1;margin-bottom:10px;">${emoji}</div>
+      <div style="font-family:'Baloo 2',cursive;font-size:1.8rem;font-weight:800;color:var(--plum);">${count} word${count !== 1 ? 's' : ''} today! 🎉</div>
+      <div style="font-family:'Baloo 2',cursive;font-size:0.8rem;color:#bbb;margin-top:16px;">Tap to continue…</div>
+    </div>`;
+
+  let gone = false;
+  const dismiss = () => { if (gone) return; gone = true; playEl.removeEventListener('click', dismiss); onDone(); };
+  setTimeout(() => playEl.addEventListener('click', dismiss), 800);
+  setTimeout(dismiss, 4500);
+}
 
 export function celebrate(playElId, title, subtitle, onPlayAgain) {
   const playEl = document.getElementById(playElId);
