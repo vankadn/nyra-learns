@@ -96,6 +96,7 @@ function g1TryPlace(tileId, pos) {
     const word = g1Words[g1ActiveIdx];
     if (word.blanks.every(b => b.filled)) {
       word.done = true;
+      speak(word.word);
       playChime(659, 0.35);
       setTimeout(() => { g1RefreshStrip(); g1Advance(); }, 550);
     }

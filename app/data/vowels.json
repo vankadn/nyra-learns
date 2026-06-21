@@ -197,6 +197,12 @@
               "level": "hard"
             }
           ],
+          "sentences": [
+            { "words": ["The", "cat", "sat"], "level": "easy" },
+            { "words": ["A", "bat", "can", "tap"], "level": "easy" },
+            { "words": ["The", "fat", "cat", "had", "a", "hat"], "level": "medium" },
+            { "words": ["Sam", "ran", "past", "the", "black", "flag"], "level": "hard" }
+          ],
           "teacherNotes": {
             "howToSay": "Say 'ahh' like at the doctor. Your mouth opens wide.",
             "simpleRule": "One vowel A between two consonants — it almost always makes this short sound.",
@@ -360,6 +366,10 @@
               "emoji": "🚨",
               "level": "hard"
             }
+          ],
+          "sentences": [
+            { "words": ["The", "red", "hen", "sat"], "level": "easy" },
+            { "words": ["Peg", "has", "a", "red", "pen"], "level": "medium" }
           ],
           "teacherNotes": {
             "howToSay": "Say 'eh' — like when you are confused. Short and flat.",

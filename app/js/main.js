@@ -3,6 +3,8 @@ import { buildQuizData, renderQuizSection } from './quiz.js';
 import { renderGame1Section } from './games/letter-builder.js';
 import { renderGame2Section } from './games/word-match.js';
 import { renderGame3Section } from './games/missing-letter.js';
+import { renderGame4Section } from './games/unscramble.js';
+import { renderGame5Section } from './games/sentence-builder.js';
 import { renderWorksheetSection } from './pdf/worksheet-pdf.js';
 import { initNav, showLearnTab, showGames, showTab, renderGamesSection } from './nav.js';
 
@@ -56,6 +58,8 @@ async function init() {
   content.appendChild(renderGame1Section(DATA.sections));
   content.appendChild(renderGame2Section(DATA.sections));
   content.appendChild(renderGame3Section(DATA.sections));
+  content.appendChild(renderGame4Section(DATA.sections));
+  content.appendChild(renderGame5Section(DATA.sections));
   content.appendChild(renderWorksheetSection(DATA.sections));
 }
 

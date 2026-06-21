@@ -7,6 +7,7 @@ export function buildSelectorHTML(sections, prefix, opts = {}) {
     minCount = 1,
     maxCount = 200,
     countLabel = 'Words per category:',
+    showCount = true,
   } = opts;
   let html = `<div id="${prefix}-categories">`;
   for (const sec of sections) {
@@ -34,11 +35,13 @@ export function buildSelectorHTML(sections, prefix, opts = {}) {
     <label class="ws-level-cb-label"><input type="checkbox" class="${prefix}-level-cb" value="easy" checked> ⭐ Easy</label>
     <label class="ws-level-cb-label"><input type="checkbox" class="${prefix}-level-cb" value="medium" checked> ⭐⭐ Medium</label>
     <label class="ws-level-cb-label"><input type="checkbox" class="${prefix}-level-cb" value="hard"> ⭐⭐⭐ Hard</label>
-  </div>
-  <div class="ws-count-row">
+  </div>`;
+  if (showCount) {
+    html += `<div class="ws-count-row">
     <span>${countLabel}</span>
     <input type="number" id="${prefix}-word-count" value="${defaultCount}" min="${minCount}" max="${maxCount}">
   </div>`;
+  }
   return html;
 }
 
@@ -81,4 +84,30 @@ export function getSelectorWords(sections, containerEl, prefix) {
     }
   }
   return shuffle(words).slice(0, wordCount);
+}
+
+function flattenSelectorItems(sections, containerEl, prefix, itemKey) {
+  const selectedLevels = Array.from(
+    containerEl.querySelectorAll(`.${prefix}-level-cb:checked`)
+  ).map(cb => cb.value);
+  const results = [];
+  for (const sec of sections) {
+    const checkedItemIds = Array.from(
+      containerEl.querySelectorAll(`.${prefix}-item-cb[data-sec="${sec.id}"]:checked`)
+    ).map(cb => cb.dataset.item);
+    for (const item of sec.items) {
+      if (!checkedItemIds.includes(item.id)) continue;
+      for (const obj of (item[itemKey] || [])) {
+        if (!selectedLevels.length || selectedLevels.includes(obj.level || 'easy')) {
+          results.push({ obj, item, sec });
+        }
+      }
+    }
+  }
+  return results;
+}
+
+export function getSelectorSentences(sections, containerEl, prefix) {
+  const items = flattenSelectorItems(sections, containerEl, prefix, 'sentences');
+  return shuffle(items.map(({ obj }) => ({ words: obj.words, level: obj.level || 'easy' })));
 }

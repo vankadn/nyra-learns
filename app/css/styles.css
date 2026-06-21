@@ -814,6 +814,139 @@ header p { color: #E3F2FD; font-size: 0.95rem; margin-top: 4px; }
   border-bottom: 3px solid #C5CAE9;
 }
 
+/* ── Sequence game (Unscramble / Sentence Builder) shared tiles + slots ── */
+.seq-tile {
+  width: 44px; height: 52px;
+  background: var(--plum);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Baloo 2', cursive;
+  font-size: 1.5rem; font-weight: 900;
+  color: white;
+  cursor: grab;
+  box-shadow: 0 4px 0 #6A1B9A;
+  transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+  user-select: none;
+}
+
+.seq-tile:active { transform: translateY(2px); box-shadow: 0 2px 0 #6A1B9A; }
+
+.seq-tile.selected {
+  background: #F9A825;
+  box-shadow: 0 4px 0 #F57F17;
+  transform: translateY(-4px);
+}
+
+.seq-tile.wrong {
+  background: #E53935;
+  box-shadow: 0 2px 0 #B71C1C;
+  animation: seqShake 0.4s ease;
+}
+
+@keyframes seqShake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-6px); }
+  40%       { transform: translateX(6px); }
+  60%       { transform: translateX(-4px); }
+  80%       { transform: translateX(4px); }
+}
+
+.seq-slot {
+  width: 44px; height: 52px;
+  border: 3px dashed #C5CAE9;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Baloo 2', cursive;
+  font-size: 1.5rem; font-weight: 800;
+  color: var(--ink);
+  background: #F8F9FF;
+  transition: border-color 0.15s, background 0.15s;
+  cursor: pointer;
+}
+
+.seq-slot.drag-over { border-color: var(--plum); background: #EDE7F6; }
+.seq-slot.filled { border-style: solid; border-color: #43A047; background: #E8F5E9; }
+
+/* ── Sentence Builder word chips + slots (variable-width) ── */
+.seq-chip {
+  padding: 8px 14px;
+  height: 44px;
+  background: var(--plum);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Baloo 2', cursive;
+  font-size: 1.05rem; font-weight: 700;
+  color: white;
+  cursor: grab;
+  box-shadow: 0 4px 0 #6A1B9A;
+  transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.seq-chip:active { transform: translateY(2px); box-shadow: 0 2px 0 #6A1B9A; }
+
+.seq-chip.selected {
+  background: #F9A825;
+  box-shadow: 0 4px 0 #F57F17;
+  transform: translateY(-4px);
+}
+
+.seq-chip.wrong {
+  background: #E53935;
+  box-shadow: 0 2px 0 #B71C1C;
+  animation: seqShake 0.4s ease;
+}
+
+.seq-chip-slot {
+  padding: 8px 14px;
+  min-width: 44px;
+  height: 44px;
+  border: 3px dashed #C5CAE9;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Baloo 2', cursive;
+  font-size: 1.05rem; font-weight: 700;
+  color: var(--ink);
+  background: #F8F9FF;
+  transition: border-color 0.15s, background 0.15s;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.seq-chip-slot.drag-over { border-color: var(--plum); background: #EDE7F6; }
+.seq-chip-slot.filled { border-style: solid; border-color: #43A047; background: #E8F5E9; }
+
+/* ── Sentence Builder progress counter + dots ── */
+.g5-progress {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.g5-counter {
+  font-family: 'Baloo 2', cursive;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--plum);
+  margin-bottom: 6px;
+}
+
+.g5-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.g5-dot {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: #E0E0E0;
+  transition: background 0.2s;
+}
+
+.g5-dot.active { background: var(--plum); }
+.g5-dot.done   { background: #43A047; }
+
 /* ── Games launcher ── */
 .games-grid {
   display: grid;

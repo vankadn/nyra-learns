@@ -66,6 +66,16 @@ export function renderGamesSection() {
         <div class="game-card-name">Missing Letter</div>
         <div class="game-card-desc">Fill in the missing letters to complete each word</div>
       </div>
+      <div class="game-card" id="gc-game4">
+        <div class="game-card-icon">🔀</div>
+        <div class="game-card-name">Unscramble</div>
+        <div class="game-card-desc">Put the jumbled letters back in the right order</div>
+      </div>
+      <div class="game-card" id="gc-game5">
+        <div class="game-card-icon">🧩</div>
+        <div class="game-card-name">Sentence Builder</div>
+        <div class="game-card-desc">Put the words in order to build a sentence</div>
+      </div>
     </div>
   `;
   div.querySelector('#gamesBackToLearn').addEventListener('click', () => showLearn());
@@ -73,5 +83,7 @@ export function renderGamesSection() {
   div.querySelector('#gc-game1').addEventListener('click', () => showGame('game1'));
   div.querySelector('#gc-game2').addEventListener('click', () => showGame('game2'));
   div.querySelector('#gc-game3').addEventListener('click', () => showGame('game3'));
+  div.querySelector('#gc-game4').addEventListener('click', () => showGame('game4'));
+  div.querySelector('#gc-game5').addEventListener('click', () => showGame('game5'));
   return div;
 }

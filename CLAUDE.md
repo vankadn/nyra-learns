@@ -92,13 +92,26 @@ app/js/
   "metadata": { "subject": "string", "unit": "string", "version": "string" },
   "sections": [
     {
-      "id": "kebab-case-id", "title": "string", "color": "#hex",
+      "id": "kebab-case-id",
+      "title": "string",
+      "color": "#hex",
+      "icon": "🔤",
       "defaultEmoji": "🔤",
+      "tip": "optional — shown above the section in the Learn tab",
+      "rule": "optional — phonics rule shown in the Learn tab",
+      "vowels": [
+        { "letter": "A", "example": "cat", "speak": "a as in cat" }
+      ],
+      "transforms": [
+        { "from": "a", "to": "a-e", "example": "mat → mate" }
+      ],
       "items": [
         {
-          "id": "kebab-case-id", "label": "string",
+          "id": "kebab-case-id",
+          "label": "string",
           "defaultEmoji": "🐾",
           "note": "optional — shown as a tip in the UI for exceptions/rules",
+          "rule": "optional — used in spelling-rules section items",
           "teacherNotes": {
             "howToSay": "Plain English description of mouth position and sound",
             "simpleRule": "The actual phonics rule in one sentence",
@@ -110,6 +123,11 @@ app/js/
             { "word": "cat",    "emoji": "🐱", "level": "easy"   },
             { "word": "clap",   "emoji": "👏", "level": "medium" },
             { "word": "strand", "emoji": "🏖️", "level": "hard"   }
+          ],
+          "sentences": [
+            { "words": ["The", "cat", "sat"], "level": "easy"   },
+            { "words": ["The", "fat", "cat", "had", "a", "hat"], "level": "medium" },
+            { "words": ["Sam", "ran", "past", "the", "black", "flag"], "level": "hard" }
           ]
         }
       ]
@@ -117,6 +135,13 @@ app/js/
   ]
 }
 ```
+
+**`sentences` field rules (Sentence Builder game):**
+- Optional per item — items with no `sentences` are silently skipped in the Sentence Builder selector.
+- Level maps to sentence complexity: `easy` = 3 words, `medium` = 4–5 words, `hard` = 6+ words or trickier word order.
+- Aim for 2–4 sentences per level per item. Sight words ("The", "a", "is", "has", "can") are fine as glue.
+- Words in the sentence do **not** need to be from `item.words` — they just need to be thematically appropriate.
+- Generated in the claude.ai project chat, not in Claude Code.
 
 **Level definitions:**
 - `easy` — CVC, common, concrete, high-frequency words (cat, bed, sit)
@@ -149,6 +174,49 @@ Never render a broken/empty emoji slot — always fall through to the next level
 
 Adding a new subject = adding a new JSON file matching this schema. Do not
 change any JS module or `generate.py` to add subject-specific logic.
+
+## Data inventory — vowels.json
+
+All items have 30 words (20 for `ei-eigh`). Sentences listed below are what
+currently exists; items with `— none` still need sentences generated in the
+claude.ai project chat.
+
+**Short Vowels** (`short-vowels`)
+| Item | Label | Sentences |
+|---|---|---|
+| `short-a` | Short A — /a/ | "The cat sat" [easy], "A bat can tap" [easy], "The fat cat had a hat" [medium], "Sam ran past the black flag" [hard] |
+| `short-e` | Short E — /e/ | "The red hen sat" [easy], "Peg has a red pen" [medium] |
+| `short-i` | Short I — /i/ | — none |
+| `short-o` | Short O — /o/ | — none |
+| `short-u` | Short U — /u/ | — none |
+
+**Long Vowels** (`long-vowels`)
+| Item | Label | Sentences |
+|---|---|---|
+| `long-a` | Long A | — none |
+| `long-e` | Long E | — none |
+| `long-i` | Long I | — none |
+| `long-o` | Long O | — none |
+| `long-u` | Long U | — none |
+
+**Vowel Teams** (`vowel-teams`)
+| Item | Label | Sentences |
+|---|---|---|
+| `ai-ay` | ai / ay — Long A | — none |
+| `ee-ea` | ee / ea — Long E | — none |
+| `oa-ow` | oa / ow — Long O | — none |
+| `oo` | oo — moon or book | — none |
+| `ui-ue` | ui / ue — Long U | — none |
+| `oi-oy` | oi / oy | — none |
+| `ou-ow` | ou / ow — ouch sound | — none |
+| `ei-eigh` | ei / eigh — Long A | — none |
+
+**C, K, and CK Spelling Rules** (`spelling-rules`)
+| Item | Label | Sentences |
+|---|---|---|
+| `use-ck` | CK — after a short vowel | — none |
+| `use-k` | K — after consonant, vowel team, or long vowel | — none |
+| `use-c` | C — before a, o, u or start of most words | — none |
 
 ## Workflow split (where to ask what)
 
@@ -467,3 +535,140 @@ scanning the whole page to find which letters belong to which word.
   dynamically so nothing overlaps
 - Tile style: light yellow background (`#FFF9C4`), purple border — visually
   distinct from the white answer boxes
+
+## Feature spec: Game 4 — Unscramble ✅ BUILT
+
+**Concept:** Classic word scramble — only the active word's own letters, shuffled
+into a tile row; drag/tap them into order to spell the word. Emoji is the clue.
+No decoy letters from other words — that's Letter Builder's job.
+
+**Setup screen:** same shared selector (category/item/level/word-count) as the
+other games. "Start Game" button + "📄 Get PDF" button.
+
+**Progress strip:** `sharedRenderStrip` — all emoji visible at top, one active at
+a time (same pattern as Letter Builder/Missing Letter). `g4` prefix for state vars.
+
+**Gameplay:**
+- Active word's letters shuffled into a tile row above a row of empty ordered slots.
+- All tiles are the word's own letters — no decoys at any level. Level controls
+  which words appear (longer/harder at `hard`), not tile set composition.
+- Input: drag-and-drop (primary) + tap-tile-then-tap-slot (secondary), both always
+  active simultaneously — consistent with every other game.
+- Correctness checked **per placement** (not on submit): tile in the right slot
+  snaps and stays; tile in the wrong slot bounces back to the tile row immediately.
+  Consistent with Letter Builder's instant feedback pattern.
+- Completion per word: chime + checkmark badge on progress strip + auto-advance.
+- End of round: same celebration + "Play Again" as the other games.
+
+**Shared code (new extraction):**
+These two functions support pure-reorder mechanics (distinct from identity-matching
+in sharedRenderTray/sharedWireBlanks):
+```
+sharedRenderSequence(items, opts)  // items = array of strings (letters or words)
+                                    // renders: shuffled tile row + empty ordered slots
+sharedWireSequence(...)            // drag + tap-tap input, both always on
+sharedCheckSequence(...)           // per-placement correctness, wrong slot bounces back
+```
+Unscramble is the first consumer. Sentence Builder reuses the same functions — build
+the abstraction correctly here rather than patching it when Game 5 arrives.
+
+**Data:** no new JSON fields. `getSelectorWords` as-is. `word`, `emoji`, `level` only.
+
+**PDF (`Nyra-Unscramble-<date>.pdf`):**
+Same per-row-tiles pattern as SpellIt: emoji + empty ordered boxes + that word's
+own letters scrambled in tiles to the right. Visually nearly identical to SpellIt
+PDF — that's fine, the paper format doesn't need decoys either way.
+
+**Games picker grid:** new card, `g4` id. No top-bar changes.
+
+**Instant-bounce confirmed:** tile in wrong slot bounces back immediately, same as
+Letter Builder. Every tile is a correct letter — wrong position is still wrong.
+
+**Tile layout:** tile row at the bottom, ordered slots above — matches Letter Builder's
+spatial layout (active clue + answer area on top, tiles below).
+
+**TTS on word completion:** speak the word aloud when each word is correctly completed.
+This applies to ALL tile games (Letter Builder, Missing Letter, Unscramble) — fix
+existing games at the same time as implementing Game 4.
+
+**Implementation:** `app/js/games/unscramble.js` (`g4` prefix). `buildSeqState` is called
+fresh on each new active word (not once at game start) — the tray only ever holds the
+current word's letters. `generateUnscramblePDF` is a thin wrapper around `generateSpellItPDF`
+with `{ title, filename }` opts — no code duplication. `sharedRenderStrip` reused for
+the progress strip unchanged.
+
+## Feature spec: Game 5 — Sentence Builder ✅ BUILT
+
+**Concept:** Word-level reorder game — a short sentence's words shuffled into
+draggable chips, placed into ordered slots to rebuild the sentence. Emoji not the
+clue here — reading comprehension and word order are the challenge.
+
+**Setup screen:** same shared selector pattern, filtering by category/item as usual.
+Level maps to sentence complexity (easy = 3 words, medium = 4–5, hard = 6+ or
+question-form sentences). "Start Game" + "📄 Get PDF" buttons.
+
+**Progress indicator:** **not** `sharedRenderStrip` — sentences are too wide for a
+multi-item emoji strip. Use a plain counter instead: "Sentence 2 of 5" + a small
+✅/⬜ dot per sentence below it. Do not try to fit `sharedRenderStrip` here.
+One-active-at-a-time confirmed — showing all sentences stacked is out of scope.
+
+**Gameplay (reuses `sharedRenderSequence` from Game 4):**
+- `items` = `sentence.words` (array of strings, not `word.split('')`).
+- Chip style: variable-width (sized to word text via `doc.getTextWidth()` for PDF;
+  `padding + content` for DOM), wraps to a second row for long sentences.
+- Slot row: same wrap behavior as chip row.
+- Per-placement correctness: chip in right slot snaps; wrong slot bounces back —
+  same logic as Unscramble via `sharedCheckSequence`.
+- Completion reward: **TTS reads the full sentence aloud** (`speak(words.join(' '))`)
+  + chime + dot marked ✅ + auto-advance. The spoken sentence is the payoff.
+- End of round: same celebration + "Play Again".
+
+**`sentences` field is optional per item.** Items with no `sentences` array are
+silently skipped in the Sentence Builder selector — not shown greyed-out, just absent.
+
+**No word-count selector for Sentence Builder.** Play Again redraws from whatever
+sentences exist for the selected category/level. No count control needed.
+
+**TTS on sentence completion:** speak the full sentence (`speak(words.join(' '))`)
+when all slots are filled correctly — this is the main reward, not just the chime.
+
+**Data schema addition (shape only — content generated in claude.ai project chat):**
+```json
+"items": [{
+  "id": "short-a",
+  "words": [ /* unchanged */ ],
+  "sentences": [
+    { "words": ["The", "cat", "is", "fat"], "level": "easy" }
+  ]
+}]
+```
+Nesting under `item` (not a flat array with a `relatedItem` pointer) means the
+existing category/item selector filtering works unchanged — no new join logic.
+
+**Selector path (two options — implement Option A):**
+- **Option A (preferred):** extract `getSelectorWords`'s flattening into a generic
+  `flattenSelectorItems(DATA.sections, secEl, prefix, itemKey)`. Then
+  `getSelectorWords` calls it with `'words'`; a new `getSelectorSentences` calls
+  it with `'sentences'`. Single implementation, two consumers.
+- **Option B:** write `getSelectorSentences` standalone — acceptable only if A
+  requires touching more than 2–3 call sites.
+
+**PDF (`Nyra-SentenceBuilder-<date>.pdf`):**
+Per-row layout: shuffled word chips printed in a row + empty slot boxes below,
+mirroring the in-app layout. Variable-width boxes sized to each word using
+`doc.getTextWidth()` (same approach as the Word Match dot-placement fix) — not
+fixed letter-square boxes.
+
+**Games picker grid:** new card, `g5` id. No top-bar changes.
+
+**Implementation:** `app/js/games/sentence-builder.js` (`g5` prefix). Does NOT use
+`renderGameSection` (to avoid forcing the word-count control into the selector) — builds
+setup div directly, calls `getSelectorSentences`. The `showCount: false` option was added
+to `buildSelectorHTML` for this. `flattenSelectorItems` (private) was extracted in
+`selector.js`; `getSelectorWords` still calls it unchanged. `sequence.js` updated to
+accept optional `tileClass`/`slotClass`/`sizeToContent` params (all default to letter
+style, so Unscramble callers are untouched).
+
+**Test sentences:** a few placeholder sentences were added to `short-a` and `short-e`
+items in `vowels.json` so the game is verifiable. Real curriculum sentences should be
+generated in the claude.ai project chat and added under each item's `sentences` array.

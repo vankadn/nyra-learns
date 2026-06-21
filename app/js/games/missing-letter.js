@@ -103,6 +103,7 @@ function g3TryPlace(tileId, pos) {
     const word = g3Words[g3ActiveIdx];
     if (word.blanks.filter(b => !b.prefilled).every(b => b.filled)) {
       word.done = true;
+      speak(word.word);
       playChime(659, 0.35);
       setTimeout(() => { g3RefreshStrip(); g3Advance(); }, 550);
     }

@@ -42,7 +42,7 @@ export async function generateMatchPDF(words) {
   doc.save(`Nyra-Match-${new Date().toISOString().slice(0, 10)}.pdf`);
 }
 
-export async function generateSpellItPDF(words) {
+export async function generateSpellItPDF(words, { title = 'Spell the word!', filename } = {}) {
   if (!window.jspdf) throw new Error('PDF library not loaded');
   await Promise.all([...new Set(words.map(w => w.emoji))].map(e => loadEmojiImage(e)));
 
@@ -56,7 +56,7 @@ export async function generateSpellItPDF(words) {
   const baseRowH = 22, rowGap = 6;
 
   doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
-  doc.text('Spell the word!', pageW / 2, mT, { align: 'center' });
+  doc.text(title, pageW / 2, mT, { align: 'center' });
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
   doc.setTextColor(130, 130, 130);
   doc.text('Name: _________________________', mL, mT + 9);
@@ -98,7 +98,14 @@ export async function generateSpellItPDF(words) {
     y += rowH + rowGap;
   }
 
-  doc.save(`Nyra-SpellIt-${new Date().toISOString().slice(0, 10)}.pdf`);
+  doc.save(filename || `Nyra-SpellIt-${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
+export function generateUnscramblePDF(words) {
+  return generateSpellItPDF(words, {
+    title: 'Unscramble the letters!',
+    filename: `Nyra-Unscramble-${new Date().toISOString().slice(0, 10)}.pdf`,
+  });
 }
 
 export async function generateMissingLetterPDF(words) {
@@ -168,4 +175,54 @@ export async function generateMissingLetterPDF(words) {
   }
 
   doc.save(`Nyra-MissingLetter-${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
+export async function generateSentenceBuilderPDF(sentences) {
+  if (!window.jspdf) throw new Error('PDF library not loaded');
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'letter', orientation: 'portrait' });
+  const pageW = 215.9, mL = 20, mT = 20;
+  const chipH = 12, slotH = 14, chipPadX = 4, chipGap = 3, rowGap = 10;
+
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
+  doc.text('Build the sentence!', pageW / 2, mT, { align: 'center' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+  doc.setTextColor(130, 130, 130);
+  doc.text('Name: _________________________', mL, mT + 9);
+  doc.setTextColor(0, 0, 0);
+
+  let y = mT + 18;
+  for (const sentence of sentences) {
+    const shuffled = [...sentence.words].sort(() => Math.random() - 0.5);
+
+    // Measure each word width
+    doc.setFontSize(11);
+    const wordWidths = sentence.words.map(w => doc.getTextWidth(w) + chipPadX * 2);
+
+    // Chip row (shuffled order, yellow tiles)
+    let x = mL;
+    for (const word of shuffled) {
+      const w = doc.getTextWidth(word) + chipPadX * 2;
+      doc.setFillColor(255, 249, 196); doc.setDrawColor(100, 50, 150); doc.setLineWidth(0.5);
+      doc.roundedRect(x, y, w, chipH, 2, 2, 'FD');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(30, 30, 30);
+      doc.text(word, x + w / 2, y + chipH / 2 + 2, { align: 'center' });
+      doc.setTextColor(0, 0, 0);
+      x += w + chipGap;
+    }
+
+    // Slot row (correct order, empty boxes)
+    x = mL;
+    const slotY = y + chipH + 4;
+    for (let i = 0; i < sentence.words.length; i++) {
+      const w = wordWidths[i];
+      doc.setFillColor(255, 255, 255); doc.setDrawColor(120, 120, 120); doc.setLineWidth(0.5);
+      doc.rect(x, slotY, w, slotH);
+      x += w + chipGap;
+    }
+
+    y += chipH + slotH + 4 + rowGap;
+  }
+
+  doc.save(`Nyra-SentenceBuilder-${new Date().toISOString().slice(0, 10)}.pdf`);
 }
