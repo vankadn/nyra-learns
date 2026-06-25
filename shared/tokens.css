@@ -1,0 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Baloo+2:wght@700;800&display=swap');
+
+:root {
+  --sun:  #FFD54F;
+  --plum: #9C27B0;
+  --ink:  #1A237E;
+  --font-body:    'Nunito', sans-serif;
+  --font-display: 'Baloo 2', cursive;
+}
