@@ -22,7 +22,7 @@
 | App | Path | Status |
 |---|---|---|
 | English (Phonics) | `english/app/` | Live |
-| Music (Bhajans) | `music/` | Built — needs config |
+| Music (Bhajans) | `music/` | Live |
 | Math | `math/` | Planned |
 | Telugu | `telugu/` | Placeholder, no timeline |
 
@@ -53,11 +53,8 @@ Each subfolder = one bhajan, folder name = song name. Files matched by prefix, n
 | `teacher-notes.*` | Photo of handwritten notes (jpg/png) |
 | `student-practice.*` | Nyra's practice take — single file, versioned by Drive |
 
-**Versioning:** Google Drive's native file revisions — not separate files. Upload a new take by
-overwriting `student-practice.*` in the Drive app (same filename = new revision). The app reads
-`revisions.list` and offers a date-labeled picker. Drive auto-purges revisions older than 30 days
-unless marked **Keep forever** (Drive UI → version history → ⋮ → Keep forever). The app shows a
-warning when the latest take is ≥25 days old and not marked keepForever.
+Special sibling folder `_Gods/` (under `BHAJANS_FOLDER_ID`) stores god avatar images — filtered out of
+the song list. See **God tag/filter** below.
 
 **Auth:** Google Identity Services (GIS), client-side only. Scope: `drive` (full) + `userinfo.profile`.
 No client secret, no backend. Short-lived access token; re-prompts silently if Google session is active.
