@@ -488,6 +488,167 @@ header p { color: #E3F2FD; font-size: 0.95rem; margin-top: 4px; }
 }
 .queue-shuffle-btn:hover { border-color: var(--plum); }
 .queue-shuffle-btn[aria-pressed="true"] { background: var(--plum); border-color: var(--plum); }
+
+/* God filter row */
+.god-filter-row {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 8px 0 16px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.god-filter-row::-webkit-scrollbar { display: none; }
+
+.god-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+.god-chip-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  border: 3px solid transparent;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #666;
+  transition: border-color 0.15s;
+}
+.god-chip.active .god-chip-circle { border-color: var(--plum); }
+.god-chip-img { width: 100%; height: 100%; object-fit: cover; }
+.god-chip-label {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ink);
+  max-width: 60px;
+  text-align: center;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.god-chip-all-circle { background: #f5f5f5; font-size: 0.7rem; }
+.god-chip-all.active .god-chip-circle { background: var(--plum); color: white; border-color: var(--plum); }
+.god-chip-add-circle { background: none; border: 2px dashed #aaa; color: #aaa; font-size: 1.2rem; }
+.god-chip-initial { font-family: var(--font-display); font-weight: 700; color: white; font-size: 1rem; }
+
+/* Song card god badge */
+.song-card { position: relative; }
+.song-card-god-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  background: var(--plum);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.song-card-god-img { width: 100%; height: 100%; object-fit: cover; }
+
+/* God tag section in song detail */
+.god-tag-section {
+  background: white;
+  border-radius: 16px;
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  display: flex;
+  align-items: center;
+}
+.god-tag-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.god-tag-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #e0e0e0;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.god-tag-name { font-family: var(--font-display); font-weight: 700; color: var(--ink); flex: 1; }
+.god-tag-btn {
+  background: none;
+  border: 2px solid #e0e0e0;
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.15s;
+  white-space: nowrap;
+}
+.god-tag-btn:hover { border-color: var(--plum); }
+.god-tag-btn-add { color: var(--plum); border-color: var(--plum); border-style: dashed; }
+
+/* Inline god picker */
+.god-picker { width: 100%; }
+.god-picker-label {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #666;
+  margin-bottom: 10px;
+}
+.god-picker-options {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+}
+.god-picker-options::-webkit-scrollbar { display: none; }
+.god-picker-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.god-picker-option .god-chip-circle { width: 44px; height: 44px; }
+
+/* Add god form */
+.add-god-form { display: flex; flex-direction: column; gap: 8px; }
+.add-god-label { font-family: var(--font-display); font-weight: 700; font-size: 0.9rem; color: var(--ink); }
+.god-preview { margin-top: 8px; }
+.god-preview-img { width: 100%; max-height: 200px; object-fit: cover; border-radius: 12px; }
 </style>
 </head>
 <body>

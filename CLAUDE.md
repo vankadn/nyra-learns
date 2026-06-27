@@ -113,6 +113,25 @@ order; shuffled = freely mixed across all tracks. Student queue (and student hal
 always uses latest revision only — no revision picker in queue context. Audio blobs are fetched lazily
 (one track at a time, on demand) and revoked on advance. Entering a song view stops the active queue.
 
+**God tag/filter:** songs can be tagged with a god (Ganesha, Shiva, Krishna, etc.).
+
+- `_Gods/` folder is a sibling to song folders under `BHAJANS_FOLDER_ID`. Each file in `_Gods/` is one
+  god — filename (without extension) = god name, file content = avatar image. Created automatically on
+  first write; filtered out of the song list in JS (`f.name !== '_Gods'`).
+- Tag stored as `properties.god` (Drive file property) on the song folder. Set/cleared via
+  `files.update` PATCH with `{ properties: { god: name } }` or `{ god: null }` to remove.
+- Song list query adds `properties` to `fields` so tags are read in the same round-trip as song names.
+- God avatar blobs tracked in a separate `godBlobUrls` array (not `activeBlobUrls`) so they survive
+  `revokeBlobs()` calls during navigation. `cachedGods` and `godsFolderId` persist for the session.
+- Filter row (horizontal scroll, FB-chat-style) above the song grid: "All" → clear filter; god avatar →
+  show only that god's songs; "+" → `showAddGodForm()`. Filter state in `activeGodFilter`.
+- Song cards show a small round god avatar badge (top-right corner) if tagged.
+- Song detail view shows a god tag section (below title): "Tag with god" button if untagged, or avatar +
+  name + "Change" button if tagged. Clicking opens an inline horizontal picker. Picker includes "None"
+  (remove tag), all gods, and "+ Add god" to create a new god entry.
+- `showAddGodForm(fromSong, cachedSongs)`: wizard-shell form (name input + photo upload). Saves image
+  to `_Gods/`, appends to `cachedGods`, and if `fromSong` is non-null, also tags that song immediately.
+
 **Not shared with `learning-lib/`:** no selection/checking mechanic — purely playback + Drive API.
 
 ## Future restructuring

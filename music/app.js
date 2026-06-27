@@ -16,11 +16,24 @@ let wizard = null;
 // Queue state (null when no queue active)
 let queue = null;
 
+// God filter state — persists for the session (survive revokeBlobs)
+let godsFolderId = null;
+let cachedGods = null;       // null=not fetched; array of { name, fileId, blobUrl }
+let activeGodFilter = null;  // null=show all; string=god name to filter by
+const godBlobUrls = [];      // separate from activeBlobUrls so they survive revokeBlobs()
+
 function trackBlob(url) { activeBlobUrls.push(url); return url; }
 
 function revokeBlobs() {
   activeBlobUrls.forEach(u => URL.revokeObjectURL(u));
   activeBlobUrls.length = 0;
+}
+
+async function makeGodBlobUrl(path) {
+  const blob = await (await apiFetch(`${BASE}/${path}`)).blob();
+  const url = URL.createObjectURL(blob);
+  godBlobUrls.push(url);
+  return url;
 }
 
 // --- Auth ---
@@ -101,6 +114,58 @@ async function makeBlobUrl(path) {
   return trackBlob(URL.createObjectURL(blob));
 }
 
+async function driveUpdateProperties(fileId, props) {
+  const doFetch = () => fetch(`${BASE}/files/${fileId}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ properties: props }),
+  });
+  let resp = await doFetch();
+  if (resp.status === 401) { await requestToken({ prompt: '' }); resp = await doFetch(); }
+  if (!resp.ok) throw new Error(`Drive API error ${resp.status}`);
+  return resp.json();
+}
+
+async function ensureGodsFolderId() {
+  if (godsFolderId) return godsFolderId;
+  const q = encodeURIComponent(
+    `'${CONFIG.BHAJANS_FOLDER_ID}' in parents and name='_Gods' and mimeType='application/vnd.google-apps.folder' and trashed=false`
+  );
+  const data = await apiJSON(`files?q=${q}&fields=files(id)`);
+  if (data.files && data.files.length) {
+    godsFolderId = data.files[0].id;
+  } else {
+    const folder = await apiPost('files', {
+      name: '_Gods',
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: [CONFIG.BHAJANS_FOLDER_ID],
+    });
+    godsFolderId = folder.id;
+  }
+  return godsFolderId;
+}
+
+async function fetchGodsData() {
+  if (cachedGods !== null) return cachedGods;
+  try {
+    const folderId = await ensureGodsFolderId();
+    const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
+    const data = await apiJSON(`files?q=${q}&fields=files(id,name)&orderBy=name`);
+    const files = data.files || [];
+    const gods = await Promise.all(files.map(async f => {
+      const name = f.name.includes('.') ? f.name.substring(0, f.name.lastIndexOf('.')) : f.name;
+      let blobUrl = null;
+      try { blobUrl = await makeGodBlobUrl(`files/${f.id}?alt=media`); } catch (_) {}
+      return { name, fileId: f.id, blobUrl };
+    }));
+    cachedGods = gods;
+    return gods;
+  } catch (_) {
+    cachedGods = [];
+    return [];
+  }
+}
+
 // --- Rendering helpers ---
 
 const app = () => document.getElementById('app');
@@ -114,6 +179,48 @@ function userPillHtml() {
 
 function addContentBtnHtml() {
   return `<button class="add-content-btn" id="add-content-btn">+ Add content</button>`;
+}
+
+function godFilterRowHtml(gods) {
+  const allActive = !activeGodFilter;
+  const godChips = (gods || []).map(g => `
+    <button class="god-chip${activeGodFilter === g.name ? ' active' : ''}" data-god="${esc(g.name)}">
+      <div class="god-chip-circle">
+        ${g.blobUrl
+          ? `<img src="${esc(g.blobUrl)}" class="god-chip-img" alt="${esc(g.name)}">`
+          : `<span class="god-chip-initial">${esc(g.name[0])}</span>`}
+      </div>
+      <span class="god-chip-label">${esc(g.name)}</span>
+    </button>`).join('');
+  return `
+    <div class="god-filter-row">
+      <button class="god-chip god-chip-all${allActive ? ' active' : ''}" data-god="">
+        <div class="god-chip-circle god-chip-all-circle">All</div>
+        <span class="god-chip-label">All</span>
+      </button>
+      ${godChips}
+      <button class="god-chip god-chip-add" id="god-add-btn">
+        <div class="god-chip-circle god-chip-add-circle">+</div>
+        <span class="god-chip-label">Add</span>
+      </button>
+    </div>`;
+}
+
+function wireGodFilter(songs, gods) {
+  document.querySelectorAll('.god-chip[data-god]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeGodFilter = btn.dataset.god || null;
+      document.querySelectorAll('.god-chip[data-god]').forEach(b =>
+        b.classList.toggle('active', b.dataset.god === (activeGodFilter || ''))
+      );
+      document.querySelectorAll('.song-card').forEach(card => {
+        const match = !activeGodFilter || card.dataset.god === activeGodFilter;
+        card.style.display = match ? '' : 'none';
+      });
+    });
+  });
+  const addBtn = document.getElementById('god-add-btn');
+  if (addBtn) addBtn.onclick = () => showAddGodForm(null, songs, gods);
 }
 
 function typeLabel(type) {
@@ -194,7 +301,6 @@ function renderQueuePlayer() {
 
   document.getElementById('queue-audio').addEventListener('ended', () => {
     if (queue && queue.cursor < queue.order.length - 1) queueGoto(queue.cursor + 1);
-    // Queue ends when last track finishes — no loop per spec
   });
 }
 
@@ -215,10 +321,8 @@ async function queueGoto(cursor) {
   try {
     const url = await makeBlobUrl(`files/${track.fileId}?alt=media`);
 
-    // Guard: queue may have been stopped or advanced while we were fetching
     if (!queue || queue.cursor !== cursor) { URL.revokeObjectURL(url); return; }
 
-    // Revoke the previous track's blob — it's no longer needed
     if (prevUrl) {
       URL.revokeObjectURL(prevUrl);
       const idx = activeBlobUrls.indexOf(prevUrl);
@@ -230,7 +334,7 @@ async function queueGoto(cursor) {
     if (audio) {
       audio.src = url;
       audio.load();
-      audio.play().catch(() => {}); // silently fall back if autoplay is blocked
+      audio.play().catch(() => {});
     }
   } catch (e) {
     if (queue) showError('Could not load track: ' + e.message);
@@ -244,7 +348,6 @@ async function startQueue(songs, mode, isShuffled) {
   if (bar) bar.innerHTML = `<div class="queue-bar-inner"><span class="queue-label">Building queue…</span></div>`;
 
   try {
-    // Fetch all song folder contents in parallel
     const folderContents = await Promise.all(songs.map(async s => {
       const q = encodeURIComponent(`'${s.id}' in parents and trashed=false`);
       const data = await apiJSON(`files?q=${q}&fields=files(id,name)`);
@@ -254,7 +357,6 @@ async function startQueue(songs, mode, isShuffled) {
     const tracks = [];
     for (const { song, files } of folderContents) {
       const find = pfx => files.find(f => f.name.toLowerCase().startsWith(pfx.toLowerCase()));
-      // For 'both', teacher comes before student within each song (grouped by song per spec)
       if (mode === 'teacher' || mode === 'both') {
         const t = find('teacher-audio');
         if (t) tracks.push({ songName: song.name, fileId: t.id, type: 'teacher' });
@@ -322,16 +424,21 @@ async function showSongList() {
     const q = encodeURIComponent(
       `'${CONFIG.BHAJANS_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`
     );
-    const data = await apiJSON(`files?q=${q}&fields=files(id,name)&orderBy=name`);
-    const songs = data.files || [];
+    const [songData, gods] = await Promise.all([
+      apiJSON(`files?q=${q}&fields=files(id,name,properties)&orderBy=name`),
+      fetchGodsData(),
+    ]);
+    const songs = (songData.files || []).filter(f => f.name !== '_Gods');
 
     if (!songs.length) {
       app().innerHTML = `
         ${userPillHtml()}
+        ${godFilterRowHtml(gods)}
         <div class="empty-state">
           <p>No bhajans found.</p>
           <button class="btn-add-cta" id="cta-first">+ Add your first bhajan</button>
         </div>`;
+      wireGodFilter([], gods);
       document.getElementById('cta-first').onclick = () => startWizard({ songs: [] });
       return;
     }
@@ -342,12 +449,25 @@ async function showSongList() {
         <h2 class="section-heading">🎵 Bhajans</h2>
         ${addContentBtnHtml()}
       </div>
+      ${godFilterRowHtml(gods)}
       <div class="song-grid">
-        ${songs.map(s => `
-          <div class="song-card" data-id="${esc(s.id)}" data-name="${esc(s.name)}">
-            <div class="song-card-icon">🎶</div>
-            <div class="song-card-name">${esc(s.name)}</div>
-          </div>`).join('')}
+        ${songs.map(s => {
+          const songGod = s.properties?.god || '';
+          const godObj = gods.find(g => g.name === songGod);
+          const badgeHtml = godObj ? `
+            <div class="song-card-god-badge">
+              ${godObj.blobUrl
+                ? `<img src="${esc(godObj.blobUrl)}" class="song-card-god-img" alt="${esc(godObj.name)}">`
+                : `<span class="god-chip-initial">${esc(godObj.name[0])}</span>`}
+            </div>` : '';
+          const hidden = activeGodFilter && songGod !== activeGodFilter ? ' style="display:none"' : '';
+          return `
+            <div class="song-card" data-id="${esc(s.id)}" data-name="${esc(s.name)}" data-god="${esc(songGod)}"${hidden}>
+              ${badgeHtml}
+              <div class="song-card-icon">🎶</div>
+              <div class="song-card-name">${esc(s.name)}</div>
+            </div>`;
+        }).join('')}
       </div>
       <div class="queue-actions">
         <div class="queue-action-row">
@@ -365,13 +485,12 @@ async function showSongList() {
       </div>`;
 
     document.getElementById('add-content-btn').onclick = () => startWizard({ songs });
+    wireGodFilter(songs, gods);
 
-    // Song cards — clicking a song stops any active queue
     app().querySelectorAll('.song-card').forEach(card =>
       card.addEventListener('click', () => showSong(card.dataset.id, card.dataset.name, songs))
     );
 
-    // Queue play/shuffle buttons
     [
       { mode: 'teacher', playId: 'play-teacher', shufId: 'shuf-teacher' },
       { mode: 'student', playId: 'play-student', shufId: 'shuf-student' },
@@ -394,7 +513,7 @@ async function showSongList() {
 }
 
 async function showSong(folderId, songName, cachedSongs = null) {
-  stopQueue(); // stop any active queue when entering a song view
+  stopQueue();
   revokeBlobs();
   const fromSong = { id: folderId, name: songName };
 
@@ -404,6 +523,7 @@ async function showSong(folderId, songName, cachedSongs = null) {
       ${addContentBtnHtml()}
     </div>
     <h2 class="song-title">${esc(songName)}</h2>
+    <div id="god-tag-row"></div>
     <div id="teacher-section" class="song-section">
       <h3 class="section-title">🎵 Teacher Reference</h3>
       <span id="teacher-status" class="loading-inline">Loading…</span>
@@ -419,8 +539,14 @@ async function showSong(folderId, songName, cachedSongs = null) {
 
   try {
     const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
-    const data = await apiJSON(`files?q=${q}&fields=files(id,name)`);
+    const [data, folderMeta] = await Promise.all([
+      apiJSON(`files?q=${q}&fields=files(id,name)`),
+      apiJSON(`files/${folderId}?fields=properties`),
+    ]);
     const files = data.files || [];
+    const godTag = folderMeta.properties?.god || null;
+    renderGodTagSection(folderId, songName, godTag, cachedSongs);
+
     const find = prefix => files.find(f => f.name.toLowerCase().startsWith(prefix.toLowerCase()));
 
     const teacherAudio = find('teacher-audio');
@@ -471,7 +597,7 @@ async function showSong(folderId, songName, cachedSongs = null) {
       apiJSON(`files/${studentFile.id}/revisions?fields=revisions(id,modifiedTime,keepForever)`),
     ]);
 
-    const revisions = (revData.revisions || []).reverse(); // newest first
+    const revisions = (revData.revisions || []).reverse();
     const latestRevId = revisions[0]?.id;
 
     const DAY_MS = 86_400_000;
@@ -530,13 +656,159 @@ async function showSong(folderId, songName, cachedSongs = null) {
   }
 }
 
+// --- God tag section (in song detail) ---
+
+function renderGodTagSection(folderId, songName, godTag, cachedSongs) {
+  const container = document.getElementById('god-tag-row');
+  if (!container) return;
+  const gods = cachedGods || [];
+  const godObj = godTag ? gods.find(g => g.name === godTag) : null;
+
+  container.innerHTML = `
+    <div class="god-tag-section">
+      ${godObj ? `
+        <div class="god-tag-display">
+          <div class="god-tag-avatar">
+            ${godObj.blobUrl
+              ? `<img src="${esc(godObj.blobUrl)}" class="god-chip-img" alt="${esc(godObj.name)}">`
+              : `<span class="god-chip-initial">${esc(godObj.name[0])}</span>`}
+          </div>
+          <span class="god-tag-name">${esc(godObj.name)}</span>
+          <button class="god-tag-btn" id="god-tag-change">Change</button>
+        </div>` : `
+        <button class="god-tag-btn god-tag-btn-add" id="god-tag-add">🙏 Tag with god</button>`}
+    </div>`;
+
+  const trigger = document.getElementById('god-tag-change') || document.getElementById('god-tag-add');
+  if (trigger) trigger.onclick = () => showInlineGodPicker(folderId, songName, container, gods, cachedSongs);
+}
+
+function showInlineGodPicker(folderId, songName, container, gods, cachedSongs) {
+  const godOptions = gods.map(g => `
+    <button class="god-picker-option" data-god="${esc(g.name)}">
+      <div class="god-chip-circle">
+        ${g.blobUrl
+          ? `<img src="${esc(g.blobUrl)}" class="god-chip-img" alt="${esc(g.name)}">`
+          : `<span class="god-chip-initial">${esc(g.name[0])}</span>`}
+      </div>
+      <span>${esc(g.name)}</span>
+    </button>`).join('');
+
+  container.innerHTML = `
+    <div class="god-tag-section">
+      <div class="god-picker">
+        <span class="god-picker-label">Tag with god:</span>
+        <div class="god-picker-options">
+          <button class="god-picker-option god-picker-none" data-god="">
+            <div class="god-chip-circle god-chip-all-circle">✕</div>
+            <span>None</span>
+          </button>
+          ${godOptions}
+          <button class="god-picker-option god-picker-add" id="picker-add-god">
+            <div class="god-chip-circle god-chip-add-circle">+</div>
+            <span>Add god</span>
+          </button>
+        </div>
+      </div>
+    </div>`;
+
+  container.querySelectorAll('.god-picker-option[data-god]').forEach(btn => {
+    btn.onclick = async () => {
+      const newGod = btn.dataset.god || null;
+      container.innerHTML = `<div class="god-tag-section"><span class="loading-inline">Saving…</span></div>`;
+      try {
+        await driveUpdateProperties(folderId, { god: newGod || null });
+        renderGodTagSection(folderId, songName, newGod, cachedSongs);
+      } catch (e) {
+        showError(e.message);
+        renderGodTagSection(folderId, songName, null, cachedSongs);
+      }
+    };
+  });
+
+  const pickerAddBtn = document.getElementById('picker-add-god');
+  if (pickerAddBtn) pickerAddBtn.onclick = () =>
+    showAddGodForm({ id: folderId, name: songName }, cachedSongs);
+}
+
+async function showAddGodForm(fromSong, cachedSongs) {
+  let addGodBlob = null, addGodMime = null, addGodExt = null, addGodPreviewUrl = null;
+
+  const render = () => {
+    if (addGodPreviewUrl) {
+      const idx = activeBlobUrls.indexOf(addGodPreviewUrl);
+      if (idx !== -1) activeBlobUrls.splice(idx, 1);
+      URL.revokeObjectURL(addGodPreviewUrl);
+      addGodPreviewUrl = null;
+    }
+    if (addGodBlob) {
+      addGodPreviewUrl = URL.createObjectURL(addGodBlob);
+      activeBlobUrls.push(addGodPreviewUrl);
+    }
+
+    app().innerHTML = wizardShell(`
+      <h3 class="wizard-title">Add a god</h3>
+      <div class="add-god-form">
+        <label class="add-god-label">Name</label>
+        <input type="text" id="god-name-input" class="new-song-input" placeholder="e.g. Ganesha" maxlength="60">
+        <label class="add-god-label" style="margin-top:12px">Photo</label>
+        <div class="capture-options">
+          <label class="capture-btn" for="god-img-file">📷 Choose photo</label>
+          <input type="file" id="god-img-file" accept="image/*" style="display:none">
+        </div>
+        ${addGodPreviewUrl ? `<div class="god-preview"><img src="${esc(addGodPreviewUrl)}" class="god-preview-img" alt="Preview"></div>` : ''}
+        <button class="btn-primary" id="god-save-btn"${addGodBlob ? '' : ' disabled'} style="margin-top:16px">Save god</button>
+      </div>`);
+
+    document.getElementById('wizard-cancel').onclick = () => {
+      if (fromSong) showSong(fromSong.id, fromSong.name, cachedSongs);
+      else showSongList();
+    };
+
+    document.getElementById('god-img-file').onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      addGodBlob = file;
+      addGodMime = file.type || 'image/jpeg';
+      addGodExt = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : 'jpg';
+      render();
+    };
+
+    document.getElementById('god-save-btn').onclick = async () => {
+      const name = document.getElementById('god-name-input')?.value.trim();
+      if (!name || !addGodBlob) return;
+      const btn = document.getElementById('god-save-btn');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      try {
+        const folderId = await ensureGodsFolderId();
+        const file = await driveUpload(
+          { name: `${name}.${addGodExt}`, mimeType: addGodMime, parents: [folderId] },
+          addGodBlob
+        );
+        let blobUrl = null;
+        try { blobUrl = await makeGodBlobUrl(`files/${file.id}?alt=media`); } catch (_) {}
+        if (!cachedGods) cachedGods = [];
+        cachedGods.push({ name, fileId: file.id, blobUrl });
+        cachedGods.sort((a, b) => a.name.localeCompare(b.name));
+        if (fromSong) {
+          await driveUpdateProperties(fromSong.id, { god: name });
+          showSong(fromSong.id, fromSong.name, cachedSongs);
+        } else {
+          showSongList();
+        }
+      } catch (e) {
+        showError(e.message);
+        btn.disabled = false; btn.textContent = 'Save god';
+      }
+    };
+  };
+
+  render();
+}
+
 // --- Wizard ---
 
 // opts: { fromSong, songs, presetType, presetSong }
-// fromSong: { id, name } — where to return on cancel / after save
-// songs: array of { id, name } already fetched, or null (fetched on demand in step 2)
-// presetType: skip type step and use this type
-// presetSong: skip song step and use this song
 function startWizard(opts = {}) {
   stopActiveRecording();
   stopQueue();
@@ -606,7 +878,7 @@ async function showWizardSong() {
         `'${CONFIG.BHAJANS_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`
       );
       const data = await apiJSON(`files?q=${q}&fields=files(id,name)&orderBy=name`);
-      wizard.songs = data.files || [];
+      wizard.songs = (data.files || []).filter(f => f.name !== '_Gods');
     } catch (e) {
       showError(e.message);
       cancelWizard();
@@ -795,7 +1067,7 @@ function showWizardConfirm(blob, mimeType, ext) {
       const song = wizard.song;
       const songs = wizard.songs;
       wizard = null;
-      await showSong(song.id, song.name, songs); // revokeBlobs() inside will clean up previewUrl
+      await showSong(song.id, song.name, songs);
     } catch (e) {
       btn.disabled = false; btn.textContent = 'Save';
       showError(e.message);
@@ -803,7 +1075,6 @@ function showWizardConfirm(blob, mimeType, ext) {
   };
 
   document.getElementById('btn-redo').onclick = () => {
-    // Manually revoke preview since we're staying in the wizard (revokeBlobs not called)
     URL.revokeObjectURL(previewUrl);
     const idx = activeBlobUrls.indexOf(previewUrl);
     if (idx !== -1) activeBlobUrls.splice(idx, 1);
@@ -815,18 +1086,14 @@ function showWizardConfirm(blob, mimeType, ext) {
 async function saveContent() {
   const { contentType, song, blob, mimeType, extension } = wizard;
 
-  // Find if a file with this prefix already exists in the song folder
   const q = encodeURIComponent(`'${song.id}' in parents and trashed=false`);
   const data = await apiJSON(`files?q=${q}&fields=files(id,name,mimeType)`);
   const files = data.files || [];
   const existing = files.find(f => f.name.toLowerCase().startsWith(contentType.toLowerCase()));
 
   if (existing) {
-    // Update existing file: keep the filename unchanged, update mimeType to actual content.
-    // keepRevisionForever=true is set as a query param in driveUpload.
     await driveUpload({ mimeType }, blob, existing.id);
   } else {
-    // Create new file with extension derived from actual content.
     await driveUpload({ name: `${contentType}.${extension}`, mimeType, parents: [song.id] }, blob);
   }
 }
