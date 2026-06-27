@@ -12,7 +12,7 @@
     app/               Web app (ES modules, no build step)
     worksheets/        Python PDF generator (reportlab)
     CLAUDE.md
-  music/               (not started — future session)
+  music/               Bhajans practice player (Drive-backed, Google OAuth)
   math/                (not started — near-term)
   telugu/              (not started — no timeline)
 ```
@@ -59,19 +59,59 @@ overwriting `student-practice.*` in the Drive app (same filename = new revision)
 unless marked **Keep forever** (Drive UI → version history → ⋮ → Keep forever). The app shows a
 warning when the latest take is ≥25 days old and not marked keepForever.
 
-**Auth:** Google Identity Services (GIS), client-side only. Scope: `drive.readonly` + `userinfo.profile`.
+**Auth:** Google Identity Services (GIS), client-side only. Scope: `drive` (full) + `userinfo.profile`.
 No client secret, no backend. Short-lived access token; re-prompts silently if Google session is active.
 
-**Config — fill in before use:** `music/config.js` has two placeholder values:
+Full `drive` scope (not `drive.readonly` or `drive.file`) is required because most files were created
+outside the app — `drive.file` only covers files the app itself created, which would exclude all
+pre-existing teacher audio/notes. The scope change triggers a new consent screen on the user's next
+sign-in (tokens aren't persisted, so no migration needed).
+
+**One-time setup after scope change:** in Google Cloud Console → Data Access, add the `drive` scope
+alongside any existing scopes, then save.
+
+**Config:** `music/config.js` holds two values, both committed with real IDs:
 ```js
 CLIENT_ID          // OAuth Client ID (Web application type, JS origin: https://vankadn.github.io)
 BHAJANS_FOLDER_ID  // Drive folder ID from the URL of the root Bhajans folder
 ```
-These are not secrets (Drive folder ID and OAuth Client ID are safe to commit), but the file is
-committed with placeholder values so the real IDs stay out of the repo. Fill them in locally.
+Neither is a secret — OAuth Client ID is visible in any browser request; Drive folder ID is in the URL.
+Both are committed directly. To test locally you must add `http://localhost:8000` as an **Authorized
+JavaScript origin** on the OAuth Client ID in Google Cloud Console (takes ~5 min to propagate).
 
-**Scope is intentionally read-only.** Uploading a new practice take = overwrite `student-practice.*`
-via the Drive app. No write permission needed or wanted here.
+**Add content flow:** a single "Add content" entry point (button on song list + song view, and CTAs on
+empty states) handles all three content types for any song. Three steps:
+1. Pick content type (teacher audio, teacher notes, Nyra's practice take)
+2. Pick song from existing list or create a new folder — new songs can be created directly from the app,
+   no need to pre-create folders in Drive manually
+3. Capture: audio types offer "Record live" (mic → live timer → stop) or "Upload a file"; teacher notes
+   uses a file picker that lets the OS offer "Take Photo" or "Choose Existing" on mobile
+
+After capture, a preview screen (audio player or image) lets you confirm or discard & redo before
+anything touches Drive.
+
+**Save logic (identical for all types/methods):** check if a file with the target prefix exists in the
+song folder. If yes: `files.update` (PATCH) with the new content, keeping the same `fileId` for revision
+history. If no: `files.create` (POST) with a name derived from the prefix + actual content extension.
+Every save passes `keepRevisionForever=true` as a query param — Drive's 30-day auto-purge never applies.
+
+**Filename/mimeType policy:** when updating an existing file, the `name` (and its extension) is
+preserved unchanged — only `mimeType` is updated to match the actual new content. When creating a new
+file, the extension is derived from the captured content (`.webm` for live recordings; the uploaded
+file's own extension for uploads). This keeps revision history clean and avoids Drive extension/mimeType
+mismatches on update.
+
+**Versioning:** Google Drive's native file revisions — not separate files. The app reads `revisions.list`
+and offers a date-labeled picker. Drive auto-purges revisions older than 30 days unless marked Keep
+forever. Every save from the app sets `keepRevisionForever=true` automatically; the 25-day age warning
+is still shown for any revision not yet marked (e.g. files uploaded via Drive before this feature).
+
+**Global playback queues:** three queue buttons on the song-list screen — "▶ Teacher clips", "▶ Nyra's
+practice", "▶ Everything". Each has an independent 🔀 Shuffle toggle. Queue order is session-only,
+never persisted. "Everything" unshuffled = teacher clip then student clip per song, alphabetical song
+order; shuffled = freely mixed across all tracks. Student queue (and student half of "Everything")
+always uses latest revision only — no revision picker in queue context. Audio blobs are fetched lazily
+(one track at a time, on demand) and revoked on advance. Entering a song view stops the active queue.
 
 **Not shared with `learning-lib/`:** no selection/checking mechanic — purely playback + Drive API.
 

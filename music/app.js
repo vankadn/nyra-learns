@@ -2,9 +2,19 @@ import { CONFIG } from './config.js';
 
 const CONFIGURED = !CONFIG.CLIENT_ID.startsWith('PASTE') && !CONFIG.BHAJANS_FOLDER_ID.startsWith('PASTE');
 const BASE = 'https://www.googleapis.com/drive/v3';
+const UPLOAD_BASE = 'https://www.googleapis.com/upload/drive/v3';
 
 let tokenClient, accessToken, currentUser;
 const activeBlobUrls = [];
+
+// Recording state
+let _recorder = null, _recordingStream = null, _recordingChunks = [], _recordingTimer = null;
+
+// Wizard state (null when not in wizard)
+let wizard = null;
+
+// Queue state (null when no queue active)
+let queue = null;
 
 function trackBlob(url) { activeBlobUrls.push(url); return url; }
 
@@ -18,7 +28,7 @@ function revokeBlobs() {
 function initAuth() {
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CONFIG.CLIENT_ID,
-    scope: 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.profile',
+    scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.profile',
     callback: () => {},
   });
 }
@@ -45,6 +55,47 @@ async function apiFetch(url) {
 
 const apiJSON = async path => (await apiFetch(`${BASE}/${path}`)).json();
 
+async function apiPost(path, body) {
+  const doFetch = () => fetch(`${BASE}/${path}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  let resp = await doFetch();
+  if (resp.status === 401) { await requestToken({ prompt: '' }); resp = await doFetch(); }
+  if (!resp.ok) throw new Error(`Drive API error ${resp.status}`);
+  return resp.json();
+}
+
+// Multipart upload for create (POST) or update (PATCH). Always sets keepRevisionForever=true.
+async function driveUpload(metadata, blob, fileId = null) {
+  const boundary = `nyrabb${Date.now()}`;
+  const head = new TextEncoder().encode(
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
+    `--${boundary}\r\nContent-Type: ${blob.type || 'application/octet-stream'}\r\n\r\n`
+  );
+  const tail = new TextEncoder().encode(`\r\n--${boundary}--`);
+  const buf = await blob.arrayBuffer();
+  const body = new Uint8Array(head.length + buf.byteLength + tail.length);
+  body.set(head, 0);
+  body.set(new Uint8Array(buf), head.length);
+  body.set(tail, head.length + buf.byteLength);
+
+  const url = fileId
+    ? `${UPLOAD_BASE}/files/${fileId}?uploadType=multipart&keepRevisionForever=true`
+    : `${UPLOAD_BASE}/files?uploadType=multipart&keepRevisionForever=true`;
+
+  const doFetch = () => fetch(url, {
+    method: fileId ? 'PATCH' : 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': `multipart/related; boundary=${boundary}` },
+    body,
+  });
+  let resp = await doFetch();
+  if (resp.status === 401) { await requestToken({ prompt: '' }); resp = await doFetch(); }
+  if (!resp.ok) { const t = await resp.text(); throw new Error(`Upload failed ${resp.status}: ${t}`); }
+  return resp.json();
+}
+
 async function makeBlobUrl(path) {
   const blob = await (await apiFetch(`${BASE}/${path}`)).blob();
   return trackBlob(URL.createObjectURL(blob));
@@ -61,9 +112,175 @@ function userPillHtml() {
   return `<div class="user-pill">${avatar}<span>${esc(currentUser.name)}</span></div>`;
 }
 
-function setLoading(id, msg = 'Loading…') {
-  const el = document.getElementById(id);
-  if (el) el.innerHTML = `<span class="loading-inline">${msg}</span>`;
+function addContentBtnHtml() {
+  return `<button class="add-content-btn" id="add-content-btn">+ Add content</button>`;
+}
+
+function typeLabel(type) {
+  return type === 'teacher-audio' ? "Teacher's audio clip"
+       : type === 'teacher-notes' ? "Teacher's notes (photo)"
+       : "Nyra's practice take";
+}
+
+// --- Recording helpers ---
+
+function stopActiveRecording() {
+  if (_recorder && _recorder.state !== 'inactive') _recorder.stop();
+  if (_recordingStream) { _recordingStream.getTracks().forEach(t => t.stop()); _recordingStream = null; }
+  if (_recordingTimer) { clearInterval(_recordingTimer); _recordingTimer = null; }
+  _recorder = null;
+}
+
+// --- Queue ---
+
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function stopQueue() {
+  if (!queue) return;
+  if (queue.currentBlobUrl) {
+    URL.revokeObjectURL(queue.currentBlobUrl);
+    const idx = activeBlobUrls.indexOf(queue.currentBlobUrl);
+    if (idx !== -1) activeBlobUrls.splice(idx, 1);
+  }
+  queue = null;
+  const bar = document.getElementById('queue-bar');
+  if (bar) bar.innerHTML = '';
+}
+
+function queueTrackLabel(track, cursor, total) {
+  const pos = `${cursor + 1} of ${total}`;
+  const name = queue?.showType
+    ? `${esc(track.songName)} (${track.type === 'teacher' ? 'teacher' : 'Nyra'})`
+    : esc(track.songName);
+  return `${name} — ${pos}`;
+}
+
+function updateQueueNav() {
+  const prev = document.getElementById('queue-prev');
+  const next = document.getElementById('queue-next');
+  if (prev) prev.disabled = !queue || queue.cursor <= 0;
+  if (next) next.disabled = !queue || queue.cursor >= queue.order.length - 1;
+}
+
+function renderQueuePlayer() {
+  const bar = document.getElementById('queue-bar');
+  if (!bar || !queue) return;
+
+  bar.innerHTML = `
+    <div class="queue-bar-inner">
+      <span id="queue-label" class="queue-label">Loading…</span>
+      <audio id="queue-audio" controls class="audio-player"></audio>
+      <div class="queue-controls">
+        <button class="queue-ctrl-btn" id="queue-prev" disabled>⏮</button>
+        <button class="queue-ctrl-btn" id="queue-next">⏭</button>
+        <button class="queue-ctrl-btn queue-stop-btn" id="queue-stop">■ Stop</button>
+      </div>
+    </div>`;
+
+  document.getElementById('queue-prev').onclick = () => {
+    if (queue && queue.cursor > 0) queueGoto(queue.cursor - 1);
+  };
+  document.getElementById('queue-next').onclick = () => {
+    if (queue && queue.cursor < queue.order.length - 1) queueGoto(queue.cursor + 1);
+  };
+  document.getElementById('queue-stop').onclick = stopQueue;
+
+  document.getElementById('queue-audio').addEventListener('ended', () => {
+    if (queue && queue.cursor < queue.order.length - 1) queueGoto(queue.cursor + 1);
+    // Queue ends when last track finishes — no loop per spec
+  });
+}
+
+async function queueGoto(cursor) {
+  if (!queue) return;
+  const prevUrl = queue.currentBlobUrl;
+  queue.cursor = cursor;
+  queue.currentBlobUrl = null;
+  updateQueueNav();
+
+  const track = queue.tracks[queue.order[cursor]];
+  const labelEl = document.getElementById('queue-label');
+  if (labelEl) labelEl.textContent = queueTrackLabel(track, cursor, queue.order.length);
+
+  const audioEl = document.getElementById('queue-audio');
+  if (audioEl) { audioEl.removeAttribute('src'); audioEl.load(); }
+
+  try {
+    const url = await makeBlobUrl(`files/${track.fileId}?alt=media`);
+
+    // Guard: queue may have been stopped or advanced while we were fetching
+    if (!queue || queue.cursor !== cursor) { URL.revokeObjectURL(url); return; }
+
+    // Revoke the previous track's blob — it's no longer needed
+    if (prevUrl) {
+      URL.revokeObjectURL(prevUrl);
+      const idx = activeBlobUrls.indexOf(prevUrl);
+      if (idx !== -1) activeBlobUrls.splice(idx, 1);
+    }
+
+    queue.currentBlobUrl = url;
+    const audio = document.getElementById('queue-audio');
+    if (audio) {
+      audio.src = url;
+      audio.load();
+      audio.play().catch(() => {}); // silently fall back if autoplay is blocked
+    }
+  } catch (e) {
+    if (queue) showError('Could not load track: ' + e.message);
+  }
+}
+
+async function startQueue(songs, mode, isShuffled) {
+  stopQueue();
+
+  const bar = document.getElementById('queue-bar');
+  if (bar) bar.innerHTML = `<div class="queue-bar-inner"><span class="queue-label">Building queue…</span></div>`;
+
+  try {
+    // Fetch all song folder contents in parallel
+    const folderContents = await Promise.all(songs.map(async s => {
+      const q = encodeURIComponent(`'${s.id}' in parents and trashed=false`);
+      const data = await apiJSON(`files?q=${q}&fields=files(id,name)`);
+      return { song: s, files: data.files || [] };
+    }));
+
+    const tracks = [];
+    for (const { song, files } of folderContents) {
+      const find = pfx => files.find(f => f.name.toLowerCase().startsWith(pfx.toLowerCase()));
+      // For 'both', teacher comes before student within each song (grouped by song per spec)
+      if (mode === 'teacher' || mode === 'both') {
+        const t = find('teacher-audio');
+        if (t) tracks.push({ songName: song.name, fileId: t.id, type: 'teacher' });
+      }
+      if (mode === 'student' || mode === 'both') {
+        const s = find('student-practice');
+        if (s) tracks.push({ songName: song.name, fileId: s.id, type: 'student' });
+      }
+    }
+
+    if (!tracks.length) {
+      if (bar) bar.innerHTML = '';
+      showError('No tracks found for this queue.');
+      return;
+    }
+
+    const indices = tracks.map((_, i) => i);
+    const order = isShuffled ? shuffleArray(indices) : indices;
+    queue = { tracks, order, cursor: 0, currentBlobUrl: null, showType: mode === 'both' };
+    renderQueuePlayer();
+    await queueGoto(0);
+
+  } catch (e) {
+    if (bar) bar.innerHTML = '';
+    showError(e.message);
+  }
 }
 
 // --- Views ---
@@ -113,34 +330,79 @@ async function showSongList() {
         ${userPillHtml()}
         <div class="empty-state">
           <p>No bhajans found.</p>
-          <p class="hint">Add a subfolder to the Bhajans folder in Drive to get started.</p>
+          <button class="btn-add-cta" id="cta-first">+ Add your first bhajan</button>
         </div>`;
+      document.getElementById('cta-first').onclick = () => startWizard({ songs: [] });
       return;
     }
 
     app().innerHTML = `
       ${userPillHtml()}
-      <h2 class="section-heading">🎵 Bhajans</h2>
+      <div class="list-header">
+        <h2 class="section-heading">🎵 Bhajans</h2>
+        ${addContentBtnHtml()}
+      </div>
       <div class="song-grid">
         ${songs.map(s => `
           <div class="song-card" data-id="${esc(s.id)}" data-name="${esc(s.name)}">
             <div class="song-card-icon">🎶</div>
             <div class="song-card-name">${esc(s.name)}</div>
           </div>`).join('')}
+      </div>
+      <div class="queue-actions">
+        <div class="queue-action-row">
+          <button class="queue-play-btn" id="play-teacher">▶ Teacher clips</button>
+          <button class="queue-shuffle-btn" id="shuf-teacher" aria-pressed="false" title="Shuffle">🔀</button>
+        </div>
+        <div class="queue-action-row">
+          <button class="queue-play-btn" id="play-student">▶ Nyra's practice</button>
+          <button class="queue-shuffle-btn" id="shuf-student" aria-pressed="false" title="Shuffle">🔀</button>
+        </div>
+        <div class="queue-action-row">
+          <button class="queue-play-btn" id="play-all">▶ Everything</button>
+          <button class="queue-shuffle-btn" id="shuf-all" aria-pressed="false" title="Shuffle">🔀</button>
+        </div>
       </div>`;
 
+    document.getElementById('add-content-btn').onclick = () => startWizard({ songs });
+
+    // Song cards — clicking a song stops any active queue
     app().querySelectorAll('.song-card').forEach(card =>
-      card.addEventListener('click', () => showSong(card.dataset.id, card.dataset.name))
+      card.addEventListener('click', () => showSong(card.dataset.id, card.dataset.name, songs))
     );
+
+    // Queue play/shuffle buttons
+    [
+      { mode: 'teacher', playId: 'play-teacher', shufId: 'shuf-teacher' },
+      { mode: 'student', playId: 'play-student', shufId: 'shuf-student' },
+      { mode: 'both',    playId: 'play-all',     shufId: 'shuf-all'     },
+    ].forEach(({ mode, playId, shufId }) => {
+      const shufBtn = document.getElementById(shufId);
+      shufBtn.addEventListener('click', () => {
+        const on = shufBtn.getAttribute('aria-pressed') === 'true';
+        shufBtn.setAttribute('aria-pressed', String(!on));
+      });
+      document.getElementById(playId).addEventListener('click', () => {
+        const isShuffled = shufBtn.getAttribute('aria-pressed') === 'true';
+        startQueue(songs, mode, isShuffled);
+      });
+    });
+
   } catch (e) {
     showError(e.message);
   }
 }
 
-async function showSong(folderId, songName) {
+async function showSong(folderId, songName, cachedSongs = null) {
+  stopQueue(); // stop any active queue when entering a song view
   revokeBlobs();
+  const fromSong = { id: folderId, name: songName };
+
   app().innerHTML = `
-    <button class="back-btn" id="back-btn">← Bhajans</button>
+    <div class="song-view-header">
+      <button class="back-btn" id="back-btn">← Bhajans</button>
+      ${addContentBtnHtml()}
+    </div>
     <h2 class="song-title">${esc(songName)}</h2>
     <div id="teacher-section" class="song-section">
       <h3 class="section-title">🎵 Teacher Reference</h3>
@@ -152,6 +414,8 @@ async function showSong(folderId, songName) {
     </div>`;
 
   document.getElementById('back-btn').addEventListener('click', () => showSongList());
+  document.getElementById('add-content-btn').onclick = () =>
+    startWizard({ fromSong, songs: cachedSongs, presetSong: fromSong });
 
   try {
     const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
@@ -159,14 +423,18 @@ async function showSong(folderId, songName) {
     const files = data.files || [];
     const find = prefix => files.find(f => f.name.toLowerCase().startsWith(prefix.toLowerCase()));
 
-    const teacherAudio   = find('teacher-audio');
-    const teacherNotes   = find('teacher-notes');
-    const studentFile    = find('student-practice');
+    const teacherAudio = find('teacher-audio');
+    const teacherNotes = find('teacher-notes');
+    const studentFile  = find('student-practice');
 
     // Teacher section
     const teacherEl = document.getElementById('teacher-section');
     if (!teacherAudio && !teacherNotes) {
-      document.getElementById('teacher-status').outerHTML = `<p class="hint">No teacher files in this folder yet.</p>`;
+      document.getElementById('teacher-status').outerHTML = `
+        <p class="hint">No teacher files in this folder yet.</p>
+        <button class="btn-add-cta" id="cta-teacher">+ Add teacher content</button>`;
+      document.getElementById('cta-teacher').onclick = () =>
+        startWizard({ fromSong, songs: cachedSongs, presetSong: fromSong });
     } else {
       document.getElementById('teacher-status').remove();
       if (teacherAudio) {
@@ -190,7 +458,11 @@ async function showSong(folderId, songName) {
     // Student section
     const studentEl = document.getElementById('student-section');
     if (!studentFile) {
-      document.getElementById('student-status').outerHTML = `<p class="hint">No practice take yet.</p>`;
+      document.getElementById('student-status').outerHTML = `
+        <p class="hint">No practice take yet.</p>
+        <button class="btn-add-cta" id="cta-practice">+ Add a practice take</button>`;
+      document.getElementById('cta-practice').onclick = () =>
+        startWizard({ fromSong, songs: cachedSongs, presetType: 'student-practice', presetSong: fromSong });
       return;
     }
 
@@ -236,7 +508,6 @@ async function showSong(folderId, songName) {
         audioEl.load();
         this.disabled = true;
 
-        // Revoke previous blob if it's not the latestUrl (which is tracked in activeBlobUrls)
         const prevUrl = currentAudioUrl;
         try {
           const url = revId === latestRevId
@@ -256,6 +527,318 @@ async function showSong(folderId, songName) {
 
   } catch (e) {
     showError(e.message);
+  }
+}
+
+// --- Wizard ---
+
+// opts: { fromSong, songs, presetType, presetSong }
+// fromSong: { id, name } — where to return on cancel / after save
+// songs: array of { id, name } already fetched, or null (fetched on demand in step 2)
+// presetType: skip type step and use this type
+// presetSong: skip song step and use this song
+function startWizard(opts = {}) {
+  stopActiveRecording();
+  stopQueue();
+  wizard = {
+    fromSong: opts.fromSong || null,
+    songs: opts.songs || null,
+    contentType: opts.presetType || null,
+    song: opts.presetSong || null,
+    blob: null,
+    mimeType: null,
+    extension: null,
+  };
+
+  if (wizard.contentType && wizard.song) {
+    showWizardCapture();
+  } else if (wizard.contentType) {
+    showWizardSong();
+  } else {
+    showWizardType();
+  }
+}
+
+function wizardShell(content) {
+  return `
+    <div class="wizard-container">
+      <div class="wizard-header">
+        <button class="back-btn" id="wizard-cancel">✕ Cancel</button>
+      </div>
+      <div class="wizard-body">${content}</div>
+    </div>`;
+}
+
+function showWizardType() {
+  app().innerHTML = wizardShell(`
+    <h3 class="wizard-title">What are you adding?</h3>
+    <div class="type-options">
+      <button class="type-btn" data-type="teacher-audio">
+        <span class="type-icon">🎵</span>
+        <span class="type-label">Teacher's audio clip</span>
+      </button>
+      <button class="type-btn" data-type="teacher-notes">
+        <span class="type-icon">📝</span>
+        <span class="type-label">Teacher's notes (photo)</span>
+      </button>
+      <button class="type-btn" data-type="student-practice">
+        <span class="type-icon">🎤</span>
+        <span class="type-label">Nyra's practice take</span>
+      </button>
+    </div>`);
+
+  document.getElementById('wizard-cancel').onclick = cancelWizard;
+  document.querySelectorAll('.type-btn').forEach(btn => {
+    btn.onclick = () => {
+      wizard.contentType = btn.dataset.type;
+      wizard.song ? showWizardCapture() : showWizardSong();
+    };
+  });
+}
+
+async function showWizardSong() {
+  app().innerHTML = wizardShell(`<div class="loading">Loading songs…</div>`);
+  document.getElementById('wizard-cancel').onclick = cancelWizard;
+
+  if (!wizard.songs) {
+    try {
+      const q = encodeURIComponent(
+        `'${CONFIG.BHAJANS_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`
+      );
+      const data = await apiJSON(`files?q=${q}&fields=files(id,name)&orderBy=name`);
+      wizard.songs = data.files || [];
+    } catch (e) {
+      showError(e.message);
+      cancelWizard();
+      return;
+    }
+  }
+
+  renderWizardSong();
+}
+
+function renderWizardSong() {
+  app().innerHTML = wizardShell(`
+    <h3 class="wizard-title">Which song?</h3>
+    <div class="song-options">
+      <div class="new-song-row">
+        <button class="song-option-btn new-song-btn" id="new-song-toggle">+ New song</button>
+        <div class="new-song-form" id="new-song-form" style="display:none">
+          <input type="text" id="new-song-input" class="new-song-input" placeholder="Song name…" maxlength="100">
+          <button class="btn-primary" id="new-song-create">Create</button>
+        </div>
+      </div>
+      ${(wizard.songs || []).map(s => `
+        <button class="song-option-btn" data-id="${esc(s.id)}" data-name="${esc(s.name)}">
+          🎶 ${esc(s.name)}
+        </button>`).join('')}
+    </div>`);
+
+  document.getElementById('wizard-cancel').onclick = cancelWizard;
+
+  document.querySelectorAll('.song-option-btn:not(.new-song-btn)').forEach(btn => {
+    btn.onclick = () => {
+      wizard.song = { id: btn.dataset.id, name: btn.dataset.name };
+      showWizardCapture();
+    };
+  });
+
+  document.getElementById('new-song-toggle').onclick = () => {
+    document.getElementById('new-song-toggle').style.display = 'none';
+    document.getElementById('new-song-form').style.display = 'flex';
+    document.getElementById('new-song-input').focus();
+  };
+
+  document.getElementById('new-song-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('new-song-create').click();
+  });
+
+  document.getElementById('new-song-create').onclick = async () => {
+    const name = document.getElementById('new-song-input').value.trim();
+    if (!name) return;
+    const btn = document.getElementById('new-song-create');
+    btn.disabled = true; btn.textContent = 'Creating…';
+    try {
+      const folder = await apiPost('files', {
+        name,
+        mimeType: 'application/vnd.google-apps.folder',
+        parents: [CONFIG.BHAJANS_FOLDER_ID],
+      });
+      wizard.song = { id: folder.id, name: folder.name };
+      wizard.songs = [...(wizard.songs || []), wizard.song].sort((a, b) => a.name.localeCompare(b.name));
+      showWizardCapture();
+    } catch (e) {
+      btn.disabled = false; btn.textContent = 'Create';
+      showError(e.message);
+    }
+  };
+}
+
+function showWizardCapture() {
+  const isAudio = wizard.contentType !== 'teacher-notes';
+  const isImage = wizard.contentType === 'teacher-notes';
+
+  app().innerHTML = wizardShell(`
+    <h3 class="wizard-title">Capture content</h3>
+    <p class="wizard-subtitle">
+      ${typeLabel(wizard.contentType)} for <strong>${esc(wizard.song.name)}</strong>
+    </p>
+    ${isAudio ? `
+      <div class="capture-options" id="capture-options">
+        <button class="capture-btn" id="btn-record">🎙️ Record live</button>
+        <button class="capture-btn" id="btn-upload-audio">📁 Upload a file</button>
+        <input type="file" id="file-audio" accept="audio/*" style="display:none">
+      </div>` : ''}
+    ${isImage ? `
+      <div class="capture-options">
+        <label class="capture-btn" for="file-image">📷 Choose / take photo</label>
+        <input type="file" id="file-image" accept="image/*" style="display:none">
+      </div>` : ''}
+    <div class="recording-panel" id="recording-panel" style="display:none">
+      <div class="recording-indicator">
+        <span class="rec-dot"></span>
+        <span id="rec-timer">0:00</span>
+      </div>
+      <button class="btn-primary" id="btn-stop-record">Stop</button>
+    </div>`);
+
+  document.getElementById('wizard-cancel').onclick = cancelWizard;
+
+  if (isAudio) {
+    document.getElementById('btn-record').onclick = startRecording;
+    document.getElementById('btn-upload-audio').onclick = () => document.getElementById('file-audio').click();
+    document.getElementById('file-audio').onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const ext = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : 'audio';
+      showWizardConfirm(file, file.type || 'audio/webm', ext);
+    };
+  }
+
+  if (isImage) {
+    document.getElementById('file-image').onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const ext = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : 'jpg';
+      showWizardConfirm(file, file.type || 'image/jpeg', ext);
+    };
+  }
+}
+
+async function startRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    _recordingStream = stream;
+    _recordingChunks = [];
+    _recorder = new MediaRecorder(stream);
+    _recorder.ondataavailable = e => { if (e.data.size > 0) _recordingChunks.push(e.data); };
+    _recorder.start();
+
+    const captureOptions = document.getElementById('capture-options');
+    if (captureOptions) captureOptions.style.display = 'none';
+    document.getElementById('recording-panel').style.display = 'block';
+
+    let secs = 0;
+    _recordingTimer = setInterval(() => {
+      secs++;
+      const m = Math.floor(secs / 60), s = secs % 60;
+      const el = document.getElementById('rec-timer');
+      if (el) el.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+    }, 1000);
+
+    document.getElementById('btn-stop-record').onclick = () => {
+      clearInterval(_recordingTimer); _recordingTimer = null;
+      _recorder.onstop = () => {
+        const mimeType = _recorder.mimeType || 'audio/webm';
+        const blob = new Blob(_recordingChunks, { type: mimeType });
+        _recordingStream.getTracks().forEach(t => t.stop()); _recordingStream = null;
+        _recorder = null;
+        const ext = mimeType.includes('ogg') ? 'ogg' : mimeType.includes('mp4') ? 'mp4' : 'webm';
+        showWizardConfirm(blob, mimeType, ext);
+      };
+      if (_recorder.state !== 'inactive') _recorder.stop();
+    };
+  } catch (e) {
+    showError('Microphone access denied: ' + e.message);
+  }
+}
+
+function showWizardConfirm(blob, mimeType, ext) {
+  wizard.blob = blob;
+  wizard.mimeType = mimeType;
+  wizard.extension = ext;
+
+  const previewUrl = trackBlob(URL.createObjectURL(blob));
+  const isAudio = mimeType.startsWith('audio');
+  const previewHtml = isAudio
+    ? `<audio controls src="${previewUrl}" class="audio-player"></audio>`
+    : `<img src="${previewUrl}" class="notes-img" alt="Preview">`;
+
+  app().innerHTML = wizardShell(`
+    <h3 class="wizard-title">Does this look right?</h3>
+    <p class="wizard-subtitle">
+      ${typeLabel(wizard.contentType)} for <strong>${esc(wizard.song.name)}</strong>
+    </p>
+    <div class="preview-box">${previewHtml}</div>
+    <div class="confirm-btns">
+      <button class="btn-primary" id="btn-save">Save</button>
+      <button class="back-btn" id="btn-redo">Discard &amp; redo</button>
+    </div>`);
+
+  document.getElementById('wizard-cancel').onclick = cancelWizard;
+
+  document.getElementById('btn-save').onclick = async () => {
+    const btn = document.getElementById('btn-save');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      await saveContent();
+      const song = wizard.song;
+      const songs = wizard.songs;
+      wizard = null;
+      await showSong(song.id, song.name, songs); // revokeBlobs() inside will clean up previewUrl
+    } catch (e) {
+      btn.disabled = false; btn.textContent = 'Save';
+      showError(e.message);
+    }
+  };
+
+  document.getElementById('btn-redo').onclick = () => {
+    // Manually revoke preview since we're staying in the wizard (revokeBlobs not called)
+    URL.revokeObjectURL(previewUrl);
+    const idx = activeBlobUrls.indexOf(previewUrl);
+    if (idx !== -1) activeBlobUrls.splice(idx, 1);
+    wizard.blob = null; wizard.mimeType = null; wizard.extension = null;
+    showWizardCapture();
+  };
+}
+
+async function saveContent() {
+  const { contentType, song, blob, mimeType, extension } = wizard;
+
+  // Find if a file with this prefix already exists in the song folder
+  const q = encodeURIComponent(`'${song.id}' in parents and trashed=false`);
+  const data = await apiJSON(`files?q=${q}&fields=files(id,name,mimeType)`);
+  const files = data.files || [];
+  const existing = files.find(f => f.name.toLowerCase().startsWith(contentType.toLowerCase()));
+
+  if (existing) {
+    // Update existing file: keep the filename unchanged, update mimeType to actual content.
+    // keepRevisionForever=true is set as a query param in driveUpload.
+    await driveUpload({ mimeType }, blob, existing.id);
+  } else {
+    // Create new file with extension derived from actual content.
+    await driveUpload({ name: `${contentType}.${extension}`, mimeType, parents: [song.id] }, blob);
+  }
+}
+
+function cancelWizard() {
+  stopActiveRecording();
+  const fromSong = wizard?.fromSong;
+  wizard = null;
+  if (fromSong) {
+    showSong(fromSong.id, fromSong.name);
+  } else {
+    showSongList();
   }
 }
 
