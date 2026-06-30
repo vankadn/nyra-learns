@@ -455,24 +455,6 @@ async function showSongList() {
     cachedSongsList = songs;
     wireHeaderPlayButtons(songs);
 
-    // Batch-fetch file presence for all song folders (single API call)
-    const songFileMap = {};
-    if (songs.length) {
-      try {
-        const parentsQ = songs.map(s => `'${s.id}' in parents`).join(' or ');
-        const fq = encodeURIComponent(`(${parentsQ}) and trashed=false`);
-        const fdata = await readJSON(`files?q=${fq}&fields=files(name,parents)&pageSize=1000`);
-        for (const f of (fdata.files || [])) {
-          const pid = f.parents?.[0];
-          if (!pid) continue;
-          if (!songFileMap[pid]) songFileMap[pid] = {};
-          const n = f.name.toLowerCase();
-          if (n.startsWith('teacher-notes')) songFileMap[pid].teacherNotes = true;
-          if (n.startsWith('student-practice')) songFileMap[pid].studentPractice = true;
-        }
-      } catch (_) {}
-    }
-
     if (!songs.length) {
       app().innerHTML = `
         ${godFilterRowHtml(gods)}
@@ -503,20 +485,12 @@ async function showSongList() {
             <div class="song-card-god-badge">
               ${godAvatarHtml(godObj, 'song-card-god-img')}
             </div>` : '';
-          const files = songFileMap[s.id] || {};
-          const statusHtml = `
-            <div class="song-card-status">
-              <span class="song-status-icon">🎤</span>
-              <span class="song-status-icon${files.studentPractice ? '' : ' dim'}">🎵</span>
-              <span class="song-status-icon${files.teacherNotes ? '' : ' dim'}">📋</span>
-            </div>`;
           const displayStyle = activeGodFilter && songGod !== activeGodFilter ? 'display:none;' : '';
           return `
             <div class="song-card" data-id="${esc(s.id)}" data-name="${esc(s.name)}" data-god="${esc(songGod)}" style="${displayStyle}border-left: 4px solid ${borderColor}">
               ${badgeHtml}
               <div class="song-card-icon">🎶</div>
               <div class="song-card-name">${esc(s.name)}</div>
-              ${statusHtml}
             </div>`;
         }).join('')}
       </div>`;
