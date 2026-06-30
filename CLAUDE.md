@@ -184,3 +184,37 @@ Target shape after extraction:
   telugu/
   shared/
 ```
+
+## Future scope: multi-tenant bring-your-own-Drive (Music app)
+
+**Status:** Not started. Revisit only if the app gets real interest beyond our family.
+
+**Goal:** Let any family run their own fully independent instance of the data layer (their own
+Drive folder, their own write access) without needing us to approve their access, while still
+using the same shared static app.
+
+**Why this is needed:** Phase A (current) gives anyone read-only access to a public Drive folder
+via a shared API key, but writes are gated to our OAuth app, which is in Google's "Testing"
+publishing mode — capped at 100 manually-approved test users. That doesn't scale.
+
+**What Phase B requires:**
+1. Each family creates their own free Google Cloud project (~10 min) and an OAuth 2.0 Client ID
+   scoped to `drive.file` (only files the app creates/touches).
+2. Settings UI accepts their Drive folder ID + their own OAuth Client ID.
+3. App dynamically initializes GIS OAuth using whichever Client ID is in localStorage for that
+   browser — the core technical change (OAuth client init is currently hardcoded to one Client ID).
+4. Folder structure stays identical — no schema change. Same `_Gods/`, song-folder, prefix
+   conventions. Each family's folder is sovereign.
+5. Each family's own OAuth app also starts in Testing mode (100-user cap, unverified warning) —
+   fine for 1–2 users per family. Not a blocker, just a one-time click-through.
+
+**What this explicitly avoids:** no backend, no database, no server-side auth, no billing
+relationship with us. Still 100% static hosting.
+
+**Main adoption friction:** a short non-technical "How to create your Google Cloud project and
+get a Client ID" guide for parents — the code change is smaller than the docs.
+
+**Open questions for when we revisit:**
+- Does the read API key also become per-family, or stays shared? (Leaning: stays shared — harmless.)
+- Should the settings UI validate the Client ID format before saving to fail fast?
+- Worth a "try with our demo folder first" fallback before they set up their own Drive?
