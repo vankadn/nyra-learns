@@ -106,13 +106,20 @@ and offers a date-labeled picker. Drive auto-purges revisions older than 30 days
 forever. Every save from the app sets `keepRevisionForever=true` automatically; the 25-day age warning
 is still shown for any revision not yet marked (e.g. files uploaded via Drive before this feature).
 
-**Global playback queues:** three queue buttons on the song-list screen — "▶ Teacher clips", "▶ Nyra's
-practice", "▶ Everything". Each has an independent 🔀 Shuffle toggle. Queue order is session-only,
-never persisted. "Everything" unshuffled = teacher clip then student clip per song, alphabetical song
-order; shuffled = freely mixed across all tracks. Student queue (and student half of "Everything")
-always uses latest revision only — no revision picker in queue context. `queueGoto` is sync — sets
-`audio.src = driveMediaUrl(...)` directly (no blob fetch, no ObjectURL lifecycle). Entering a song
-view stops the active queue.
+**Global playback queues:** three pill buttons in the header — 🎤 Teacher, 👧 Nyra, 🔀 All — start
+a queue across all songs with no shuffle. Queue order is session-only, never persisted. "All"
+unshuffled = teacher clip then student clip per song, alphabetical song order. Student queue always
+uses latest revision only — no revision picker in queue context. `queueGoto` is sync — sets
+`audio.src = driveMediaUrl(...)` directly (no blob fetch, no ObjectURL lifecycle). Header buttons
+are wired by `wireHeaderPlayButtons(songs)` after `showSongList()` loads. Entering a song view
+stops the active queue.
+
+**Auth-aware UI:** the app opens in anonymous read-only mode (`body.anon` class set at boot). All
+write surfaces carry class `write-only`; CSS rule `body.anon .write-only { display:none!important }`
+hides them globally — no re-render needed on sign-in. A "👤 Sign in" button (class `anon-only`)
+sits top-right in the header; clicking it calls `ensureAuth()` → on success `onSignIn()` removes
+`body.anon` and populates the header user pill. Hidden write surfaces: Add content buttons, empty-
+state CTAs, god filter + button, god emoji mini/edit buttons, god tag Change/Tag buttons.
 
 **God tag/filter:** songs can be tagged with a god (Ganesha, Shiva, Krishna, etc.).
 

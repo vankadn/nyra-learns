@@ -16,6 +16,9 @@ let wizard = null;
 // Queue state (null when no queue active)
 let queue = null;
 
+// Songs cached by showSongList for header play buttons
+let cachedSongsList = null;
+
 // God filter state — persists for the session (survive revokeBlobs)
 let godsFolderId = null;
 let cachedGods = null;       // null=not fetched; array of { name, fileId, blobUrl }
@@ -70,6 +73,16 @@ async function ensureAuth() {
     })).json();
     currentUser = info;
   } catch (_) {}
+  onSignIn();
+}
+
+function onSignIn() {
+  document.body.classList.remove('anon');
+  const userEl = document.getElementById('hdr-user');
+  if (userEl && currentUser) {
+    const avatar = currentUser.picture ? `<img src="${esc(currentUser.picture)}" class="user-avatar" alt="">` : '';
+    userEl.innerHTML = `<div class="user-pill">${avatar}<span>${esc(currentUser.name)}</span></div>`;
+  }
 }
 
 // --- Drive API ---
@@ -203,7 +216,7 @@ function userPillHtml() {
 }
 
 function addContentBtnHtml() {
-  return `<button class="add-content-btn" id="add-content-btn">+ Add content</button>`;
+  return `<button class="add-content-btn write-only" id="add-content-btn">+ Add content</button>`;
 }
 
 function godFilterRowHtml(gods) {
@@ -218,7 +231,7 @@ function godFilterRowHtml(gods) {
         </div>
         <span class="god-chip-label">${esc(g.name)}</span>
       </button>
-      ${noPhoto ? `<button class="god-emoji-mini-btn" data-god-name="${esc(g.name)}" title="Set emoji">🖌️</button>` : ''}
+      ${noPhoto ? `<button class="god-emoji-mini-btn write-only" data-god-name="${esc(g.name)}" title="Set emoji">🖌️</button>` : ''}
     </div>`;
   }).join('');
   return `
@@ -228,7 +241,7 @@ function godFilterRowHtml(gods) {
         <span class="god-chip-label">All</span>
       </button>
       ${godChips}
-      <button class="god-chip god-chip-add" id="god-add-btn">
+      <button class="god-chip god-chip-add write-only" id="god-add-btn">
         <div class="god-chip-circle god-chip-add-circle">+</div>
         <span class="god-chip-label">Add</span>
       </button>
@@ -416,14 +429,15 @@ async function showSongList() {
       fetchGodsData(),
     ]);
     const songs = (songData.files || []).filter(f => f.name !== '_Gods');
+    cachedSongsList = songs;
+    wireHeaderPlayButtons(songs);
 
     if (!songs.length) {
       app().innerHTML = `
-        ${userPillHtml()}
         ${godFilterRowHtml(gods)}
         <div class="empty-state">
           <p>No bhajans found.</p>
-          <button class="btn-add-cta" id="cta-first">+ Add your first bhajan</button>
+          <button class="btn-add-cta write-only" id="cta-first">+ Add your first bhajan</button>
         </div>`;
       wireGodFilter([], gods);
       document.getElementById('cta-first').onclick = async () => {
@@ -434,7 +448,6 @@ async function showSongList() {
     }
 
     app().innerHTML = `
-      ${userPillHtml()}
       <div class="list-header">
         <h2 class="section-heading">🎵 Bhajans</h2>
         ${addContentBtnHtml()}
@@ -456,20 +469,6 @@ async function showSongList() {
               <div class="song-card-name">${esc(s.name)}</div>
             </div>`;
         }).join('')}
-      </div>
-      <div class="queue-actions">
-        <div class="queue-action-row">
-          <button class="queue-play-btn" id="play-teacher">▶ Teacher clips</button>
-          <button class="queue-shuffle-btn" id="shuf-teacher" aria-pressed="false" title="Shuffle">🔀</button>
-        </div>
-        <div class="queue-action-row">
-          <button class="queue-play-btn" id="play-student">▶ Nyra's practice</button>
-          <button class="queue-shuffle-btn" id="shuf-student" aria-pressed="false" title="Shuffle">🔀</button>
-        </div>
-        <div class="queue-action-row">
-          <button class="queue-play-btn" id="play-all">▶ Everything</button>
-          <button class="queue-shuffle-btn" id="shuf-all" aria-pressed="false" title="Shuffle">🔀</button>
-        </div>
       </div>`;
 
     document.getElementById('add-content-btn').onclick = async () => {
@@ -481,22 +480,6 @@ async function showSongList() {
     app().querySelectorAll('.song-card').forEach(card =>
       card.addEventListener('click', () => showSong(card.dataset.id, card.dataset.name, songs))
     );
-
-    [
-      { mode: 'teacher', playId: 'play-teacher', shufId: 'shuf-teacher' },
-      { mode: 'student', playId: 'play-student', shufId: 'shuf-student' },
-      { mode: 'both',    playId: 'play-all',     shufId: 'shuf-all'     },
-    ].forEach(({ mode, playId, shufId }) => {
-      const shufBtn = document.getElementById(shufId);
-      shufBtn.addEventListener('click', () => {
-        const on = shufBtn.getAttribute('aria-pressed') === 'true';
-        shufBtn.setAttribute('aria-pressed', String(!on));
-      });
-      document.getElementById(playId).addEventListener('click', () => {
-        const isShuffled = shufBtn.getAttribute('aria-pressed') === 'true';
-        startQueue(songs, mode, isShuffled);
-      });
-    });
 
   } catch (e) {
     showError(e.message);
@@ -551,7 +534,7 @@ async function showSong(folderId, songName, cachedSongs = null) {
     if (!teacherAudio && !teacherNotes) {
       document.getElementById('teacher-status').outerHTML = `
         <p class="hint">No teacher files in this folder yet.</p>
-        <button class="btn-add-cta" id="cta-teacher">+ Add teacher content</button>`;
+        <button class="btn-add-cta write-only" id="cta-teacher">+ Add teacher content</button>`;
       document.getElementById('cta-teacher').onclick = async () => {
         try { await ensureAuth(); } catch (e) { showError(e.message); return; }
         startWizard({ fromSong, songs: cachedSongs, presetSong: fromSong });
@@ -573,7 +556,7 @@ async function showSong(folderId, songName, cachedSongs = null) {
     if (!studentFile) {
       document.getElementById('student-status').outerHTML = `
         <p class="hint">No practice take yet.</p>
-        <button class="btn-add-cta" id="cta-practice">+ Add a practice take</button>`;
+        <button class="btn-add-cta write-only" id="cta-practice">+ Add a practice take</button>`;
       document.getElementById('cta-practice').onclick = async () => {
         try { await ensureAuth(); } catch (e) { showError(e.message); return; }
         startWizard({ fromSong, songs: cachedSongs, presetType: 'student-practice', presetSong: fromSong });
@@ -651,10 +634,10 @@ function renderGodTagSection(folderId, songName, godTag, cachedSongs) {
             ${godAvatarHtml(godObj)}
           </div>
           <span class="god-tag-name">${esc(godObj.name)}</span>
-          ${noPhoto ? `<button class="god-emoji-edit-btn" id="god-emoji-edit-btn" title="Choose emoji">🖌️</button>` : ''}
-          <button class="god-tag-btn" id="god-tag-change">Change</button>
+          ${noPhoto ? `<button class="god-emoji-edit-btn write-only" id="god-emoji-edit-btn" title="Choose emoji">🖌️</button>` : ''}
+          <button class="god-tag-btn write-only" id="god-tag-change">Change</button>
         </div>` : `
-        <button class="god-tag-btn god-tag-btn-add" id="god-tag-add">🙏 Tag with god</button>`}
+        <button class="god-tag-btn god-tag-btn-add write-only" id="god-tag-add">🙏 Tag with god</button>`}
     </div>`;
 
   if (noPhoto) {
@@ -1163,9 +1146,26 @@ function showError(msg) {
   document.getElementById('app').prepend(banner);
 }
 
+// --- Header play buttons ---
+
+function wireHeaderPlayButtons(songs) {
+  const configs = [
+    { id: 'hdr-teacher', mode: 'teacher' },
+    { id: 'hdr-nyra',    mode: 'student' },
+    { id: 'hdr-all',     mode: 'both' },
+  ];
+  for (const { id, mode } of configs) {
+    const btn = document.getElementById(id);
+    if (!btn) continue;
+    btn.disabled = false;
+    btn.onclick = () => startQueue(songs, mode, false);
+  }
+}
+
 // --- Boot ---
 
 function boot() {
+  document.body.classList.add('anon');
   if (!CONFIGURED) {
     app().innerHTML = `
       <div class="setup-card">
@@ -1179,6 +1179,9 @@ function boot() {
     return;
   }
   initAuth();
+  document.getElementById('hdr-sign-in').onclick = async () => {
+    try { await ensureAuth(); } catch (e) { showError(e.message); }
+  };
   showSongList();
 }
 
