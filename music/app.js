@@ -489,7 +489,6 @@ async function showSongList() {
           return `
             <div class="song-card" data-id="${esc(s.id)}" data-name="${esc(s.name)}" data-god="${esc(songGod)}" style="${displayStyle}border-left: 4px solid ${borderColor}">
               ${badgeHtml}
-              <div class="song-card-icon">🎶</div>
               <div class="song-card-name">${esc(s.name)}</div>
             </div>`;
         }).join('')}
