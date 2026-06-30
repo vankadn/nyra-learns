@@ -582,9 +582,15 @@ async function showSong(folderId, songName, cachedSongs = null) {
     }
 
     const latestUrl = driveMediaUrl(`files/${studentFile.id}?alt=media`);
-    const revData = await readJSON(`files/${studentFile.id}/revisions?fields=revisions(id,modifiedTime,keepForever)`);
-
-    const revisions = (revData.revisions || []).reverse();
+    let revisions = [];
+    try {
+      const revData = accessToken
+        ? await apiJSON(`files/${studentFile.id}/revisions?fields=revisions(id,modifiedTime,keepForever)`)
+        : await readJSON(`files/${studentFile.id}/revisions?fields=revisions(id,modifiedTime,keepForever)`);
+      revisions = (revData.revisions || []).reverse();
+    } catch (_) {
+      // revisions.list requires OAuth; anonymous visitors see latest only, no picker
+    }
     const latestRevId = revisions[0]?.id;
 
     const DAY_MS = 86_400_000;
