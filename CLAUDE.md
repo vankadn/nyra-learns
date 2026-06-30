@@ -112,9 +112,20 @@ always uses latest revision only — no revision picker in queue context. Audio 
 
 **God tag/filter:** songs can be tagged with a god (Ganesha, Shiva, Krishna, etc.).
 
-- `_Gods/` folder is a sibling to song folders under `BHAJANS_FOLDER_ID`. Each file in `_Gods/` is one
-  god — filename (without extension) = god name, file content = avatar image. Created automatically on
-  first write; filtered out of the song list in JS (`f.name !== '_Gods'`).
+- `_Gods/` folder is a sibling to song folders under `BHAJANS_FOLDER_ID`. Each entry is one god —
+  filename (without extension) = god name. Two file types coexist:
+  - **Photo god:** image file (`{name}.jpg` / `.png`) — blob loaded and shown as avatar.
+  - **Emoji/name-only god:** `.txt` placeholder file (created via metadata-only `files.create`, 0 bytes)
+    — `mimeType` is `text/plain` so blob loading is skipped; falls through to emoji or default.
+  Filtered out of the song list in JS (`f.name !== '_Gods'`); created automatically on first write.
+- **God avatar resolution order** (photo wins):
+  1. `god.blobUrl` set (image/* file loaded) → `<img>`
+  2. `god.properties.emoji` set (Drive file property on the god's file) → emoji character
+  3. Neither → default `🛕` placeholder
+  Implemented in `getGodAvatar(god)` → `{ type: 'image'|'emoji', url|value }`;
+  rendered via `godAvatarHtml(god, imgClass)`.
+- `fetchGodsData()` queries `id,name,mimeType,properties` in one call; only attempts blob load for
+  `mimeType?.startsWith('image/')`. `cachedGods` shape: `{ name, fileId, blobUrl, properties }`.
 - Tag stored as `properties.god` (Drive file property) on the song folder. Set/cleared via
   `files.update` PATCH with `{ properties: { god: name } }` or `{ god: null }` to remove.
 - Song list query adds `properties` to `fields` so tags are read in the same round-trip as song names.
@@ -122,12 +133,23 @@ always uses latest revision only — no revision picker in queue context. Audio 
   `revokeBlobs()` calls during navigation. `cachedGods` and `godsFolderId` persist for the session.
 - Filter row (horizontal scroll, FB-chat-style) above the song grid: "All" → clear filter; god avatar →
   show only that god's songs; "+" → `showAddGodForm()`. Filter state in `activeGodFilter`.
+  Gods without a photo show a 🖌️ mini-button below their chip; clicking opens `showEmojiInputInline()`
+  in the chip circle — saves to `properties.emoji`, updates `cachedGods` optimistically.
 - Song cards show a small round god avatar badge (top-right corner) if tagged.
 - Song detail view shows a god tag section (below title): "Tag with god" button if untagged, or avatar +
-  name + "Change" button if tagged. Clicking opens an inline horizontal picker. Picker includes "None"
-  (remove tag), all gods, and "+ Add god" to create a new god entry.
-- `showAddGodForm(fromSong, cachedSongs)`: wizard-shell form (name input + photo upload). Saves image
-  to `_Gods/`, appends to `cachedGods`, and if `fromSong` is non-null, also tags that song immediately.
+  name + optional 🖌️ emoji-edit button (shown when no photo) + "Change" button if tagged. Clicking
+  "Change" or "Tag" opens an inline horizontal picker. Picker includes "None" (remove tag), all gods,
+  and "+ Add god" to create a new god entry.
+- `showEmojiInputInline(god, targetEl, onDone)`: replaces `targetEl` content with a text input;
+  validates exactly 1 grapheme via `Array.from()`; on Enter/blur saves to `properties.emoji` via
+  `driveUpdateProperties`, updates `cachedGods` optimistically, calls `onDone` to re-render.
+- `showAddGodForm(fromSong, cachedSongs)`: wizard-shell form with Name (required), Photo (optional),
+  and Emoji (optional, 60×60 square input, capped to 1 grapheme on `input` event). Save logic:
+  - Photo provided → `driveUpload` with emoji in metadata `properties` if set.
+  - No photo → `apiPost('files', { name: '{name}.txt', mimeType: 'text/plain', ...emojiProp })` —
+    metadata-only placeholder; emoji written as Drive property at creation time.
+  Appends to `cachedGods` with `properties: { emoji }` if set; if `fromSong` non-null, also tags
+  that song immediately.
 
 **Not shared with `learning-lib/`:** no selection/checking mechanic — purely playback + Drive API.
 
