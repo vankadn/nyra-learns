@@ -25,6 +25,16 @@ let cachedGods = null;       // null=not fetched; array of { name, fileId, blobU
 let activeGodFilter = null;  // null=show all; string=god name to filter by
 const godBlobUrls = [];      // separate from activeBlobUrls so they survive revokeBlobs()
 
+const GOD_COLORS = {
+  Ganesha:  '#E07B39',
+  Guru:     '#5B8ECC',
+  Hanuman:  '#E8A020',
+  Krishna:  '#6A5ACD',
+  Ram:      '#2E8B57',
+  Shiva:    '#7B68EE',
+  _default: '#AAAAAA',
+};
+
 function trackBlob(url) { activeBlobUrls.push(url); return url; }
 
 function revokeBlobs() {
@@ -235,20 +245,33 @@ function godFilterRowHtml(gods) {
     </div>`;
   }).join('');
   return `
-    <div class="god-filter-row">
-      <button class="god-chip god-chip-all${allActive ? ' active' : ''}" data-god="">
-        <div class="god-chip-circle god-chip-all-circle">All</div>
-        <span class="god-chip-label">All</span>
-      </button>
-      ${godChips}
-      <button class="god-chip god-chip-add write-only" id="god-add-btn">
-        <div class="god-chip-circle god-chip-add-circle">+</div>
-        <span class="god-chip-label">Add</span>
-      </button>
+    <div class="god-filter-wrap">
+      <div class="god-filter-row">
+        <button class="god-chip god-chip-all${allActive ? ' active' : ''}" data-god="">
+          <div class="god-chip-circle god-chip-all-circle">All</div>
+          <span class="god-chip-label">All</span>
+        </button>
+        ${godChips}
+        <button class="god-chip god-chip-add write-only" id="god-add-btn">
+          <div class="god-chip-circle god-chip-add-circle">+</div>
+          <span class="god-chip-label">Add</span>
+        </button>
+      </div>
     </div>`;
 }
 
 function wireGodFilter(songs, gods) {
+  const filterRow = document.querySelector('.god-filter-row');
+  const filterWrap = document.querySelector('.god-filter-wrap');
+  if (filterRow && filterWrap) {
+    const updateFade = () => {
+      const atEnd = filterRow.scrollLeft + filterRow.clientWidth >= filterRow.scrollWidth - 4;
+      filterWrap.classList.toggle('at-end', atEnd);
+    };
+    filterRow.addEventListener('scroll', updateFade, { passive: true });
+    updateFade();
+  }
+
   document.querySelectorAll('.god-chip[data-god]').forEach(btn => {
     btn.addEventListener('click', () => {
       activeGodFilter = btn.dataset.god || null;
@@ -432,6 +455,24 @@ async function showSongList() {
     cachedSongsList = songs;
     wireHeaderPlayButtons(songs);
 
+    // Batch-fetch file presence for all song folders (single API call)
+    const songFileMap = {};
+    if (songs.length) {
+      try {
+        const parentsQ = songs.map(s => `'${s.id}' in parents`).join(' or ');
+        const fq = encodeURIComponent(`(${parentsQ}) and trashed=false`);
+        const fdata = await readJSON(`files?q=${fq}&fields=files(name,parents)&pageSize=1000`);
+        for (const f of (fdata.files || [])) {
+          const pid = f.parents?.[0];
+          if (!pid) continue;
+          if (!songFileMap[pid]) songFileMap[pid] = {};
+          const n = f.name.toLowerCase();
+          if (n.startsWith('teacher-notes')) songFileMap[pid].teacherNotes = true;
+          if (n.startsWith('student-practice')) songFileMap[pid].studentPractice = true;
+        }
+      } catch (_) {}
+    }
+
     if (!songs.length) {
       app().innerHTML = `
         ${godFilterRowHtml(gods)}
@@ -457,16 +498,25 @@ async function showSongList() {
         ${songs.map(s => {
           const songGod = s.properties?.god || '';
           const godObj = gods.find(g => g.name === songGod);
+          const borderColor = songGod ? (GOD_COLORS[songGod] || GOD_COLORS._default) : '#E0E0E0';
           const badgeHtml = godObj ? `
             <div class="song-card-god-badge">
               ${godAvatarHtml(godObj, 'song-card-god-img')}
             </div>` : '';
-          const hidden = activeGodFilter && songGod !== activeGodFilter ? ' style="display:none"' : '';
+          const files = songFileMap[s.id] || {};
+          const statusHtml = `
+            <div class="song-card-status">
+              <span class="song-status-icon">🎤</span>
+              <span class="song-status-icon${files.studentPractice ? '' : ' dim'}">🎵</span>
+              <span class="song-status-icon${files.teacherNotes ? '' : ' dim'}">📋</span>
+            </div>`;
+          const displayStyle = activeGodFilter && songGod !== activeGodFilter ? 'display:none;' : '';
           return `
-            <div class="song-card" data-id="${esc(s.id)}" data-name="${esc(s.name)}" data-god="${esc(songGod)}"${hidden}>
+            <div class="song-card" data-id="${esc(s.id)}" data-name="${esc(s.name)}" data-god="${esc(songGod)}" style="${displayStyle}border-left: 4px solid ${borderColor}">
               ${badgeHtml}
               <div class="song-card-icon">🎶</div>
               <div class="song-card-name">${esc(s.name)}</div>
+              ${statusHtml}
             </div>`;
         }).join('')}
       </div>`;

@@ -61,21 +61,35 @@ header {
 }
 .hdr-play-btn:hover { background: rgba(255,255,255,0.3); transform: translateY(-1px); }
 .hdr-play-btn:disabled { opacity: 0.4; cursor: default; transform: none; }
+.hdr-play-label {
+  color: rgba(255,255,255,0.65);
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.hdr-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(255,255,255,0.3);
+  flex-shrink: 0;
+}
 .header-auth { flex-shrink: 0; }
 .hdr-sign-btn {
-  background: rgba(255,255,255,0.15);
-  border: 1.5px solid rgba(255,255,255,0.35);
+  background: none;
+  border: 1.5px solid rgba(255,255,255,0.5);
   border-radius: 50px;
-  padding: 7px 12px;
-  color: white;
+  padding: 5px 11px;
+  color: rgba(255,255,255,0.9);
   font-family: var(--font-display);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
-.hdr-sign-btn:hover { background: rgba(255,255,255,0.28); }
+.hdr-sign-btn:hover { background: rgba(255,255,255,0.15); color: white; }
 .hdr-user { display: flex; align-items: center; }
 .hdr-user .user-pill {
   margin-bottom: 0;
@@ -544,7 +558,19 @@ header {
 .queue-shuffle-btn:hover { border-color: var(--plum); }
 .queue-shuffle-btn[aria-pressed="true"] { background: var(--plum); border-color: var(--plum); }
 
-/* God filter row */
+/* God filter row + scroll-fade wrapper */
+.god-filter-wrap { position: relative; }
+.god-filter-wrap::after {
+  content: '';
+  position: absolute;
+  right: 0; top: 0; bottom: 16px;
+  width: 48px;
+  background: linear-gradient(to right, transparent, #E1F5FE);
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.god-filter-wrap.at-end::after { opacity: 0; }
+
 .god-filter-row {
   display: flex;
   gap: 12px;
@@ -624,14 +650,14 @@ header {
   outline: 2px solid var(--plum); border-radius: 50%; cursor: text; padding: 0;
 }
 
-/* Song card god badge */
+/* Song card god badge + status row */
 .song-card { position: relative; }
 .song-card-god-badge {
   position: absolute;
   top: 8px;
   right: 8px;
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   overflow: hidden;
   border: 2px solid white;
@@ -642,6 +668,14 @@ header {
   justify-content: center;
 }
 .song-card-god-img { width: 100%; height: 100%; object-fit: cover; }
+.song-card-status {
+  display: flex;
+  justify-content: flex-start;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 1.1rem;
+}
+.song-status-icon.dim { opacity: 0.22; }
 
 /* God tag section in song detail */
 .god-tag-section {
@@ -741,11 +775,13 @@ header {
 <header>
   <div class="header-inner">
     <span class="header-title">Nyra's Bhajans</span>
+    <span class="hdr-play-label">Play:</span>
     <div class="header-play-row">
       <button class="hdr-play-btn" id="hdr-teacher" disabled>🎤 Teacher</button>
       <button class="hdr-play-btn" id="hdr-nyra" disabled>👧 Nyra</button>
       <button class="hdr-play-btn" id="hdr-all" disabled>🔀 All</button>
     </div>
+    <span class="hdr-divider" aria-hidden="true"></span>
     <div class="header-auth">
       <button class="hdr-sign-btn anon-only" id="hdr-sign-in">👤 Sign in</button>
       <div class="write-only hdr-user" id="hdr-user"></div>
