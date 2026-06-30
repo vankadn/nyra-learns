@@ -12,7 +12,7 @@
     app/               Web app (ES modules, no build step)
     worksheets/        Python PDF generator (reportlab)
     CLAUDE.md
-  music/               Bhajans practice player (Drive-backed, Google OAuth)
+  music/               Bhajans practice player (Drive-backed, public read / lazy OAuth for writes)
   math/                (not started — near-term)
   telugu/              (not started — no timeline)
 ```
@@ -56,25 +56,28 @@ Each subfolder = one bhajan, folder name = song name. Files matched by prefix, n
 Special sibling folder `_Gods/` (under `BHAJANS_FOLDER_ID`) stores god avatar images — filtered out of
 the song list. See **God tag/filter** below.
 
-**Auth:** Google Identity Services (GIS), client-side only. Scope: `drive` (full) + `userinfo.profile`.
-No client secret, no backend. Short-lived access token; re-prompts silently if Google session is active.
+**Auth — public read, lazy OAuth for writes:**
+- **Reads** (song list, folder listing, audio, teacher notes, god avatars, revisions) use a Drive API
+  key (`DRIVE_READ_API_KEY`) — no sign-in required. The app opens directly to the song list.
+  Implemented via `readJSON(path)` and `driveMediaUrl(path)` helpers that append `?key={API_KEY}`.
+  Media is served as direct URLs set on `<audio src>` / `<img src>` — no blob fetch, no ObjectURL.
+- **Writes** trigger `ensureAuth()` on first use. `ensureAuth()` calls `requestToken()` (GIS) and
+  fetches `userinfo.profile`. Subsequent writes reuse the short-lived access token; GIS re-prompts
+  silently if the Google session is still active.
+- OAuth scope: `drive` (full) + `userinfo.profile`. Full `drive` scope is required because most files
+  were created outside the app — `drive.file` only covers app-created files.
+- `findGodsFolderId()` — read-only, uses API key, returns null if `_Gods/` not yet created.
+  `ensureGodsFolderId()` — write path only, calls `findGodsFolderId` first then creates if missing.
 
-Full `drive` scope (not `drive.readonly` or `drive.file`) is required because most files were created
-outside the app — `drive.file` only covers files the app itself created, which would exclude all
-pre-existing teacher audio/notes. The scope change triggers a new consent screen on the user's next
-sign-in (tokens aren't persisted, so no migration needed).
-
-**One-time setup after scope change:** in Google Cloud Console → Data Access, add the `drive` scope
-alongside any existing scopes, then save.
-
-**Config:** `music/config.js` holds two values, both committed with real IDs:
+**Config:** `music/config.js` holds three values, all committed with real IDs:
 ```js
-CLIENT_ID          // OAuth Client ID (Web application type, JS origin: https://vankadn.github.io)
-BHAJANS_FOLDER_ID  // Drive folder ID from the URL of the root Bhajans folder
+CLIENT_ID           // OAuth Client ID (Web application type, JS origin: https://vankadn.github.io)
+BHAJANS_FOLDER_ID   // Drive folder ID from the URL of the root Bhajans folder
+DRIVE_READ_API_KEY  // API key for public read access (Drive API, restricted to drive.readonly)
 ```
-Neither is a secret — OAuth Client ID is visible in any browser request; Drive folder ID is in the URL.
-Both are committed directly. To test locally you must add `http://localhost:8000` as an **Authorized
-JavaScript origin** on the OAuth Client ID in Google Cloud Console (takes ~5 min to propagate).
+None are secrets — OAuth Client ID is visible in any browser request; Drive folder ID and API key are
+in browser network requests. All committed directly. To test locally add `http://localhost:8000` as an
+**Authorized JavaScript origin** on the OAuth Client ID in Google Cloud Console (~5 min to propagate).
 
 **Add content flow:** a single "Add content" entry point (button on song list + song view, and CTAs on
 empty states) handles all three content types for any song. Three steps:
@@ -107,8 +110,9 @@ is still shown for any revision not yet marked (e.g. files uploaded via Drive be
 practice", "▶ Everything". Each has an independent 🔀 Shuffle toggle. Queue order is session-only,
 never persisted. "Everything" unshuffled = teacher clip then student clip per song, alphabetical song
 order; shuffled = freely mixed across all tracks. Student queue (and student half of "Everything")
-always uses latest revision only — no revision picker in queue context. Audio blobs are fetched lazily
-(one track at a time, on demand) and revoked on advance. Entering a song view stops the active queue.
+always uses latest revision only — no revision picker in queue context. `queueGoto` is sync — sets
+`audio.src = driveMediaUrl(...)` directly (no blob fetch, no ObjectURL lifecycle). Entering a song
+view stops the active queue.
 
 **God tag/filter:** songs can be tagged with a god (Ganesha, Shiva, Krishna, etc.).
 
@@ -129,8 +133,10 @@ always uses latest revision only — no revision picker in queue context. Audio 
 - Tag stored as `properties.god` (Drive file property) on the song folder. Set/cleared via
   `files.update` PATCH with `{ properties: { god: name } }` or `{ god: null }` to remove.
 - Song list query adds `properties` to `fields` so tags are read in the same round-trip as song names.
-- God avatar blobs tracked in a separate `godBlobUrls` array (not `activeBlobUrls`) so they survive
-  `revokeBlobs()` calls during navigation. `cachedGods` and `godsFolderId` persist for the session.
+- God avatar URLs in `cachedGods[].blobUrl` are direct Drive API URLs (via `driveMediaUrl`), not
+  ObjectURLs. `godBlobUrls` now only holds local ObjectURLs created from just-uploaded photo blobs
+  (in `showAddGodForm`) — these must survive `revokeBlobs()` calls, hence the separate array.
+  `cachedGods` and `godsFolderId` persist for the session.
 - Filter row (horizontal scroll, FB-chat-style) above the song grid: "All" → clear filter; god avatar →
   show only that god's songs; "+" → `showAddGodForm()`. Filter state in `activeGodFilter`.
   Gods without a photo show a 🖌️ mini-button below their chip; clicking opens `showEmojiInputInline()`
