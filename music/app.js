@@ -36,6 +36,19 @@ async function makeGodBlobUrl(path) {
   return url;
 }
 
+function getGodAvatar(god) {
+  if (god.blobUrl) return { type: 'image', url: god.blobUrl };
+  if (god.properties?.emoji) return { type: 'emoji', value: god.properties.emoji };
+  return { type: 'emoji', value: '🛕' };
+}
+
+function godAvatarHtml(god, imgClass = 'god-chip-img') {
+  const av = getGodAvatar(god);
+  return av.type === 'image'
+    ? `<img src="${esc(av.url)}" class="${imgClass}" alt="${esc(god.name)}">`
+    : `<span class="god-emoji-avatar">${av.value}</span>`;
+}
+
 // --- Auth ---
 
 function initAuth() {
@@ -150,13 +163,15 @@ async function fetchGodsData() {
   try {
     const folderId = await ensureGodsFolderId();
     const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
-    const data = await apiJSON(`files?q=${q}&fields=files(id,name)&orderBy=name`);
+    const data = await apiJSON(`files?q=${q}&fields=files(id,name,mimeType,properties)&orderBy=name`);
     const files = data.files || [];
     const gods = await Promise.all(files.map(async f => {
       const name = f.name.includes('.') ? f.name.substring(0, f.name.lastIndexOf('.')) : f.name;
       let blobUrl = null;
-      try { blobUrl = await makeGodBlobUrl(`files/${f.id}?alt=media`); } catch (_) {}
-      return { name, fileId: f.id, blobUrl };
+      if (f.mimeType?.startsWith('image/')) {
+        try { blobUrl = await makeGodBlobUrl(`files/${f.id}?alt=media`); } catch (_) {}
+      }
+      return { name, fileId: f.id, blobUrl, properties: f.properties || {} };
     }));
     cachedGods = gods;
     return gods;
@@ -183,15 +198,19 @@ function addContentBtnHtml() {
 
 function godFilterRowHtml(gods) {
   const allActive = !activeGodFilter;
-  const godChips = (gods || []).map(g => `
-    <button class="god-chip${activeGodFilter === g.name ? ' active' : ''}" data-god="${esc(g.name)}">
-      <div class="god-chip-circle">
-        ${g.blobUrl
-          ? `<img src="${esc(g.blobUrl)}" class="god-chip-img" alt="${esc(g.name)}">`
-          : `<span class="god-chip-initial">${esc(g.name[0])}</span>`}
-      </div>
-      <span class="god-chip-label">${esc(g.name)}</span>
-    </button>`).join('');
+  const godChips = (gods || []).map(g => {
+    const noPhoto = !g.blobUrl;
+    return `
+    <div class="god-chip-wrap">
+      <button class="god-chip${activeGodFilter === g.name ? ' active' : ''}" data-god="${esc(g.name)}">
+        <div class="god-chip-circle">
+          ${godAvatarHtml(g)}
+        </div>
+        <span class="god-chip-label">${esc(g.name)}</span>
+      </button>
+      ${noPhoto ? `<button class="god-emoji-mini-btn" data-god-name="${esc(g.name)}" title="Set emoji">🖌️</button>` : ''}
+    </div>`;
+  }).join('');
   return `
     <div class="god-filter-row">
       <button class="god-chip god-chip-all${allActive ? ' active' : ''}" data-god="">
@@ -217,6 +236,16 @@ function wireGodFilter(songs, gods) {
         const match = !activeGodFilter || card.dataset.god === activeGodFilter;
         card.style.display = match ? '' : 'none';
       });
+    });
+  });
+  document.querySelectorAll('.god-emoji-mini-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const godName = btn.dataset.godName;
+      const god = (cachedGods || []).find(g => g.name === godName);
+      if (!god) return;
+      const circle = btn.closest('.god-chip-wrap')?.querySelector('.god-chip-circle');
+      if (circle) showEmojiInputInline(god, circle, () => { circle.innerHTML = godAvatarHtml(god); });
     });
   });
   const addBtn = document.getElementById('god-add-btn');
@@ -456,9 +485,7 @@ async function showSongList() {
           const godObj = gods.find(g => g.name === songGod);
           const badgeHtml = godObj ? `
             <div class="song-card-god-badge">
-              ${godObj.blobUrl
-                ? `<img src="${esc(godObj.blobUrl)}" class="song-card-god-img" alt="${esc(godObj.name)}">`
-                : `<span class="god-chip-initial">${esc(godObj.name[0])}</span>`}
+              ${godAvatarHtml(godObj, 'song-card-god-img')}
             </div>` : '';
           const hidden = activeGodFilter && songGod !== activeGodFilter ? ' style="display:none"' : '';
           return `
@@ -663,21 +690,31 @@ function renderGodTagSection(folderId, songName, godTag, cachedSongs) {
   if (!container) return;
   const gods = cachedGods || [];
   const godObj = godTag ? gods.find(g => g.name === godTag) : null;
+  const noPhoto = godObj && !godObj.blobUrl;
 
   container.innerHTML = `
     <div class="god-tag-section">
       ${godObj ? `
         <div class="god-tag-display">
-          <div class="god-tag-avatar">
-            ${godObj.blobUrl
-              ? `<img src="${esc(godObj.blobUrl)}" class="god-chip-img" alt="${esc(godObj.name)}">`
-              : `<span class="god-chip-initial">${esc(godObj.name[0])}</span>`}
+          <div class="god-tag-avatar" id="god-tag-avatar-el">
+            ${godAvatarHtml(godObj)}
           </div>
           <span class="god-tag-name">${esc(godObj.name)}</span>
+          ${noPhoto ? `<button class="god-emoji-edit-btn" id="god-emoji-edit-btn" title="Choose emoji">🖌️</button>` : ''}
           <button class="god-tag-btn" id="god-tag-change">Change</button>
         </div>` : `
         <button class="god-tag-btn god-tag-btn-add" id="god-tag-add">🙏 Tag with god</button>`}
     </div>`;
+
+  if (noPhoto) {
+    const editBtn = document.getElementById('god-emoji-edit-btn');
+    if (editBtn) editBtn.onclick = () => {
+      const avatarEl = document.getElementById('god-tag-avatar-el');
+      if (avatarEl) showEmojiInputInline(godObj, avatarEl, () =>
+        renderGodTagSection(folderId, songName, godTag, cachedSongs)
+      );
+    };
+  }
 
   const trigger = document.getElementById('god-tag-change') || document.getElementById('god-tag-add');
   if (trigger) trigger.onclick = () => showInlineGodPicker(folderId, songName, container, gods, cachedSongs);
@@ -687,9 +724,7 @@ function showInlineGodPicker(folderId, songName, container, gods, cachedSongs) {
   const godOptions = gods.map(g => `
     <button class="god-picker-option" data-god="${esc(g.name)}">
       <div class="god-chip-circle">
-        ${g.blobUrl
-          ? `<img src="${esc(g.blobUrl)}" class="god-chip-img" alt="${esc(g.name)}">`
-          : `<span class="god-chip-initial">${esc(g.name[0])}</span>`}
+        ${godAvatarHtml(g)}
       </div>
       <span>${esc(g.name)}</span>
     </button>`).join('');
@@ -733,6 +768,7 @@ function showInlineGodPicker(folderId, songName, container, gods, cachedSongs) {
 
 async function showAddGodForm(fromSong, cachedSongs) {
   let addGodBlob = null, addGodMime = null, addGodExt = null, addGodPreviewUrl = null;
+  let addGodEmoji = '';
 
   const render = () => {
     if (addGodPreviewUrl) {
@@ -757,7 +793,10 @@ async function showAddGodForm(fromSong, cachedSongs) {
           <input type="file" id="god-img-file" accept="image/*" style="display:none">
         </div>
         ${addGodPreviewUrl ? `<div class="god-preview"><img src="${esc(addGodPreviewUrl)}" class="god-preview-img" alt="Preview"></div>` : ''}
-        <button class="btn-primary" id="god-save-btn"${addGodBlob ? '' : ' disabled'} style="margin-top:16px">Save god</button>
+        <label class="add-god-label" style="margin-top:12px">Emoji</label>
+        <input type="text" id="god-emoji-field" class="god-emoji-field" placeholder="🕉️" maxlength="8" value="${esc(addGodEmoji)}">
+        <p class="add-god-hint">Optional — used if no photo is added</p>
+        <button class="btn-primary" id="god-save-btn" style="margin-top:16px">Save god</button>
       </div>`);
 
     document.getElementById('wizard-cancel').onclick = () => {
@@ -774,21 +813,35 @@ async function showAddGodForm(fromSong, cachedSongs) {
       render();
     };
 
+    document.getElementById('god-emoji-field').addEventListener('input', e => {
+      const capped = Array.from(e.target.value).slice(0, 1).join('');
+      e.target.value = capped;
+      addGodEmoji = capped;
+    });
+
     document.getElementById('god-save-btn').onclick = async () => {
       const name = document.getElementById('god-name-input')?.value.trim();
-      if (!name || !addGodBlob) return;
+      if (!name) return;
       const btn = document.getElementById('god-save-btn');
       btn.disabled = true; btn.textContent = 'Saving…';
       try {
         const folderId = await ensureGodsFolderId();
-        const file = await driveUpload(
-          { name: `${name}.${addGodExt}`, mimeType: addGodMime, parents: [folderId] },
-          addGodBlob
-        );
+        const emojiProp = addGodEmoji ? { properties: { emoji: addGodEmoji } } : {};
+        let file;
+        if (addGodBlob) {
+          file = await driveUpload(
+            { name: `${name}.${addGodExt}`, mimeType: addGodMime, parents: [folderId], ...emojiProp },
+            addGodBlob
+          );
+        } else {
+          file = await apiPost('files', { name: `${name}.txt`, mimeType: 'text/plain', parents: [folderId], ...emojiProp });
+        }
         let blobUrl = null;
-        try { blobUrl = await makeGodBlobUrl(`files/${file.id}?alt=media`); } catch (_) {}
+        if (addGodBlob) {
+          try { blobUrl = await makeGodBlobUrl(`files/${file.id}?alt=media`); } catch (_) {}
+        }
         if (!cachedGods) cachedGods = [];
-        cachedGods.push({ name, fileId: file.id, blobUrl });
+        cachedGods.push({ name, fileId: file.id, blobUrl, properties: addGodEmoji ? { emoji: addGodEmoji } : {} });
         cachedGods.sort((a, b) => a.name.localeCompare(b.name));
         if (fromSong) {
           await driveUpdateProperties(fromSong.id, { god: name });
@@ -804,6 +857,41 @@ async function showAddGodForm(fromSong, cachedSongs) {
   };
 
   render();
+}
+
+async function showEmojiInputInline(god, targetEl, onDone) {
+  let saved = false;
+  const prevHtml = targetEl.innerHTML;
+
+  targetEl.innerHTML = `<input type="text" class="god-emoji-input" placeholder="😊" maxlength="8" value="${esc(god.properties?.emoji || '')}">`;
+  const input = targetEl.querySelector('.god-emoji-input');
+  input.focus();
+  input.select();
+
+  async function save() {
+    if (saved) return;
+    const graphemes = Array.from(input.value.trim());
+    if (graphemes.length === 0) { saved = true; targetEl.innerHTML = prevHtml; onDone(); return; }
+    if (graphemes.length !== 1) {
+      input.style.outline = '2px solid #E53935';
+      setTimeout(() => { if (input.isConnected) input.style.outline = ''; }, 900);
+      return;
+    }
+    saved = true;
+    const emoji = graphemes[0];
+    try {
+      await driveUpdateProperties(god.fileId, { emoji });
+      const entry = (cachedGods || []).find(g => g.name === god.name);
+      if (entry) { if (!entry.properties) entry.properties = {}; entry.properties.emoji = emoji; }
+    } catch (e) { showError(e.message); }
+    onDone();
+  }
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); save(); }
+    if (e.key === 'Escape') { saved = true; targetEl.innerHTML = prevHtml; }
+  });
+  input.addEventListener('blur', save);
 }
 
 // --- Wizard ---
