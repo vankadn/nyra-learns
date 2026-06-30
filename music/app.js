@@ -1,6 +1,6 @@
 import { CONFIG } from './config.js';
 
-const CONFIGURED = !CONFIG.CLIENT_ID.startsWith('PASTE') && !CONFIG.BHAJANS_FOLDER_ID.startsWith('PASTE');
+const CONFIGURED = !CONFIG.CLIENT_ID.startsWith('PASTE') && !CONFIG.BHAJANS_FOLDER_ID.startsWith('PASTE') && !!CONFIG.DRIVE_READ_API_KEY;
 const BASE = 'https://www.googleapis.com/drive/v3';
 const UPLOAD_BASE = 'https://www.googleapis.com/upload/drive/v3';
 
@@ -29,12 +29,6 @@ function revokeBlobs() {
   activeBlobUrls.length = 0;
 }
 
-async function makeGodBlobUrl(path) {
-  const blob = await (await apiFetch(`${BASE}/${path}`)).blob();
-  const url = URL.createObjectURL(blob);
-  godBlobUrls.push(url);
-  return url;
-}
 
 function getGodAvatar(god) {
   if (god.blobUrl) return { type: 'image', url: god.blobUrl };
@@ -67,6 +61,17 @@ function requestToken(opts = {}) {
   });
 }
 
+async function ensureAuth() {
+  if (accessToken) return;
+  await requestToken();
+  try {
+    const info = await (await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })).json();
+    currentUser = info;
+  } catch (_) {}
+}
+
 // --- Drive API ---
 
 async function apiFetch(url) {
@@ -80,6 +85,15 @@ async function apiFetch(url) {
 }
 
 const apiJSON = async path => (await apiFetch(`${BASE}/${path}`)).json();
+
+// Read-only helpers — use API key, no OAuth required
+const readUrl = path => `${BASE}/${path}${path.includes('?') ? '&' : '?'}key=${CONFIG.DRIVE_READ_API_KEY}`;
+const readJSON = async path => {
+  const r = await fetch(readUrl(path));
+  if (!r.ok) throw new Error(`Drive API error ${r.status}`);
+  return r.json();
+};
+const driveMediaUrl = path => readUrl(path);
 
 async function apiPost(path, body) {
   const doFetch = () => fetch(`${BASE}/${path}`, {
@@ -122,10 +136,6 @@ async function driveUpload(metadata, blob, fileId = null) {
   return resp.json();
 }
 
-async function makeBlobUrl(path) {
-  const blob = await (await apiFetch(`${BASE}/${path}`)).blob();
-  return trackBlob(URL.createObjectURL(blob));
-}
 
 async function driveUpdateProperties(fileId, props) {
   const doFetch = () => fetch(`${BASE}/files/${fileId}`, {
@@ -139,42 +149,42 @@ async function driveUpdateProperties(fileId, props) {
   return resp.json();
 }
 
-async function ensureGodsFolderId() {
+async function findGodsFolderId() {
   if (godsFolderId) return godsFolderId;
   const q = encodeURIComponent(
     `'${CONFIG.BHAJANS_FOLDER_ID}' in parents and name='_Gods' and mimeType='application/vnd.google-apps.folder' and trashed=false`
   );
-  const data = await apiJSON(`files?q=${q}&fields=files(id)`);
-  if (data.files && data.files.length) {
-    godsFolderId = data.files[0].id;
-  } else {
-    const folder = await apiPost('files', {
-      name: '_Gods',
-      mimeType: 'application/vnd.google-apps.folder',
-      parents: [CONFIG.BHAJANS_FOLDER_ID],
-    });
-    godsFolderId = folder.id;
-  }
+  const data = await readJSON(`files?q=${q}&fields=files(id)`);
+  if (data.files?.length) godsFolderId = data.files[0].id;
+  return godsFolderId; // null if not yet created
+}
+
+async function ensureGodsFolderId() {
+  const found = await findGodsFolderId();
+  if (found) return found;
+  const folder = await apiPost('files', {
+    name: '_Gods',
+    mimeType: 'application/vnd.google-apps.folder',
+    parents: [CONFIG.BHAJANS_FOLDER_ID],
+  });
+  godsFolderId = folder.id;
   return godsFolderId;
 }
 
 async function fetchGodsData() {
   if (cachedGods !== null) return cachedGods;
   try {
-    const folderId = await ensureGodsFolderId();
+    const folderId = await findGodsFolderId();
+    if (!folderId) { cachedGods = []; return []; }
     const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
-    const data = await apiJSON(`files?q=${q}&fields=files(id,name,mimeType,properties)&orderBy=name`);
+    const data = await readJSON(`files?q=${q}&fields=files(id,name,mimeType,properties)&orderBy=name`);
     const files = data.files || [];
-    const gods = await Promise.all(files.map(async f => {
+    cachedGods = files.map(f => {
       const name = f.name.includes('.') ? f.name.substring(0, f.name.lastIndexOf('.')) : f.name;
-      let blobUrl = null;
-      if (f.mimeType?.startsWith('image/')) {
-        try { blobUrl = await makeGodBlobUrl(`files/${f.id}?alt=media`); } catch (_) {}
-      }
+      const blobUrl = f.mimeType?.startsWith('image/') ? driveMediaUrl(`files/${f.id}?alt=media`) : null;
       return { name, fileId: f.id, blobUrl, properties: f.properties || {} };
-    }));
-    cachedGods = gods;
-    return gods;
+    });
+    return cachedGods;
   } catch (_) {
     cachedGods = [];
     return [];
@@ -239,8 +249,9 @@ function wireGodFilter(songs, gods) {
     });
   });
   document.querySelectorAll('.god-emoji-mini-btn').forEach(btn => {
-    btn.addEventListener('click', e => {
+    btn.addEventListener('click', async e => {
       e.stopPropagation();
+      try { await ensureAuth(); } catch (e) { showError(e.message); return; }
       const godName = btn.dataset.godName;
       const god = (cachedGods || []).find(g => g.name === godName);
       if (!god) return;
@@ -249,7 +260,10 @@ function wireGodFilter(songs, gods) {
     });
   });
   const addBtn = document.getElementById('god-add-btn');
-  if (addBtn) addBtn.onclick = () => showAddGodForm(null, songs, gods);
+  if (addBtn) addBtn.onclick = async () => {
+    try { await ensureAuth(); } catch (e) { showError(e.message); return; }
+    showAddGodForm(null, songs, gods);
+  };
 }
 
 function typeLabel(type) {
@@ -280,11 +294,6 @@ function shuffleArray(arr) {
 
 function stopQueue() {
   if (!queue) return;
-  if (queue.currentBlobUrl) {
-    URL.revokeObjectURL(queue.currentBlobUrl);
-    const idx = activeBlobUrls.indexOf(queue.currentBlobUrl);
-    if (idx !== -1) activeBlobUrls.splice(idx, 1);
-  }
   queue = null;
   const bar = document.getElementById('queue-bar');
   if (bar) bar.innerHTML = '';
@@ -333,40 +342,18 @@ function renderQueuePlayer() {
   });
 }
 
-async function queueGoto(cursor) {
+function queueGoto(cursor) {
   if (!queue) return;
-  const prevUrl = queue.currentBlobUrl;
   queue.cursor = cursor;
-  queue.currentBlobUrl = null;
   updateQueueNav();
-
   const track = queue.tracks[queue.order[cursor]];
   const labelEl = document.getElementById('queue-label');
   if (labelEl) labelEl.textContent = queueTrackLabel(track, cursor, queue.order.length);
-
-  const audioEl = document.getElementById('queue-audio');
-  if (audioEl) { audioEl.removeAttribute('src'); audioEl.load(); }
-
-  try {
-    const url = await makeBlobUrl(`files/${track.fileId}?alt=media`);
-
-    if (!queue || queue.cursor !== cursor) { URL.revokeObjectURL(url); return; }
-
-    if (prevUrl) {
-      URL.revokeObjectURL(prevUrl);
-      const idx = activeBlobUrls.indexOf(prevUrl);
-      if (idx !== -1) activeBlobUrls.splice(idx, 1);
-    }
-
-    queue.currentBlobUrl = url;
-    const audio = document.getElementById('queue-audio');
-    if (audio) {
-      audio.src = url;
-      audio.load();
-      audio.play().catch(() => {});
-    }
-  } catch (e) {
-    if (queue) showError('Could not load track: ' + e.message);
+  const audio = document.getElementById('queue-audio');
+  if (audio) {
+    audio.src = driveMediaUrl(`files/${track.fileId}?alt=media`);
+    audio.load();
+    audio.play().catch(() => {});
   }
 }
 
@@ -379,7 +366,7 @@ async function startQueue(songs, mode, isShuffled) {
   try {
     const folderContents = await Promise.all(songs.map(async s => {
       const q = encodeURIComponent(`'${s.id}' in parents and trashed=false`);
-      const data = await apiJSON(`files?q=${q}&fields=files(id,name)`);
+      const data = await readJSON(`files?q=${q}&fields=files(id,name)`);
       return { song: s, files: data.files || [] };
     }));
 
@@ -404,7 +391,7 @@ async function startQueue(songs, mode, isShuffled) {
 
     const indices = tracks.map((_, i) => i);
     const order = isShuffled ? shuffleArray(indices) : indices;
-    queue = { tracks, order, cursor: 0, currentBlobUrl: null, showType: mode === 'both' };
+    queue = { tracks, order, cursor: 0, showType: mode === 'both' };
     renderQueuePlayer();
     await queueGoto(0);
 
@@ -416,35 +403,6 @@ async function startQueue(songs, mode, isShuffled) {
 
 // --- Views ---
 
-function showSignIn() {
-  app().innerHTML = `
-    <div class="sign-in-screen">
-      <div class="sign-in-card">
-        <div class="sign-in-icon">🎵</div>
-        <h2>Nyra's Bhajan Practice</h2>
-        <p>Sign in to listen to bhajans and practice takes</p>
-        <button id="sign-in-btn" class="btn-primary">Sign in with Google</button>
-      </div>
-    </div>`;
-
-  document.getElementById('sign-in-btn').onclick = async () => {
-    const btn = document.getElementById('sign-in-btn');
-    btn.disabled = true;
-    btn.textContent = 'Signing in…';
-    try {
-      await requestToken();
-      const info = await (await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      })).json();
-      currentUser = info;
-      await showSongList();
-    } catch (e) {
-      btn.disabled = false;
-      btn.textContent = 'Sign in with Google';
-      showError(e.message);
-    }
-  };
-}
 
 async function showSongList() {
   app().innerHTML = `<div class="loading">Loading songs…</div>`;
@@ -454,7 +412,7 @@ async function showSongList() {
       `'${CONFIG.BHAJANS_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`
     );
     const [songData, gods] = await Promise.all([
-      apiJSON(`files?q=${q}&fields=files(id,name,properties)&orderBy=name`),
+      readJSON(`files?q=${q}&fields=files(id,name,properties)&orderBy=name`),
       fetchGodsData(),
     ]);
     const songs = (songData.files || []).filter(f => f.name !== '_Gods');
@@ -468,7 +426,10 @@ async function showSongList() {
           <button class="btn-add-cta" id="cta-first">+ Add your first bhajan</button>
         </div>`;
       wireGodFilter([], gods);
-      document.getElementById('cta-first').onclick = () => startWizard({ songs: [] });
+      document.getElementById('cta-first').onclick = async () => {
+        try { await ensureAuth(); } catch (e) { showError(e.message); return; }
+        startWizard({ songs: [] });
+      };
       return;
     }
 
@@ -511,7 +472,10 @@ async function showSongList() {
         </div>
       </div>`;
 
-    document.getElementById('add-content-btn').onclick = () => startWizard({ songs });
+    document.getElementById('add-content-btn').onclick = async () => {
+      try { await ensureAuth(); } catch (e) { showError(e.message); return; }
+      startWizard({ songs });
+    };
     wireGodFilter(songs, gods);
 
     app().querySelectorAll('.song-card').forEach(card =>
@@ -561,14 +525,16 @@ async function showSong(folderId, songName, cachedSongs = null) {
     </div>`;
 
   document.getElementById('back-btn').addEventListener('click', () => showSongList());
-  document.getElementById('add-content-btn').onclick = () =>
+  document.getElementById('add-content-btn').onclick = async () => {
+    try { await ensureAuth(); } catch (e) { showError(e.message); return; }
     startWizard({ fromSong, songs: cachedSongs, presetSong: fromSong });
+  };
 
   try {
     const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
     const [data, folderMeta] = await Promise.all([
-      apiJSON(`files?q=${q}&fields=files(id,name)`),
-      apiJSON(`files/${folderId}?fields=properties`),
+      readJSON(`files?q=${q}&fields=files(id,name)`),
+      readJSON(`files/${folderId}?fields=properties`),
     ]);
     const files = data.files || [];
     const godTag = folderMeta.properties?.god || null;
@@ -586,25 +552,19 @@ async function showSong(folderId, songName, cachedSongs = null) {
       document.getElementById('teacher-status').outerHTML = `
         <p class="hint">No teacher files in this folder yet.</p>
         <button class="btn-add-cta" id="cta-teacher">+ Add teacher content</button>`;
-      document.getElementById('cta-teacher').onclick = () =>
+      document.getElementById('cta-teacher').onclick = async () => {
+        try { await ensureAuth(); } catch (e) { showError(e.message); return; }
         startWizard({ fromSong, songs: cachedSongs, presetSong: fromSong });
+      };
     } else {
       document.getElementById('teacher-status').remove();
       if (teacherAudio) {
-        teacherEl.insertAdjacentHTML('beforeend', `<div id="ta-wrap"><span class="loading-inline">Loading audio…</span></div>`);
-        makeBlobUrl(`files/${teacherAudio.id}?alt=media`).then(url => {
-          document.getElementById('ta-wrap').innerHTML = `<audio controls src="${url}" class="audio-player"></audio>`;
-        }).catch(() => {
-          document.getElementById('ta-wrap').innerHTML = `<p class="hint">Could not load teacher audio.</p>`;
-        });
+        teacherEl.insertAdjacentHTML('beforeend',
+          `<audio controls src="${driveMediaUrl(`files/${teacherAudio.id}?alt=media`)}" class="audio-player"></audio>`);
       }
       if (teacherNotes) {
-        teacherEl.insertAdjacentHTML('beforeend', `<div id="tn-wrap"><span class="loading-inline">Loading notes…</span></div>`);
-        makeBlobUrl(`files/${teacherNotes.id}?alt=media`).then(url => {
-          document.getElementById('tn-wrap').innerHTML = `<img src="${url}" class="notes-img" alt="Teacher notes">`;
-        }).catch(() => {
-          document.getElementById('tn-wrap').innerHTML = `<p class="hint">Could not load teacher notes image.</p>`;
-        });
+        teacherEl.insertAdjacentHTML('beforeend',
+          `<img src="${driveMediaUrl(`files/${teacherNotes.id}?alt=media`)}" class="notes-img" alt="Teacher notes">`);
       }
     }
 
@@ -614,15 +574,15 @@ async function showSong(folderId, songName, cachedSongs = null) {
       document.getElementById('student-status').outerHTML = `
         <p class="hint">No practice take yet.</p>
         <button class="btn-add-cta" id="cta-practice">+ Add a practice take</button>`;
-      document.getElementById('cta-practice').onclick = () =>
+      document.getElementById('cta-practice').onclick = async () => {
+        try { await ensureAuth(); } catch (e) { showError(e.message); return; }
         startWizard({ fromSong, songs: cachedSongs, presetType: 'student-practice', presetSong: fromSong });
+      };
       return;
     }
 
-    const [latestUrl, revData] = await Promise.all([
-      makeBlobUrl(`files/${studentFile.id}?alt=media`),
-      apiJSON(`files/${studentFile.id}/revisions?fields=revisions(id,modifiedTime,keepForever)`),
-    ]);
+    const latestUrl = driveMediaUrl(`files/${studentFile.id}?alt=media`);
+    const revData = await readJSON(`files/${studentFile.id}/revisions?fields=revisions(id,modifiedTime,keepForever)`);
 
     const revisions = (revData.revisions || []).reverse();
     const latestRevId = revisions[0]?.id;
@@ -653,28 +613,13 @@ async function showSong(folderId, songName, cachedSongs = null) {
         </div>` : ''}`);
 
     if (revisions.length > 1) {
-      let currentAudioUrl = latestUrl;
-      document.getElementById('rev-picker').addEventListener('change', async function() {
-        const revId = this.value;
+      document.getElementById('rev-picker').addEventListener('change', function() {
+        const url = this.value === latestRevId
+          ? latestUrl
+          : driveMediaUrl(`files/${studentFile.id}/revisions/${this.value}?alt=media`);
         const audioEl = document.getElementById('student-audio');
-        audioEl.removeAttribute('src');
+        audioEl.src = url;
         audioEl.load();
-        this.disabled = true;
-
-        const prevUrl = currentAudioUrl;
-        try {
-          const url = revId === latestRevId
-            ? latestUrl
-            : await makeBlobUrl(`files/${studentFile.id}/revisions/${revId}?alt=media`);
-          if (prevUrl !== latestUrl) URL.revokeObjectURL(prevUrl);
-          currentAudioUrl = url;
-          audioEl.src = url;
-          audioEl.load();
-        } catch (e) {
-          showError(e.message);
-        } finally {
-          this.disabled = false;
-        }
       });
     }
 
@@ -708,7 +653,8 @@ function renderGodTagSection(folderId, songName, godTag, cachedSongs) {
 
   if (noPhoto) {
     const editBtn = document.getElementById('god-emoji-edit-btn');
-    if (editBtn) editBtn.onclick = () => {
+    if (editBtn) editBtn.onclick = async () => {
+      try { await ensureAuth(); } catch (e) { showError(e.message); return; }
       const avatarEl = document.getElementById('god-tag-avatar-el');
       if (avatarEl) showEmojiInputInline(godObj, avatarEl, () =>
         renderGodTagSection(folderId, songName, godTag, cachedSongs)
@@ -749,6 +695,7 @@ function showInlineGodPicker(folderId, songName, container, gods, cachedSongs) {
 
   container.querySelectorAll('.god-picker-option[data-god]').forEach(btn => {
     btn.onclick = async () => {
+      try { await ensureAuth(); } catch (e) { showError(e.message); return; }
       const newGod = btn.dataset.god || null;
       container.innerHTML = `<div class="god-tag-section"><span class="loading-inline">Saving…</span></div>`;
       try {
@@ -762,8 +709,10 @@ function showInlineGodPicker(folderId, songName, container, gods, cachedSongs) {
   });
 
   const pickerAddBtn = document.getElementById('picker-add-god');
-  if (pickerAddBtn) pickerAddBtn.onclick = () =>
+  if (pickerAddBtn) pickerAddBtn.onclick = async () => {
+    try { await ensureAuth(); } catch (e) { showError(e.message); return; }
     showAddGodForm({ id: folderId, name: songName }, cachedSongs);
+  };
 }
 
 async function showAddGodForm(fromSong, cachedSongs) {
@@ -838,7 +787,8 @@ async function showAddGodForm(fromSong, cachedSongs) {
         }
         let blobUrl = null;
         if (addGodBlob) {
-          try { blobUrl = await makeGodBlobUrl(`files/${file.id}?alt=media`); } catch (_) {}
+          blobUrl = URL.createObjectURL(addGodBlob);
+          godBlobUrls.push(blobUrl);
         }
         if (!cachedGods) cachedGods = [];
         cachedGods.push({ name, fileId: file.id, blobUrl, properties: addGodEmoji ? { emoji: addGodEmoji } : {} });
@@ -1223,7 +1173,7 @@ function boot() {
     return;
   }
   initAuth();
-  showSignIn();
+  showSongList();
 }
 
 if (document.readyState === 'loading') {
