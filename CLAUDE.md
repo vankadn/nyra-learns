@@ -119,7 +119,50 @@ write surfaces carry class `write-only`; CSS rule `body.anon .write-only { displ
 hides them globally — no re-render needed on sign-in. A "👤 Sign in" button (class `anon-only`)
 sits top-right in the header; clicking it calls `ensureAuth()` → on success `onSignIn()` removes
 `body.anon` and populates the header user pill. Hidden write surfaces: Add content buttons, empty-
-state CTAs, god filter + button, god emoji mini/edit buttons, god tag Change/Tag buttons.
+state CTAs, god filter + button, god emoji mini/edit buttons, god tag Change/Tag buttons, the ⚙️
+student settings button.
+
+**Students (multi-student support):** a folder can have any number of students (siblings sharing
+one Bhajans folder). Stored as a single Drive **folder property** on the active song-parent folder
+(`ACTIVE_FOLDER_ID`): `properties.students` is a JSON-stringified array of `{ name, gender, age }`
+(`gender` is `'girl'|'boy'|'other'`). No new file, no new API surface — same mechanism as the god
+emoji property, just one property holding serialized JSON instead of one property per field.
+- **Read:** `fetchFolderProfile()` at boot parses `properties.students` via the read API key
+  (`readJSON`, no auth) into `cachedStudents`. **Migration:** if `properties.students` is absent but
+  the older single-child `properties.childName` (from a prior version of this app) is present, it's
+  converted in-memory into a one-entry `cachedStudents` array; the legacy keys are only cleared from
+  Drive the next time something writes via `saveStudents()` (settings or the wizard's inline
+  "+ Add Student").
+- **Write:** `saveStudents(updated)` PATCHes `{ properties: { students: JSON.stringify(updated),
+  childName: null, gender: null, age: null } }` via the existing `driveUpdateProperties` helper —
+  the null keys complete the migration cleanup. Called from the write-only ⚙️ settings view
+  (`showSettings()` → list with edit/remove, `showStudentForm()` add/edit) and from the wizard's
+  student picker when a new student is created inline. All paths gated behind `ensureAuth()`.
+- **Header:** `applyHeaderUI()` shows `"{name}'s Bhajans"` only when there's exactly one student,
+  else the bare `"Bhajans"` (same rule for the `<title>` tag). It also calls
+  `renderHeaderPlayPills()`, which rebuilds the header's play-queue pills from scratch: Teacher,
+  one pill per student, then All — replacing the old fixed 3-button markup. `wireHeaderPlayButtons`
+  re-queries `#header-play-row .hdr-play-btn` and re-wires after every students-array mutation.
+- **Per-student practice files:** prefix convention is `student-{name}-practice.*` (was the bare
+  `student-practice.*` before multi-student support). `matchStudentFile(files, studentName)` looks
+  for the name-specific prefix first, then falls back to the bare legacy prefix **only when there's
+  exactly one student** — this keeps pre-existing single-child recordings visible/playable and
+  correctly matched for `files.update` (preserving revision history) without any one-time file
+  migration. Used consistently by the song list rows, song detail sections, queue building, and
+  `saveContent()`.
+- **Song cards:** each card shows one row per student below the title (plus a Teacher row), built in
+  `showSongList()` from a per-song file listing fetched alongside the song list. Filled rows (file
+  exists) play inline via `playSingleTrack()`; dimmed rows (`opacity: 0.3`, no file) open the Add
+  Content wizard preset to that exact student/type, skipping both the type and student picker steps.
+- **Song detail view:** one section per student (`renderStudentPracticeSection`), each with its own
+  revision picker/age-warning, mirroring what was previously a single hardcoded section.
+- **Wizard:** picking "practice take" only shows a student picker (`showWizardStudent()`, with its
+  own inline "+ Add Student") when there are 2+ students; with exactly one it's auto-selected, and
+  it's skipped entirely whenever the caller already knows the student (e.g. a song-card row or a
+  song-detail "+ Add a practice take" CTA for a specific student).
+- Renaming a student in settings only updates `properties.students` — it deliberately does **not**
+  rename any Drive files (the UI shows a warning when the name field changes), since the old
+  recordings would otherwise become permanently orphaned from a mismatched prefix.
 
 **God tag/filter:** songs can be tagged with a god (Ganesha, Shiva, Krishna, etc.).
 
@@ -225,3 +268,9 @@ get a Client ID" guide for parents — the code change is smaller than the docs.
 - Does the read API key also become per-family, or stays shared? (Leaning: stays shared — harmless.)
 - Should the settings UI validate the Client ID format before saving to fail fast?
 - Worth a "try with our demo folder first" fallback before they set up their own Drive?
+
+## Future scope: age/gender-based themes (Music app)
+
+**Status:** Not started. Multiple students per folder is now built (see "Students" above) — each
+student already carries a `gender`/`age`. Not yet used for anything beyond the row icon
+(`genderIcon()`): no visual theming (colors, avatars, copy tone) driven by age or gender yet.

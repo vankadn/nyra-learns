@@ -1,6 +1,7 @@
 import { CONFIG } from './config.js';
 
 const CONFIGURED = !CONFIG.CLIENT_ID.startsWith('PASTE') && !CONFIG.BHAJANS_FOLDER_ID.startsWith('PASTE') && !!CONFIG.DRIVE_READ_API_KEY;
+const ACTIVE_FOLDER_ID = new URLSearchParams(window.location.search).get('folderId') || CONFIG.BHAJANS_FOLDER_ID;
 const BASE = 'https://www.googleapis.com/drive/v3';
 const UPLOAD_BASE = 'https://www.googleapis.com/upload/drive/v3';
 
@@ -18,6 +19,12 @@ let queue = null;
 
 // Songs cached by showSongList for header play buttons
 let cachedSongsList = null;
+
+// Students — folder property `students` (JSON string of [{name, gender, age}])
+let cachedStudents = [];
+
+const GENDER_ICON = { girl: '👧', boy: '👦', other: '🧒' };
+function genderIcon(gender) { return GENDER_ICON[gender] || '🧒'; }
 
 // God filter state — persists for the session (survive revokeBlobs)
 let godsFolderId = null;
@@ -93,6 +100,46 @@ function onSignIn() {
     const avatar = currentUser.picture ? `<img src="${esc(currentUser.picture)}" class="user-avatar" alt="">` : '';
     userEl.innerHTML = `<div class="user-pill">${avatar}<span>${esc(currentUser.name)}</span></div>`;
   }
+}
+
+// --- Students (folder property: students, JSON array of {name, gender, age}) ---
+
+async function fetchFolderProfile() {
+  try {
+    const data = await readJSON(`files/${ACTIVE_FOLDER_ID}?fields=properties`);
+    const props = data.properties || {};
+    if (props.students) {
+      try { cachedStudents = JSON.parse(props.students) || []; } catch (_) { cachedStudents = []; }
+    } else if (props.childName) {
+      // Migration from the single-child schema (properties.childName/gender/age)
+      cachedStudents = [{ name: props.childName, gender: props.gender || '', age: props.age || '' }];
+    } else {
+      cachedStudents = [];
+    }
+  } catch (_) {
+    cachedStudents = [];
+  }
+  applyHeaderUI();
+}
+
+// Matches a student's practice file by the new `student-{name}-practice.*` prefix. Falls back to
+// the pre-multi-student `student-practice.*` prefix when there's exactly one student, so existing
+// recordings saved before this feature keep showing up (see driveUpload's rename-preserving policy).
+function matchStudentFile(files, studentName) {
+  const specific = files.find(f => f.name.toLowerCase().startsWith(`student-${studentName}-practice`.toLowerCase()));
+  if (specific) return specific;
+  if (cachedStudents.length === 1) {
+    return files.find(f => f.name.toLowerCase().startsWith('student-practice'));
+  }
+  return null;
+}
+
+function applyHeaderUI() {
+  const single = cachedStudents.length === 1 ? cachedStudents[0].name : null;
+  document.title = single ? `${single}'s Bhajan Practice` : 'Bhajan Practice';
+  const titleEl = document.getElementById('header-title');
+  if (titleEl) titleEl.textContent = single ? `${single}'s Bhajans` : 'Bhajans';
+  renderHeaderPlayPills();
 }
 
 // --- Drive API ---
@@ -175,7 +222,7 @@ async function driveUpdateProperties(fileId, props) {
 async function findGodsFolderId() {
   if (godsFolderId) return godsFolderId;
   const q = encodeURIComponent(
-    `'${CONFIG.BHAJANS_FOLDER_ID}' in parents and name='_Gods' and mimeType='application/vnd.google-apps.folder' and trashed=false`
+    `'${ACTIVE_FOLDER_ID}' in parents and name='_Gods' and mimeType='application/vnd.google-apps.folder' and trashed=false`
   );
   const data = await readJSON(`files?q=${q}&fields=files(id)`);
   if (data.files?.length) godsFolderId = data.files[0].id;
@@ -188,7 +235,7 @@ async function ensureGodsFolderId() {
   const folder = await apiPost('files', {
     name: '_Gods',
     mimeType: 'application/vnd.google-apps.folder',
-    parents: [CONFIG.BHAJANS_FOLDER_ID],
+    parents: [ACTIVE_FOLDER_ID],
   });
   godsFolderId = folder.id;
   return godsFolderId;
@@ -302,10 +349,10 @@ function wireGodFilter(songs, gods) {
   };
 }
 
-function typeLabel(type) {
+function typeLabel(type, studentName) {
   return type === 'teacher-audio' ? "Teacher's audio clip"
        : type === 'teacher-notes' ? "Teacher's notes (photo)"
-       : "Nyra's practice take";
+       : `${studentName}'s practice take`;
 }
 
 // --- Recording helpers ---
@@ -338,7 +385,7 @@ function stopQueue() {
 function queueTrackLabel(track, cursor, total) {
   const pos = `${cursor + 1} of ${total}`;
   const name = queue?.showType
-    ? `${esc(track.songName)} (${track.type === 'teacher' ? 'teacher' : 'Nyra'})`
+    ? `${esc(track.songName)} (${track.type === 'teacher' ? 'teacher' : esc(track.studentName || '')})`
     : esc(track.songName);
   return `${name} — ${pos}`;
 }
@@ -393,7 +440,7 @@ function queueGoto(cursor) {
   }
 }
 
-async function startQueue(songs, mode, isShuffled) {
+async function startQueue(songs, mode, isShuffled, studentName = null) {
   stopQueue();
 
   const bar = document.getElementById('queue-bar');
@@ -408,14 +455,19 @@ async function startQueue(songs, mode, isShuffled) {
 
     const tracks = [];
     for (const { song, files } of folderContents) {
-      const find = pfx => files.find(f => f.name.toLowerCase().startsWith(pfx.toLowerCase()));
       if (mode === 'teacher' || mode === 'both') {
-        const t = find('teacher-audio');
+        const t = files.find(f => f.name.toLowerCase().startsWith('teacher-audio'));
         if (t) tracks.push({ songName: song.name, fileId: t.id, type: 'teacher' });
       }
-      if (mode === 'student' || mode === 'both') {
-        const s = find('student-practice');
-        if (s) tracks.push({ songName: song.name, fileId: s.id, type: 'student' });
+      if (mode === 'student') {
+        const s = matchStudentFile(files, studentName);
+        if (s) tracks.push({ songName: song.name, fileId: s.id, type: 'student', studentName });
+      }
+      if (mode === 'both') {
+        for (const student of cachedStudents) {
+          const s = matchStudentFile(files, student.name);
+          if (s) tracks.push({ songName: song.name, fileId: s.id, type: 'student', studentName: student.name });
+        }
       }
     }
 
@@ -437,6 +489,50 @@ async function startQueue(songs, mode, isShuffled) {
   }
 }
 
+// Single-track playback for song-card row taps — reuses the queue bar with a one-track queue.
+async function playSingleTrack(songName, roleLabel, fileId) {
+  stopQueue();
+  queue = { tracks: [{ songName: `${songName} (${roleLabel})`, fileId, type: 'single' }], order: [0], cursor: 0, showType: false };
+  renderQueuePlayer();
+  await queueGoto(0);
+}
+
+// --- Song card rows (Teacher + one per student) ---
+
+function songCardRowHtml(kind, icon, label, file, song, studentName = '') {
+  const filled = !!file;
+  return `
+    <div class="song-card-row${filled ? '' : ' dimmed'}"
+         data-kind="${esc(kind)}" data-song-id="${esc(song.id)}" data-song-name="${esc(song.name)}"
+         data-file-id="${file ? esc(file.id) : ''}" data-student="${esc(studentName)}">
+      <span class="row-icon">${icon}</span>
+      <span class="row-label">${esc(label)}</span>
+      <span class="row-play">▶</span>
+    </div>`;
+}
+
+function wireSongCardRows(songs) {
+  app().querySelectorAll('.song-card-row').forEach(row => {
+    row.addEventListener('click', async e => {
+      e.stopPropagation();
+      const { kind, songId, songName, fileId, student } = row.dataset;
+      const roleLabel = kind === 'teacher' ? 'Teacher' : student;
+      if (fileId) {
+        playSingleTrack(songName, roleLabel, fileId);
+        return;
+      }
+      try { await ensureAuth(); } catch (err) { showError(err.message); return; }
+      const presetSong = { id: songId, name: songName };
+      if (kind === 'teacher') {
+        startWizard({ presetType: 'teacher-audio', presetSong, songs });
+      } else {
+        const presetStudent = cachedStudents.find(s => s.name === student);
+        startWizard({ presetType: 'student-practice', presetStudent, presetSong, songs });
+      }
+    });
+  });
+}
+
 // --- Views ---
 
 
@@ -445,7 +541,7 @@ async function showSongList() {
   revokeBlobs();
   try {
     const q = encodeURIComponent(
-      `'${CONFIG.BHAJANS_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`
+      `'${ACTIVE_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`
     );
     const [songData, gods] = await Promise.all([
       readJSON(`files?q=${q}&fields=files(id,name,properties)&orderBy=name`),
@@ -470,6 +566,12 @@ async function showSongList() {
       return;
     }
 
+    const songFiles = await Promise.all(songs.map(async s => {
+      const fq = encodeURIComponent(`'${s.id}' in parents and trashed=false`);
+      const fdata = await readJSON(`files?q=${fq}&fields=files(id,name)`);
+      return fdata.files || [];
+    }));
+
     app().innerHTML = `
       <div class="list-header">
         <h2 class="section-heading">🎵 Bhajans</h2>
@@ -477,7 +579,7 @@ async function showSongList() {
       </div>
       ${godFilterRowHtml(gods)}
       <div class="song-grid">
-        ${songs.map(s => {
+        ${songs.map((s, idx) => {
           const songGod = s.properties?.god || '';
           const godObj = gods.find(g => g.name === songGod);
           const borderColor = songGod ? (GOD_COLORS[songGod] || GOD_COLORS._default) : '#E0E0E0';
@@ -486,10 +588,19 @@ async function showSongList() {
               ${godAvatarHtml(godObj, 'song-card-god-img')}
             </div>` : '';
           const displayStyle = activeGodFilter && songGod !== activeGodFilter ? 'display:none;' : '';
+          const files = songFiles[idx];
+          const teacherFile = files.find(f => f.name.toLowerCase().startsWith('teacher-audio'));
+          const rowsHtml = [
+            songCardRowHtml('teacher', '🎤', 'Teacher', teacherFile, s),
+            ...cachedStudents.map(student =>
+              songCardRowHtml('student', genderIcon(student.gender), student.name, matchStudentFile(files, student.name), s, student.name)
+            ),
+          ].join('');
           return `
             <div class="song-card" data-id="${esc(s.id)}" data-name="${esc(s.name)}" data-god="${esc(songGod)}" style="${displayStyle}border-left: 4px solid ${borderColor}">
               ${badgeHtml}
               <div class="song-card-name">${esc(s.name)}</div>
+              <div class="song-card-rows">${rowsHtml}</div>
             </div>`;
         }).join('')}
       </div>`;
@@ -503,6 +614,7 @@ async function showSongList() {
     app().querySelectorAll('.song-card').forEach(card =>
       card.addEventListener('click', () => showSong(card.dataset.id, card.dataset.name, songs))
     );
+    wireSongCardRows(songs);
 
   } catch (e) {
     showError(e.message);
@@ -513,6 +625,12 @@ async function showSong(folderId, songName, cachedSongs = null) {
   stopQueue();
   revokeBlobs();
   const fromSong = { id: folderId, name: songName };
+
+  const studentSectionsHtml = cachedStudents.map((student, i) => `
+    <div id="student-section-${i}" class="song-section">
+      <h3 class="section-title">${genderIcon(student.gender)} ${esc(student.name)}'s Practice</h3>
+      <span id="student-status-${i}" class="loading-inline">Loading…</span>
+    </div>`).join('');
 
   app().innerHTML = `
     <div class="song-view-header">
@@ -525,10 +643,7 @@ async function showSong(folderId, songName, cachedSongs = null) {
       <h3 class="section-title">🎵 Teacher Reference</h3>
       <span id="teacher-status" class="loading-inline">Loading…</span>
     </div>
-    <div id="student-section" class="song-section">
-      <h3 class="section-title">🎤 Nyra's Practice</h3>
-      <span id="student-status" class="loading-inline">Loading…</span>
-    </div>`;
+    ${studentSectionsHtml}`;
 
   document.getElementById('back-btn').addEventListener('click', () => showSongList());
   document.getElementById('add-content-btn').onclick = async () => {
@@ -546,11 +661,8 @@ async function showSong(folderId, songName, cachedSongs = null) {
     const godTag = folderMeta.properties?.god || null;
     renderGodTagSection(folderId, songName, godTag, cachedSongs);
 
-    const find = prefix => files.find(f => f.name.toLowerCase().startsWith(prefix.toLowerCase()));
-
-    const teacherAudio = find('teacher-audio');
-    const teacherNotes = find('teacher-notes');
-    const studentFile  = find('student-practice');
+    const teacherAudio = files.find(f => f.name.toLowerCase().startsWith('teacher-audio'));
+    const teacherNotes = files.find(f => f.name.toLowerCase().startsWith('teacher-notes'));
 
     // Teacher section
     const teacherEl = document.getElementById('teacher-section');
@@ -574,69 +686,80 @@ async function showSong(folderId, songName, cachedSongs = null) {
       }
     }
 
-    // Student section
-    const studentEl = document.getElementById('student-section');
-    if (!studentFile) {
-      document.getElementById('student-status').outerHTML = `
-        <p class="hint">No practice take yet.</p>
-        <button class="btn-add-cta write-only" id="cta-practice">+ Add a practice take</button>`;
-      document.getElementById('cta-practice').onclick = async () => {
-        try { await ensureAuth(); } catch (e) { showError(e.message); return; }
-        startWizard({ fromSong, songs: cachedSongs, presetType: 'student-practice', presetSong: fromSong });
-      };
-      return;
-    }
-
-    const latestUrl = driveMediaUrl(`files/${studentFile.id}?alt=media`);
-    let revisions = [];
-    try {
-      const revData = accessToken
-        ? await apiJSON(`files/${studentFile.id}/revisions?fields=revisions(id,modifiedTime,keepForever)`)
-        : await readJSON(`files/${studentFile.id}/revisions?fields=revisions(id,modifiedTime,keepForever)`);
-      revisions = (revData.revisions || []).reverse();
-    } catch (_) {
-      // revisions.list requires OAuth; anonymous visitors see latest only, no picker
-    }
-    const latestRevId = revisions[0]?.id;
-
-    const DAY_MS = 86_400_000;
-    let ageWarning = '';
-    if (revisions[0] && !revisions[0].keepForever) {
-      const ageDays = Math.floor((Date.now() - new Date(revisions[0].modifiedTime)) / DAY_MS);
-      if (ageDays >= 25) {
-        ageWarning = `<p class="age-warning">⚠️ This take is ${ageDays} days old — open Drive → version history → ⋮ → Keep forever to prevent auto-deletion.</p>`;
-      }
-    }
-
-    const revOptions = revisions.map((r, i) => {
-      const label = new Date(r.modifiedTime).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-      const flag = r.keepForever ? ' ✓' : '';
-      return `<option value="${esc(r.id)}">${i === 0 ? `Latest — ${label}` : label}${flag}</option>`;
-    }).join('');
-
-    document.getElementById('student-status').remove();
-    studentEl.insertAdjacentHTML('beforeend', `
-      ${ageWarning}
-      <audio controls id="student-audio" src="${latestUrl}" class="audio-player"></audio>
-      ${revisions.length > 1 ? `
-        <div class="revision-row">
-          <label class="rev-label">Earlier takes:</label>
-          <select id="rev-picker" class="rev-select">${revOptions}</select>
-        </div>` : ''}`);
-
-    if (revisions.length > 1) {
-      document.getElementById('rev-picker').addEventListener('change', function() {
-        const url = this.value === latestRevId
-          ? latestUrl
-          : driveMediaUrl(`files/${studentFile.id}/revisions/${this.value}?alt=media`);
-        const audioEl = document.getElementById('student-audio');
-        audioEl.src = url;
-        audioEl.load();
-      });
+    for (let i = 0; i < cachedStudents.length; i++) {
+      await renderStudentPracticeSection(i, cachedStudents[i], files, fromSong, cachedSongs);
     }
 
   } catch (e) {
     showError(e.message);
+  }
+}
+
+async function renderStudentPracticeSection(index, student, files, fromSong, cachedSongs) {
+  const statusEl = document.getElementById(`student-status-${index}`);
+  const sectionEl = document.getElementById(`student-section-${index}`);
+  if (!statusEl || !sectionEl) return;
+
+  const studentFile = matchStudentFile(files, student.name);
+
+  if (!studentFile) {
+    statusEl.outerHTML = `
+      <p class="hint">No practice take yet.</p>
+      <button class="btn-add-cta write-only" id="cta-practice-${index}">+ Add a practice take</button>`;
+    document.getElementById(`cta-practice-${index}`).onclick = async () => {
+      try { await ensureAuth(); } catch (e) { showError(e.message); return; }
+      startWizard({ fromSong, songs: cachedSongs, presetType: 'student-practice', presetStudent: student, presetSong: fromSong });
+    };
+    return;
+  }
+
+  const latestUrl = driveMediaUrl(`files/${studentFile.id}?alt=media`);
+  let revisions = [];
+  try {
+    const revData = accessToken
+      ? await apiJSON(`files/${studentFile.id}/revisions?fields=revisions(id,modifiedTime,keepForever)`)
+      : await readJSON(`files/${studentFile.id}/revisions?fields=revisions(id,modifiedTime,keepForever)`);
+    revisions = (revData.revisions || []).reverse();
+  } catch (_) {
+    // revisions.list requires OAuth; anonymous visitors see latest only, no picker
+  }
+  const latestRevId = revisions[0]?.id;
+
+  const DAY_MS = 86_400_000;
+  let ageWarning = '';
+  if (revisions[0] && !revisions[0].keepForever) {
+    const ageDays = Math.floor((Date.now() - new Date(revisions[0].modifiedTime)) / DAY_MS);
+    if (ageDays >= 25) {
+      ageWarning = `<p class="age-warning">⚠️ This take is ${ageDays} days old — open Drive → version history → ⋮ → Keep forever to prevent auto-deletion.</p>`;
+    }
+  }
+
+  const revOptions = revisions.map((r, i) => {
+    const label = new Date(r.modifiedTime).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    const flag = r.keepForever ? ' ✓' : '';
+    return `<option value="${esc(r.id)}">${i === 0 ? `Latest — ${label}` : label}${flag}</option>`;
+  }).join('');
+
+  const audioId = `student-audio-${index}`;
+  statusEl.remove();
+  sectionEl.insertAdjacentHTML('beforeend', `
+    ${ageWarning}
+    <audio controls id="${audioId}" src="${latestUrl}" class="audio-player"></audio>
+    ${revisions.length > 1 ? `
+      <div class="revision-row">
+        <label class="rev-label">Earlier takes:</label>
+        <select id="rev-picker-${index}" class="rev-select">${revOptions}</select>
+      </div>` : ''}`);
+
+  if (revisions.length > 1) {
+    document.getElementById(`rev-picker-${index}`).addEventListener('change', function() {
+      const url = this.value === latestRevId
+        ? latestUrl
+        : driveMediaUrl(`files/${studentFile.id}/revisions/${this.value}?alt=media`);
+      const audioEl = document.getElementById(audioId);
+      audioEl.src = url;
+      audioEl.load();
+    });
   }
 }
 
@@ -856,6 +979,126 @@ async function showEmojiInputInline(god, targetEl, onDone) {
   input.addEventListener('blur', save);
 }
 
+// --- Student settings ---
+
+async function saveStudents(updated) {
+  await driveUpdateProperties(ACTIVE_FOLDER_ID, {
+    students: JSON.stringify(updated),
+    childName: null, gender: null, age: null, // complete migration off the legacy single-child schema
+  });
+  cachedStudents = updated;
+  applyHeaderUI();
+  if (cachedSongsList) wireHeaderPlayButtons(cachedSongsList);
+}
+
+function showSettings() {
+  app().innerHTML = wizardShell(`
+    <h3 class="wizard-title">Students</h3>
+    <div class="settings-form">
+      <div class="student-list" id="student-list"></div>
+      <button class="btn-add-cta" id="add-student-btn" style="margin-top:12px">+ Add Student</button>
+    </div>`);
+
+  document.getElementById('wizard-cancel').onclick = showSongList;
+  renderStudentList();
+  document.getElementById('add-student-btn').onclick = () => showStudentForm(null);
+}
+
+function renderStudentList() {
+  const list = document.getElementById('student-list');
+  if (!list) return;
+  if (!cachedStudents.length) {
+    list.innerHTML = `<p class="hint">No students yet — add one below.</p>`;
+    return;
+  }
+  list.innerHTML = cachedStudents.map((s, i) => `
+    <div class="student-row-item">
+      <span class="student-row-icon">${genderIcon(s.gender)}</span>
+      <span class="student-row-name">${esc(s.name)}</span>
+      <span class="student-row-age">${s.age ? `${esc(s.age)}y` : ''}</span>
+      <button class="student-edit-btn" data-index="${i}" title="Edit">✏️</button>
+      <button class="student-remove-btn" data-index="${i}" title="Remove">🗑️</button>
+    </div>`).join('');
+
+  list.querySelectorAll('.student-edit-btn').forEach(btn => {
+    btn.onclick = () => showStudentForm(Number(btn.dataset.index));
+  });
+  list.querySelectorAll('.student-remove-btn').forEach(btn => {
+    btn.onclick = async () => {
+      const idx = Number(btn.dataset.index);
+      const student = cachedStudents[idx];
+      if (!confirm(`Remove ${student.name}? This won't delete their existing recordings from Drive.`)) return;
+      try {
+        await saveStudents(cachedStudents.filter((_, i) => i !== idx));
+        renderStudentList();
+      } catch (e) {
+        showError(e.message);
+      }
+    };
+  });
+}
+
+function showStudentForm(editIndex) {
+  const isEdit = editIndex !== null && editIndex !== undefined;
+  const student = isEdit ? cachedStudents[editIndex] : { name: '', gender: '', age: '' };
+  let selectedGender = student.gender;
+
+  app().innerHTML = wizardShell(`
+    <h3 class="wizard-title">${isEdit ? 'Edit student' : 'Add student'}</h3>
+    <div class="settings-form">
+      <label class="add-god-label">Name</label>
+      <input type="text" id="student-name-input" class="new-song-input" placeholder="e.g. Rudvik" maxlength="60" value="${esc(student.name)}">
+      ${isEdit ? `<p class="hint" id="rename-warning" style="display:none">⚠️ Renaming won't move existing recordings — they'll stay filed under the old name until re-recorded.</p>` : ''}
+      <label class="add-god-label" style="margin-top:12px">Gender</label>
+      <div class="gender-picker">
+        <button type="button" class="gender-btn" data-gender="girl">Girl</button>
+        <button type="button" class="gender-btn" data-gender="boy">Boy</button>
+        <button type="button" class="gender-btn" data-gender="other">Other</button>
+      </div>
+      <label class="add-god-label" style="margin-top:12px">Age</label>
+      <input type="number" id="student-age-input" class="new-song-input" min="1" max="18" value="${esc(student.age || '')}">
+      <div class="confirm-btns" style="margin-top:16px">
+        <button class="btn-primary" id="student-save-btn">${isEdit ? 'Save changes' : 'Add student'}</button>
+        <button class="back-btn" id="student-form-cancel">Cancel</button>
+      </div>
+    </div>`);
+
+  document.getElementById('wizard-cancel').onclick = showSettings;
+  document.getElementById('student-form-cancel').onclick = showSettings;
+
+  const genderBtns = app().querySelectorAll('.gender-btn');
+  const updateGenderUI = () => genderBtns.forEach(b => b.classList.toggle('active', b.dataset.gender === selectedGender));
+  updateGenderUI();
+  genderBtns.forEach(b => b.onclick = () => { selectedGender = b.dataset.gender; updateGenderUI(); });
+
+  if (isEdit) {
+    const nameInput = document.getElementById('student-name-input');
+    const warning = document.getElementById('rename-warning');
+    nameInput.addEventListener('input', () => {
+      warning.style.display = nameInput.value.trim() !== student.name ? 'block' : 'none';
+    });
+  }
+
+  document.getElementById('student-save-btn').onclick = async () => {
+    const name = document.getElementById('student-name-input').value.trim();
+    if (!name) return;
+    const age = document.getElementById('student-age-input').value.trim();
+    const btn = document.getElementById('student-save-btn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const newStudent = { name, gender: selectedGender, age };
+    const updated = isEdit
+      ? cachedStudents.map((s, i) => i === editIndex ? newStudent : s)
+      : [...cachedStudents, newStudent];
+    try {
+      await saveStudents(updated);
+      showSettings();
+    } catch (e) {
+      showError(e.message);
+      btn.disabled = false; btn.textContent = isEdit ? 'Save changes' : 'Add student';
+    }
+  };
+}
+
 // --- Wizard ---
 
 // opts: { fromSong, songs, presetType, presetSong }
@@ -866,19 +1109,31 @@ function startWizard(opts = {}) {
     fromSong: opts.fromSong || null,
     songs: opts.songs || null,
     contentType: opts.presetType || null,
+    student: opts.presetStudent || null,
     song: opts.presetSong || null,
     blob: null,
     mimeType: null,
     extension: null,
   };
 
-  if (wizard.contentType && wizard.song) {
-    showWizardCapture();
-  } else if (wizard.contentType) {
-    showWizardSong();
+  if (wizard.contentType) {
+    proceedFromType();
   } else {
     showWizardType();
   }
+}
+
+// Decides whether a student must be picked before moving on to song/capture.
+function proceedFromType() {
+  if (wizard.contentType === 'student-practice' && !wizard.student) {
+    if (cachedStudents.length === 1) {
+      wizard.student = cachedStudents[0];
+    } else {
+      showWizardStudent();
+      return;
+    }
+  }
+  wizard.song ? showWizardCapture() : showWizardSong();
 }
 
 function wizardShell(content) {
@@ -905,7 +1160,7 @@ function showWizardType() {
       </button>
       <button class="type-btn" data-type="student-practice">
         <span class="type-icon">🎤</span>
-        <span class="type-label">Nyra's practice take</span>
+        <span class="type-label">${cachedStudents.length === 1 ? `${esc(cachedStudents[0].name)}'s practice take` : 'Practice take'}</span>
       </button>
     </div>`);
 
@@ -913,9 +1168,62 @@ function showWizardType() {
   document.querySelectorAll('.type-btn').forEach(btn => {
     btn.onclick = () => {
       wizard.contentType = btn.dataset.type;
+      proceedFromType();
+    };
+  });
+}
+
+function showWizardStudent() {
+  app().innerHTML = wizardShell(`
+    <h3 class="wizard-title">Which student?</h3>
+    <div class="song-options">
+      <div class="new-song-row">
+        <button class="song-option-btn new-song-btn" id="new-student-toggle">+ Add Student</button>
+        <div class="new-song-form" id="new-student-form" style="display:none">
+          <input type="text" id="new-student-input" class="new-song-input" placeholder="Student's name…" maxlength="60">
+          <button class="btn-primary" id="new-student-create">Create</button>
+        </div>
+      </div>
+      ${cachedStudents.map(s => `
+        <button class="song-option-btn" data-name="${esc(s.name)}">
+          ${genderIcon(s.gender)} ${esc(s.name)}
+        </button>`).join('')}
+    </div>`);
+
+  document.getElementById('wizard-cancel').onclick = cancelWizard;
+
+  document.querySelectorAll('.song-options .song-option-btn:not(.new-song-btn)').forEach(btn => {
+    btn.onclick = () => {
+      wizard.student = cachedStudents.find(s => s.name === btn.dataset.name);
       wizard.song ? showWizardCapture() : showWizardSong();
     };
   });
+
+  document.getElementById('new-student-toggle').onclick = () => {
+    document.getElementById('new-student-toggle').style.display = 'none';
+    document.getElementById('new-student-form').style.display = 'flex';
+    document.getElementById('new-student-input').focus();
+  };
+
+  document.getElementById('new-student-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('new-student-create').click();
+  });
+
+  document.getElementById('new-student-create').onclick = async () => {
+    const name = document.getElementById('new-student-input').value.trim();
+    if (!name) return;
+    const btn = document.getElementById('new-student-create');
+    btn.disabled = true; btn.textContent = 'Creating…';
+    try {
+      const newStudent = { name, gender: '', age: '' };
+      await saveStudents([...cachedStudents, newStudent]);
+      wizard.student = newStudent;
+      wizard.song ? showWizardCapture() : showWizardSong();
+    } catch (e) {
+      btn.disabled = false; btn.textContent = 'Create';
+      showError(e.message);
+    }
+  };
 }
 
 async function showWizardSong() {
@@ -925,7 +1233,7 @@ async function showWizardSong() {
   if (!wizard.songs) {
     try {
       const q = encodeURIComponent(
-        `'${CONFIG.BHAJANS_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`
+        `'${ACTIVE_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`
       );
       const data = await apiJSON(`files?q=${q}&fields=files(id,name)&orderBy=name`);
       wizard.songs = (data.files || []).filter(f => f.name !== '_Gods');
@@ -984,7 +1292,7 @@ function renderWizardSong() {
       const folder = await apiPost('files', {
         name,
         mimeType: 'application/vnd.google-apps.folder',
-        parents: [CONFIG.BHAJANS_FOLDER_ID],
+        parents: [ACTIVE_FOLDER_ID],
       });
       wizard.song = { id: folder.id, name: folder.name };
       wizard.songs = [...(wizard.songs || []), wizard.song].sort((a, b) => a.name.localeCompare(b.name));
@@ -1003,7 +1311,7 @@ function showWizardCapture() {
   app().innerHTML = wizardShell(`
     <h3 class="wizard-title">Capture content</h3>
     <p class="wizard-subtitle">
-      ${typeLabel(wizard.contentType)} for <strong>${esc(wizard.song.name)}</strong>
+      ${typeLabel(wizard.contentType, wizard.student?.name)} for <strong>${esc(wizard.song.name)}</strong>
     </p>
     ${isAudio ? `
       <div class="capture-options" id="capture-options">
@@ -1099,7 +1407,7 @@ function showWizardConfirm(blob, mimeType, ext) {
   app().innerHTML = wizardShell(`
     <h3 class="wizard-title">Does this look right?</h3>
     <p class="wizard-subtitle">
-      ${typeLabel(wizard.contentType)} for <strong>${esc(wizard.song.name)}</strong>
+      ${typeLabel(wizard.contentType, wizard.student?.name)} for <strong>${esc(wizard.song.name)}</strong>
     </p>
     <div class="preview-box">${previewHtml}</div>
     <div class="confirm-btns">
@@ -1134,17 +1442,20 @@ function showWizardConfirm(blob, mimeType, ext) {
 }
 
 async function saveContent() {
-  const { contentType, song, blob, mimeType, extension } = wizard;
+  const { contentType, song, student, blob, mimeType, extension } = wizard;
+  const prefix = contentType === 'student-practice' ? `student-${student.name}-practice` : contentType;
 
   const q = encodeURIComponent(`'${song.id}' in parents and trashed=false`);
   const data = await apiJSON(`files?q=${q}&fields=files(id,name,mimeType)`);
   const files = data.files || [];
-  const existing = files.find(f => f.name.toLowerCase().startsWith(contentType.toLowerCase()));
+  const existing = contentType === 'student-practice'
+    ? matchStudentFile(files, student.name)
+    : files.find(f => f.name.toLowerCase().startsWith(prefix.toLowerCase()));
 
   if (existing) {
     await driveUpload({ mimeType }, blob, existing.id);
   } else {
-    await driveUpload({ name: `${contentType}.${extension}`, mimeType, parents: [song.id] }, blob);
+    await driveUpload({ name: `${prefix}.${extension}`, mimeType, parents: [song.id] }, blob);
   }
 }
 
@@ -1171,23 +1482,29 @@ function showError(msg) {
 
 // --- Header play buttons ---
 
-function wireHeaderPlayButtons(songs) {
-  const configs = [
-    { id: 'hdr-teacher', mode: 'teacher' },
-    { id: 'hdr-nyra',    mode: 'student' },
-    { id: 'hdr-all',     mode: 'both' },
+function renderHeaderPlayPills() {
+  const row = document.getElementById('header-play-row');
+  if (!row) return;
+  const pills = [
+    { mode: 'teacher', label: 'Teacher' },
+    ...cachedStudents.map(s => ({ mode: 'student', label: s.name, student: s.name })),
+    { mode: 'both', label: 'All' },
   ];
-  for (const { id, mode } of configs) {
-    const btn = document.getElementById(id);
-    if (!btn) continue;
+  row.innerHTML = pills.map(p =>
+    `<button class="hdr-play-btn" data-mode="${esc(p.mode)}" data-student="${esc(p.student || '')}" disabled>▶ ${esc(p.label)}</button>`
+  ).join('');
+}
+
+function wireHeaderPlayButtons(songs) {
+  document.querySelectorAll('#header-play-row .hdr-play-btn').forEach(btn => {
     btn.disabled = false;
-    btn.onclick = () => startQueue(songs, mode, false);
-  }
+    btn.onclick = () => startQueue(songs, btn.dataset.mode, false, btn.dataset.student || null);
+  });
 }
 
 // --- Boot ---
 
-function boot() {
+async function boot() {
   document.body.classList.add('anon');
   if (!CONFIGURED) {
     app().innerHTML = `
@@ -1205,6 +1522,11 @@ function boot() {
   document.getElementById('hdr-sign-in').onclick = async () => {
     try { await ensureAuth(); } catch (e) { showError(e.message); }
   };
+  document.getElementById('hdr-settings').onclick = async () => {
+    try { await ensureAuth(); } catch (e) { showError(e.message); return; }
+    showSettings();
+  };
+  await fetchFolderProfile();
   showSongList();
 }
 

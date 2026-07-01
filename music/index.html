@@ -99,6 +99,18 @@ header {
   font-size: 0.82rem;
   padding: 5px 10px 5px 5px;
 }
+.hdr-gear-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 4px;
+  flex-shrink: 0;
+  line-height: 1;
+  opacity: 0.85;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.hdr-gear-btn:hover { opacity: 1; transform: rotate(30deg); }
 
 #app {
   max-width: 600px;
@@ -670,6 +682,32 @@ header {
 }
 .song-card-god-img { width: 100%; height: 100%; object-fit: cover; }
 
+/* Per-student rows on song cards */
+.song-card-rows { margin-top: 10px; display: flex; flex-direction: column; gap: 2px; text-align: left; }
+.song-card-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 2px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.song-card-row:hover { background: #f5f5f5; }
+.song-card-row.dimmed { opacity: 0.3; }
+.row-icon { font-size: 0.9rem; flex-shrink: 0; }
+.row-label {
+  flex: 1;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row-play { font-size: 0.72rem; color: var(--plum); flex-shrink: 0; }
+
 /* God tag section in song detail */
 .god-tag-section {
   background: white;
@@ -761,18 +799,54 @@ header {
   font-family: var(--font-body); cursor: text; outline: none;
 }
 .add-god-hint { font-size: 0.8rem; color: #888; }
+
+/* Student settings form */
+.settings-form { display: flex; flex-direction: column; gap: 8px; }
+.gender-picker { display: flex; gap: 8px; }
+.gender-btn {
+  flex: 1;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 10px;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--ink);
+  transition: border-color 0.15s, background 0.15s;
+}
+.gender-btn:hover { border-color: var(--plum); }
+.gender-btn.active { border-color: var(--plum); background: #faf7ff; color: var(--plum); }
+
+/* Student list (settings) */
+.student-list { display: flex; flex-direction: column; gap: 8px; }
+.student-row-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 10px 14px;
+}
+.student-row-icon { font-size: 1.3rem; }
+.student-row-name { flex: 1; font-family: var(--font-display); font-weight: 700; color: var(--ink); }
+.student-row-age { color: #888; font-size: 0.85rem; }
+.student-edit-btn, .student-remove-btn {
+  background: none; border: none; cursor: pointer; font-size: 1rem; padding: 4px;
+  opacity: 0.7; transition: opacity 0.15s;
+}
+.student-edit-btn:hover, .student-remove-btn:hover { opacity: 1; }
 </style>
 </head>
 <body>
 
 <header>
   <div class="header-inner">
-    <span class="header-title">Nyra's Bhajans</span>
-    <div class="header-play-row">
-      <button class="hdr-play-btn" id="hdr-teacher" disabled>▶ Teacher</button>
-      <button class="hdr-play-btn" id="hdr-nyra" disabled>▶ Nyra</button>
-      <button class="hdr-play-btn" id="hdr-all" disabled>▶ All</button>
-    </div>
+    <button class="hdr-gear-btn write-only" id="hdr-settings" title="Profile settings">⚙️</button>
+    <span class="header-title" id="header-title">Nyra's Bhajans</span>
+    <div class="header-play-row" id="header-play-row"></div>
     <span class="hdr-divider" aria-hidden="true"></span>
     <div class="header-auth">
       <button class="hdr-sign-btn anon-only" id="hdr-sign-in">👤 Sign in</button>
