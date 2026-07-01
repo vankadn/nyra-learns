@@ -1419,7 +1419,7 @@ function showWizardCapture() {
       <div class="capture-options" id="capture-options">
         <button class="capture-btn" id="btn-record">🎙️ Record live</button>
         <button class="capture-btn" id="btn-upload-audio">📁 Upload a file</button>
-        <input type="file" id="file-audio" accept="audio/*" style="display:none">
+        <input type="file" id="file-audio" accept="audio/*,.m4a,.opus,.ogg,.oga,.mp3,.aac,.caf,.wav,.mp4" style="display:none">
       </div>` : ''}
     ${isImage ? `
       <div class="capture-options">
