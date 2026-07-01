@@ -163,6 +163,11 @@ const readJSON = async path => {
   if (!r.ok) throw new Error(`Drive API error ${r.status}`);
   return r.json();
 };
+const readText = async path => {
+  const r = await fetch(readUrl(path));
+  if (!r.ok) throw new Error(`Drive API error ${r.status}`);
+  return r.text();
+};
 const driveMediaUrl = path => readUrl(path);
 
 async function apiPost(path, body) {
@@ -643,7 +648,15 @@ async function showSong(folderId, songName, cachedSongs = null) {
       <h3 class="section-title">🎵 Teacher Reference</h3>
       <span id="teacher-status" class="loading-inline">Loading…</span>
     </div>
-    ${studentSectionsHtml}`;
+    ${studentSectionsHtml}
+    <div id="meaning-section" class="song-section">
+      <h3 class="section-title">Meaning</h3>
+      <span class="loading-inline">Loading…</span>
+    </div>
+    <div id="notes-section" class="song-section">
+      <h3 class="section-title">Notes</h3>
+      <span class="loading-inline">Loading…</span>
+    </div>`;
 
   document.getElementById('back-btn').addEventListener('click', () => showSongList());
   document.getElementById('add-content-btn').onclick = async () => {
@@ -689,6 +702,11 @@ async function showSong(folderId, songName, cachedSongs = null) {
     for (let i = 0; i < cachedStudents.length; i++) {
       await renderStudentPracticeSection(i, cachedStudents[i], files, fromSong, cachedSongs);
     }
+
+    const meaningFile = files.find(f => f.name.toLowerCase().startsWith('meaning'));
+    const notesFile = files.find(f => f.name.toLowerCase().startsWith('notes'));
+    await renderTextSection('meaning-section', 'meaning', 'Meaning', meaningFile, folderId);
+    await renderTextSection('notes-section', 'notes', 'Notes', notesFile, folderId);
 
   } catch (e) {
     showError(e.message);
@@ -761,6 +779,90 @@ async function renderStudentPracticeSection(index, student, files, fromSong, cac
       audioEl.load();
     });
   }
+}
+
+// --- Meaning / Notes text sections (in song detail) ---
+
+async function saveTextContent(folderId, prefix, text, existingFileId) {
+  const blob = new Blob([text], { type: 'text/plain' });
+  if (existingFileId) {
+    await driveUpload({ mimeType: 'text/plain' }, blob, existingFileId);
+    return existingFileId;
+  }
+  const file = await driveUpload({ name: `${prefix}.txt`, mimeType: 'text/plain', parents: [folderId] }, blob);
+  return file.id;
+}
+
+// Renders the read-only (or empty-state) view for a known fileId/text pair — no network call.
+function renderTextDisplay(containerId, prefix, label, fileId, text, folderId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  if (!fileId) {
+    container.innerHTML = `
+      <h3 class="section-title">${esc(label)}</h3>
+      <p class="hint">No ${esc(label.toLowerCase())} added yet.</p>
+      <button class="btn-add-cta write-only" id="${containerId}-add-btn">+ Add ${esc(label.toLowerCase())}</button>`;
+    document.getElementById(`${containerId}-add-btn`).onclick = async () => {
+      try { await ensureAuth(); } catch (e) { showError(e.message); return; }
+      showTextEditForm(containerId, prefix, label, '', null, folderId);
+    };
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="text-section-header">
+      <h3 class="section-title">${esc(label)}</h3>
+      <button class="text-edit-btn write-only" id="${containerId}-edit-btn" title="Edit">✏️</button>
+    </div>
+    <p class="text-content">${esc(text)}</p>`;
+
+  document.getElementById(`${containerId}-edit-btn`).onclick = async () => {
+    try { await ensureAuth(); } catch (e) { showError(e.message); return; }
+    showTextEditForm(containerId, prefix, label, text, fileId, folderId);
+  };
+}
+
+// Fetches a text file's content (if any) and renders it — used once on song-view load.
+async function renderTextSection(containerId, prefix, label, file, folderId) {
+  if (!file) { renderTextDisplay(containerId, prefix, label, null, '', folderId); return; }
+  let text = '';
+  try {
+    text = await readText(`files/${file.id}?alt=media`);
+  } catch (e) {
+    showError(e.message);
+  }
+  renderTextDisplay(containerId, prefix, label, file.id, text, folderId);
+}
+
+function showTextEditForm(containerId, prefix, label, currentText, fileId, folderId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  container.innerHTML = `
+    <h3 class="section-title">${esc(label)}</h3>
+    <textarea class="text-edit-area" id="${containerId}-textarea" placeholder="Write ${esc(label.toLowerCase())} here…">${esc(currentText)}</textarea>
+    <div class="confirm-btns" style="margin-top:8px">
+      <button class="btn-primary" id="${containerId}-save-btn">Save</button>
+      <button class="back-btn" id="${containerId}-cancel-btn">Cancel</button>
+    </div>`;
+
+  document.getElementById(`${containerId}-cancel-btn`).onclick = () => {
+    renderTextDisplay(containerId, prefix, label, fileId, currentText, folderId);
+  };
+
+  document.getElementById(`${containerId}-save-btn`).onclick = async () => {
+    const btn = document.getElementById(`${containerId}-save-btn`);
+    const newText = document.getElementById(`${containerId}-textarea`).value;
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      const savedFileId = await saveTextContent(folderId, prefix, newText, fileId);
+      renderTextDisplay(containerId, prefix, label, savedFileId, newText, folderId);
+    } catch (e) {
+      showError(e.message);
+      btn.disabled = false; btn.textContent = 'Save';
+    }
+  };
 }
 
 // --- God tag section (in song detail) ---

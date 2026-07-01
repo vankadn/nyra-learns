@@ -247,6 +247,29 @@ header {
 .audio-player { width: 100%; margin-bottom: 10px; display: block; }
 .notes-img { width: 100%; border-radius: 8px; border: 1px solid #eee; margin-top: 4px; }
 
+/* Meaning / Notes text sections */
+.text-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.text-section-header .section-title { margin-bottom: 0; }
+.text-edit-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 0.95rem; padding: 2px 6px; border-radius: 6px; color: #888;
+  transition: background 0.15s;
+}
+.text-edit-btn:hover { background: #f0f0f0; }
+.text-content { white-space: pre-wrap; color: var(--ink); line-height: 1.5; }
+.text-edit-area {
+  width: 100%;
+  min-height: 120px;
+  padding: 10px 14px;
+  border: 2px solid var(--plum);
+  border-radius: 10px;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+}
+
 /* Revision picker */
 .revision-row {
   display: flex;

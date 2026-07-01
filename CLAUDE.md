@@ -51,7 +51,9 @@ Each subfolder = one bhajan, folder name = song name. Files matched by prefix, n
 |---|---|
 | `teacher-audio.*` | Teacher's reference clip (any audio ext — .m4a, .opus, etc.) |
 | `teacher-notes.*` | Photo of handwritten notes (jpg/png) |
-| `student-practice.*` | Nyra's practice take — single file, versioned by Drive |
+| `student-{name}-practice.*` | That student's practice take — single file, versioned by Drive |
+| `meaning.txt` | English meaning/translation of the bhajan (plain text) |
+| `notes.txt` | Freeform notes — distinct from `teacher-notes.*`, which is the handwritten-notes photo |
 
 Special sibling folder `_Gods/` (under `BHAJANS_FOLDER_ID`) stores god avatar images — filtered out of
 the song list. See **God tag/filter** below.
@@ -120,7 +122,7 @@ hides them globally — no re-render needed on sign-in. A "👤 Sign in" button 
 sits top-right in the header; clicking it calls `ensureAuth()` → on success `onSignIn()` removes
 `body.anon` and populates the header user pill. Hidden write surfaces: Add content buttons, empty-
 state CTAs, god filter + button, god emoji mini/edit buttons, god tag Change/Tag buttons, the ⚙️
-student settings button.
+student settings button, the ✏️ Meaning/Notes edit buttons and their "+ Add" empty-state CTAs.
 
 **Students (multi-student support):** a folder can have any number of students (siblings sharing
 one Bhajans folder). Stored as a single Drive **folder property** on the active song-parent folder
@@ -163,6 +165,20 @@ emoji property, just one property holding serialized JSON instead of one propert
 - Renaming a student in settings only updates `properties.students` — it deliberately does **not**
   rename any Drive files (the UI shows a warning when the name field changes), since the old
   recordings would otherwise become permanently orphaned from a mismatched prefix.
+
+**Meaning / Notes (song detail):** two plain-text sections below the practice sections in the song
+detail view — `meaning.txt` (English meaning/translation) and `notes.txt` (freeform notes, distinct
+from `teacher-notes.*`, which is the handwritten-notes photo). Same self-discovering prefix pattern
+as everything else; read via the API key, no auth needed. Content itself can't be included in the
+folder's file-listing call (Drive's `files.list` has no way to inline a file's body), so
+`renderTextSection()` does one extra `alt=media` GET per matched file via the new `readText()`
+helper, reusing the same per-song `files` listing already fetched for teacher/student content — no
+separate listing call added. Editing is inline (not the multi-step Add Content wizard): a write-only
+✏️ button swaps the section for a `<textarea>` + Save/Cancel (`showTextEditForm`); Save calls
+`ensureAuth()` then `saveTextContent()`, which mirrors the exact same `files.update`-if-exists-else-
+`files.create` + `keepRevisionForever=true` pattern as every other save in this app (via the existing
+`driveUpload` helper). Re-renders optimistically from the just-saved text (`renderTextDisplay`) —
+no re-fetch, no full reload. No revision picker for these, same as the god tag.
 
 **God tag/filter:** songs can be tagged with a god (Ganesha, Shiva, Krishna, etc.).
 
