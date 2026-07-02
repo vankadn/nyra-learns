@@ -83,11 +83,20 @@ in browser network requests. All committed directly. To test locally add `http:/
 
 **Add content flow:** a single "Add content" entry point (button on song list + song view, and CTAs on
 empty states) handles all three content types for any song. Three steps:
-1. Pick content type (teacher audio, teacher notes, Nyra's practice take)
+1. Pick content type (teacher audio, teacher notes, student practice take). Picking a practice take
+   also picks *which* student when the folder has 2+ (see "Students" below) — skipped when there's
+   exactly one, or when the caller already knows the student (e.g. a song-card row tap).
 2. Pick song from existing list or create a new folder — new songs can be created directly from the app,
    no need to pre-create folders in Drive manually
 3. Capture: audio types offer "Record live" (mic → live timer → stop) or "Upload a file"; teacher notes
    uses a file picker that lets the OS offer "Take Photo" or "Choose Existing" on mobile
+
+The audio upload `<input accept>` is `audio/*` plus explicit extensions
+(`.m4a,.opus,.ogg,.oga,.mp3,.aac,.caf,.wav,.mp4`) — iOS's Files picker greys out files whose reported
+mime type it doesn't map to `audio/*` (common for WhatsApp-exported `.opus`/`.m4a`), but keeps
+extension-matched files selectable regardless of mime type. Keep both forms — don't drop the
+extension list back down to bare `audio/*`, and don't remove `accept` entirely either. The teacher-
+notes photo input stays `image/*` only, no extension list needed there.
 
 After capture, a preview screen (audio player or image) lets you confirm or discard & redo before
 anything touches Drive.
