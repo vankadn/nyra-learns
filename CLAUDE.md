@@ -51,7 +51,7 @@ Each subfolder = one bhajan, folder name = song name. Files matched by prefix, n
 |---|---|
 | `teacher-audio.*` | Teacher's reference clip (any audio ext — .m4a, .opus, etc.) |
 | `teacher-notes.*` | Photo of handwritten notes (jpg/png) |
-| `student-{name}-practice.*` | That student's practice take — single file, versioned by Drive |
+| `student-{name}-practice.*` | That student's practice take (audio **or** video) — single file, versioned by Drive |
 | `meaning.txt` | English meaning/translation of the bhajan (plain text) |
 | `notes.txt` | Freeform notes — distinct from `teacher-notes.*`, which is the handwritten-notes photo |
 
@@ -82,14 +82,33 @@ in browser network requests. All committed directly. To test locally add `http:/
 **Authorized JavaScript origin** on the OAuth Client ID in Google Cloud Console (~5 min to propagate).
 
 **Add content flow:** a single "Add content" entry point (button on song list + song view, and CTAs on
-empty states) handles all three content types for any song. Three steps:
+empty states) handles all three content types for any song. Steps:
 1. Pick content type (teacher audio, teacher notes, student practice take). Picking a practice take
    also picks *which* student when the folder has 2+ (see "Students" below) — skipped when there's
    exactly one, or when the caller already knows the student (e.g. a song-card row tap).
-2. Pick song from existing list or create a new folder — new songs can be created directly from the app,
+2. For a practice take only: pick **Audio or Video** (`showWizardMediaType()`, `wizard.mediaType`).
+   Always asked — no skip logic, unlike the student step. Video recording defaults to the back
+   camera (`getUserMedia({ video: { facingMode: 'environment' }, audio: true })`) — filming, not
+   self-recording; no front/back toggle (deferred, revisit if a student ever self-records).
+3. Pick song from existing list or create a new folder — new songs can be created directly from the app,
    no need to pre-create folders in Drive manually
-3. Capture: audio types offer "Record live" (mic → live timer → stop) or "Upload a file"; teacher notes
-   uses a file picker that lets the OS offer "Take Photo" or "Choose Existing" on mobile
+4. Capture: audio/video both offer "Record live" (live timer + stop, mirrored between the two —
+   video adds a live camera preview via `startMediaRecording(constraints, kind)`, the shared
+   recording lifecycle both paths call) or "Upload a file"; teacher notes uses a file picker that
+   lets the OS offer "Take Photo" or "Choose Existing" on mobile.
+
+Playback branches on the Drive file's actual `mimeType` (fetched alongside every file listing,
+via `isVideoMime()`) — not the extension — since `.webm`/`.mp4` containers can hold either. Song
+detail practice sections, the song-card rows, and the global header queue (👧 pill / 🔀 All) all
+render `<video>` instead of `<audio>` for a video take. The queue keeps two elements (`#queue-audio`,
+`#queue-video`) side by side in the bar, showing/loading whichever one the current track needs and
+hiding+pausing the other — `queueGoto()` picks by `track.mimeType`. Song-card rows play inline
+instead: tapping a filled video row inserts a `<video controls autoplay>` right in the card
+(`playInlineCardVideo`) rather than going through the shared queue bar; only one inline card video
+plays at a time (`stopCardVideo()`), and starting a queue or another single-track play stops it.
+**Not validated on an actual iPhone yet** — `MediaRecorder` codec support for live video recording
+on iOS Safari needs real-device testing, same "laptop ≠ iOS" gap as the audio upload `accept` fix
+above. No max recording duration cap by design (revisit only if upload size/time becomes a problem).
 
 The audio upload `<input accept>` is `audio/*` plus explicit extensions
 (`.m4a,.opus,.ogg,.oga,.mp3,.aac,.caf,.wav,.mp4`) — iOS's Files picker greys out files whose reported
@@ -117,13 +136,15 @@ and offers a date-labeled picker. Drive auto-purges revisions older than 30 days
 forever. Every save from the app sets `keepRevisionForever=true` automatically; the 25-day age warning
 is still shown for any revision not yet marked (e.g. files uploaded via Drive before this feature).
 
-**Global playback queues:** three pill buttons in the header — 🎤 Teacher, 👧 Nyra, 🔀 All — start
-a queue across all songs with no shuffle. Queue order is session-only, never persisted. "All"
-unshuffled = teacher clip then student clip per song, alphabetical song order. Student queue always
-uses latest revision only — no revision picker in queue context. `queueGoto` is sync — sets
-`audio.src = driveMediaUrl(...)` directly (no blob fetch, no ObjectURL lifecycle). Header buttons
-are wired by `wireHeaderPlayButtons(songs)` after `showSongList()` loads. Entering a song view
-stops the active queue.
+**Global playback queues:** header pill buttons — 🎤 Teacher, one per student, then 🔀 All — start a
+queue across all songs with no shuffle. Pills are generated dynamically (`renderHeaderPlayPills()`,
+see "Students" below), not fixed markup. Queue order is session-only, never persisted. "All"
+unshuffled = teacher clip then every student's clip per song, alphabetical song order. Student
+queues always use latest revision only — no revision picker in queue context. `queueGoto` is sync
+per track — sets `src` directly to `driveMediaUrl(...)` on whichever of `#queue-audio`/`#queue-video`
+the track's mimeType needs (no blob fetch, no ObjectURL lifecycle; see the video-support paragraph
+above for the dual-element mechanics). Header buttons are wired by `wireHeaderPlayButtons(songs)`
+after `showSongList()` loads. Entering a song view stops the active queue.
 
 **Auth-aware UI:** the app opens in anonymous read-only mode (`body.anon` class set at boot). All
 write surfaces carry class `write-only`; CSS rule `body.anon .write-only { display:none!important }`
@@ -163,10 +184,13 @@ emoji property, just one property holding serialized JSON instead of one propert
   `saveContent()`.
 - **Song cards:** each card shows one row per student below the title (plus a Teacher row), built in
   `showSongList()` from a per-song file listing fetched alongside the song list. Filled rows (file
-  exists) play inline via `playSingleTrack()`; dimmed rows (`opacity: 0.3`, no file) open the Add
-  Content wizard preset to that exact student/type, skipping both the type and student picker steps.
+  exists) play inline — via the shared queue-bar (`playSingleTrack()`) for audio, or a `<video>`
+  inserted right in the card (`playInlineCardVideo()`) for video, chosen by the file's `mimeType`.
+  Dimmed rows (`opacity: 0.3`, no file) open the Add Content wizard preset to that exact
+  student/type, skipping both the type and student picker steps.
 - **Song detail view:** one section per student (`renderStudentPracticeSection`), each with its own
-  revision picker/age-warning, mirroring what was previously a single hardcoded section.
+  revision picker/age-warning, mirroring what was previously a single hardcoded section — renders
+  `<video>` instead of `<audio>` when the file's `mimeType` is a video type.
 - **Wizard:** picking "practice take" only shows a student picker (`showWizardStudent()`, with its
   own inline "+ Add Student") when there are 2+ students; with exactly one it's auto-selected, and
   it's skipped entirely whenever the caller already knows the student (e.g. a song-card row or a

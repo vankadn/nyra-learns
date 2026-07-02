@@ -245,6 +245,7 @@ header {
   margin-bottom: 14px;
 }
 .audio-player { width: 100%; margin-bottom: 10px; display: block; }
+.video-player { width: 100%; margin-bottom: 10px; display: block; border-radius: 8px; background: #000; }
 .notes-img { width: 100%; border-radius: 8px; border: 1px solid #eee; margin-top: 4px; }
 
 /* Meaning / Notes text sections */
@@ -483,6 +484,14 @@ header {
 
 /* Recording indicator */
 .recording-panel { text-align: center; }
+.record-preview {
+  width: 100%;
+  max-height: 280px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  background: #000;
+}
 .recording-indicator {
   display: flex;
   align-items: center;
@@ -533,6 +542,7 @@ header {
   color: white;
 }
 #queue-bar .audio-player { margin-bottom: 0; }
+#queue-bar .video-player { margin-bottom: 0; max-height: 240px; }
 .queue-controls {
   display: flex;
   gap: 8px;
@@ -730,6 +740,7 @@ header {
   text-overflow: ellipsis;
 }
 .row-play { font-size: 0.72rem; color: var(--plum); flex-shrink: 0; }
+.card-video-player { width: 100%; border-radius: 8px; margin-top: 6px; background: #000; display: block; }
 
 /* God tag section in song detail */
 .god-tag-section {

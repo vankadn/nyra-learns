@@ -26,6 +26,8 @@ let cachedStudents = [];
 const GENDER_ICON = { girl: '👧', boy: '👦', other: '🧒' };
 function genderIcon(gender) { return GENDER_ICON[gender] || '🧒'; }
 
+function isVideoMime(mimeType) { return !!mimeType && mimeType.startsWith('video/'); }
+
 // God filter state — persists for the session (survive revokeBlobs)
 let godsFolderId = null;
 let cachedGods = null;       // null=not fetched; array of { name, fileId, blobUrl }
@@ -410,6 +412,7 @@ function renderQueuePlayer() {
     <div class="queue-bar-inner">
       <span id="queue-label" class="queue-label">Loading…</span>
       <audio id="queue-audio" controls class="audio-player"></audio>
+      <video id="queue-video" controls playsinline class="video-player" style="display:none"></video>
       <div class="queue-controls">
         <button class="queue-ctrl-btn" id="queue-prev" disabled>⏮</button>
         <button class="queue-ctrl-btn" id="queue-next">⏭</button>
@@ -425,9 +428,11 @@ function renderQueuePlayer() {
   };
   document.getElementById('queue-stop').onclick = stopQueue;
 
-  document.getElementById('queue-audio').addEventListener('ended', () => {
+  const onEnded = () => {
     if (queue && queue.cursor < queue.order.length - 1) queueGoto(queue.cursor + 1);
-  });
+  };
+  document.getElementById('queue-audio').addEventListener('ended', onEnded);
+  document.getElementById('queue-video').addEventListener('ended', onEnded);
 }
 
 function queueGoto(cursor) {
@@ -437,16 +442,27 @@ function queueGoto(cursor) {
   const track = queue.tracks[queue.order[cursor]];
   const labelEl = document.getElementById('queue-label');
   if (labelEl) labelEl.textContent = queueTrackLabel(track, cursor, queue.order.length);
+
   const audio = document.getElementById('queue-audio');
-  if (audio) {
-    audio.src = driveMediaUrl(`files/${track.fileId}?alt=media`);
-    audio.load();
-    audio.play().catch(() => {});
+  const video = document.getElementById('queue-video');
+  const [active, inactive] = isVideoMime(track.mimeType) ? [video, audio] : [audio, video];
+
+  if (inactive) {
+    inactive.pause();
+    inactive.removeAttribute('src');
+    inactive.style.display = 'none';
+  }
+  if (active) {
+    active.style.display = 'block';
+    active.src = driveMediaUrl(`files/${track.fileId}?alt=media`);
+    active.load();
+    active.play().catch(() => {});
   }
 }
 
 async function startQueue(songs, mode, isShuffled, studentName = null) {
   stopQueue();
+  stopCardVideo();
 
   const bar = document.getElementById('queue-bar');
   if (bar) bar.innerHTML = `<div class="queue-bar-inner"><span class="queue-label">Building queue…</span></div>`;
@@ -454,7 +470,7 @@ async function startQueue(songs, mode, isShuffled, studentName = null) {
   try {
     const folderContents = await Promise.all(songs.map(async s => {
       const q = encodeURIComponent(`'${s.id}' in parents and trashed=false`);
-      const data = await readJSON(`files?q=${q}&fields=files(id,name)`);
+      const data = await readJSON(`files?q=${q}&fields=files(id,name,mimeType)`);
       return { song: s, files: data.files || [] };
     }));
 
@@ -462,16 +478,16 @@ async function startQueue(songs, mode, isShuffled, studentName = null) {
     for (const { song, files } of folderContents) {
       if (mode === 'teacher' || mode === 'both') {
         const t = files.find(f => f.name.toLowerCase().startsWith('teacher-audio'));
-        if (t) tracks.push({ songName: song.name, fileId: t.id, type: 'teacher' });
+        if (t) tracks.push({ songName: song.name, fileId: t.id, mimeType: t.mimeType, type: 'teacher' });
       }
       if (mode === 'student') {
         const s = matchStudentFile(files, studentName);
-        if (s) tracks.push({ songName: song.name, fileId: s.id, type: 'student', studentName });
+        if (s) tracks.push({ songName: song.name, fileId: s.id, mimeType: s.mimeType, type: 'student', studentName });
       }
       if (mode === 'both') {
         for (const student of cachedStudents) {
           const s = matchStudentFile(files, student.name);
-          if (s) tracks.push({ songName: song.name, fileId: s.id, type: 'student', studentName: student.name });
+          if (s) tracks.push({ songName: song.name, fileId: s.id, mimeType: s.mimeType, type: 'student', studentName: student.name });
         }
       }
     }
@@ -497,9 +513,33 @@ async function startQueue(songs, mode, isShuffled, studentName = null) {
 // Single-track playback for song-card row taps — reuses the queue bar with a one-track queue.
 async function playSingleTrack(songName, roleLabel, fileId) {
   stopQueue();
+  stopCardVideo();
   queue = { tracks: [{ songName: `${songName} (${roleLabel})`, fileId, type: 'single' }], order: [0], cursor: 0, showType: false };
   renderQueuePlayer();
   await queueGoto(0);
+}
+
+// Inline video playback for a filled song-card row — plays right in the card, not the queue bar.
+let activeCardVideoEl = null;
+
+function stopCardVideo() {
+  if (activeCardVideoEl) {
+    activeCardVideoEl.remove();
+    activeCardVideoEl = null;
+  }
+}
+
+function playInlineCardVideo(row, fileId) {
+  stopQueue();
+  stopCardVideo();
+  const video = document.createElement('video');
+  video.controls = true;
+  video.autoplay = true;
+  video.playsInline = true;
+  video.className = 'card-video-player';
+  video.src = driveMediaUrl(`files/${fileId}?alt=media`);
+  row.insertAdjacentElement('afterend', video);
+  activeCardVideoEl = video;
 }
 
 // --- Song card rows (Teacher + one per student) ---
@@ -509,7 +549,7 @@ function songCardRowHtml(kind, icon, label, file, song, studentName = '') {
   return `
     <div class="song-card-row${filled ? '' : ' dimmed'}"
          data-kind="${esc(kind)}" data-song-id="${esc(song.id)}" data-song-name="${esc(song.name)}"
-         data-file-id="${file ? esc(file.id) : ''}" data-student="${esc(studentName)}">
+         data-file-id="${file ? esc(file.id) : ''}" data-mime="${file ? esc(file.mimeType || '') : ''}" data-student="${esc(studentName)}">
       <span class="row-icon">${icon}</span>
       <span class="row-label">${esc(label)}</span>
       <span class="row-play">▶</span>
@@ -520,10 +560,14 @@ function wireSongCardRows(songs) {
   app().querySelectorAll('.song-card-row').forEach(row => {
     row.addEventListener('click', async e => {
       e.stopPropagation();
-      const { kind, songId, songName, fileId, student } = row.dataset;
+      const { kind, songId, songName, fileId, student, mime } = row.dataset;
       const roleLabel = kind === 'teacher' ? 'Teacher' : student;
       if (fileId) {
-        playSingleTrack(songName, roleLabel, fileId);
+        if (isVideoMime(mime)) {
+          playInlineCardVideo(row, fileId);
+        } else {
+          playSingleTrack(songName, roleLabel, fileId);
+        }
         return;
       }
       try { await ensureAuth(); } catch (err) { showError(err.message); return; }
@@ -544,6 +588,7 @@ function wireSongCardRows(songs) {
 async function showSongList() {
   app().innerHTML = `<div class="loading">Loading songs…</div>`;
   revokeBlobs();
+  stopCardVideo();
   try {
     const q = encodeURIComponent(
       `'${ACTIVE_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`
@@ -573,7 +618,7 @@ async function showSongList() {
 
     const songFiles = await Promise.all(songs.map(async s => {
       const fq = encodeURIComponent(`'${s.id}' in parents and trashed=false`);
-      const fdata = await readJSON(`files?q=${fq}&fields=files(id,name)`);
+      const fdata = await readJSON(`files?q=${fq}&fields=files(id,name,mimeType)`);
       return fdata.files || [];
     }));
 
@@ -629,6 +674,7 @@ async function showSongList() {
 async function showSong(folderId, songName, cachedSongs = null) {
   stopQueue();
   revokeBlobs();
+  stopCardVideo();
   const fromSong = { id: folderId, name: songName };
 
   const studentSectionsHtml = cachedStudents.map((student, i) => `
@@ -667,7 +713,7 @@ async function showSong(folderId, songName, cachedSongs = null) {
   try {
     const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
     const [data, folderMeta] = await Promise.all([
-      readJSON(`files?q=${q}&fields=files(id,name)`),
+      readJSON(`files?q=${q}&fields=files(id,name,mimeType)`),
       readJSON(`files/${folderId}?fields=properties`),
     ]);
     const files = data.files || [];
@@ -758,11 +804,14 @@ async function renderStudentPracticeSection(index, student, files, fromSong, cac
     return `<option value="${esc(r.id)}">${i === 0 ? `Latest — ${label}` : label}${flag}</option>`;
   }).join('');
 
+  const isVideo = isVideoMime(studentFile.mimeType);
   const audioId = `student-audio-${index}`;
   statusEl.remove();
   sectionEl.insertAdjacentHTML('beforeend', `
     ${ageWarning}
-    <audio controls id="${audioId}" src="${latestUrl}" class="audio-player"></audio>
+    ${isVideo
+      ? `<video controls playsinline id="${audioId}" src="${latestUrl}" class="video-player"></video>`
+      : `<audio controls id="${audioId}" src="${latestUrl}" class="audio-player"></audio>`}
     ${revisions.length > 1 ? `
       <div class="revision-row">
         <label class="rev-label">Earlier takes:</label>
@@ -1212,6 +1261,7 @@ function startWizard(opts = {}) {
     songs: opts.songs || null,
     contentType: opts.presetType || null,
     student: opts.presetStudent || null,
+    mediaType: null,
     song: opts.presetSong || null,
     blob: null,
     mimeType: null,
@@ -1225,13 +1275,20 @@ function startWizard(opts = {}) {
   }
 }
 
-// Decides whether a student must be picked before moving on to song/capture.
+// Decides what step comes next: student picker, then audio/video picker (practice-take only),
+// then song picker, then capture.
 function proceedFromType() {
-  if (wizard.contentType === 'student-practice' && !wizard.student) {
-    if (cachedStudents.length === 1) {
-      wizard.student = cachedStudents[0];
-    } else {
-      showWizardStudent();
+  if (wizard.contentType === 'student-practice') {
+    if (!wizard.student) {
+      if (cachedStudents.length === 1) {
+        wizard.student = cachedStudents[0];
+      } else {
+        showWizardStudent();
+        return;
+      }
+    }
+    if (!wizard.mediaType) {
+      showWizardMediaType();
       return;
     }
   }
@@ -1275,6 +1332,29 @@ function showWizardType() {
   });
 }
 
+function showWizardMediaType() {
+  app().innerHTML = wizardShell(`
+    <h3 class="wizard-title">Audio or video?</h3>
+    <div class="type-options">
+      <button class="type-btn" data-media="audio">
+        <span class="type-icon">🎤</span>
+        <span class="type-label">Audio</span>
+      </button>
+      <button class="type-btn" data-media="video">
+        <span class="type-icon">🎥</span>
+        <span class="type-label">Video</span>
+      </button>
+    </div>`);
+
+  document.getElementById('wizard-cancel').onclick = cancelWizard;
+  document.querySelectorAll('.type-btn').forEach(btn => {
+    btn.onclick = () => {
+      wizard.mediaType = btn.dataset.media;
+      proceedFromType();
+    };
+  });
+}
+
 function showWizardStudent() {
   app().innerHTML = wizardShell(`
     <h3 class="wizard-title">Which student?</h3>
@@ -1297,7 +1377,7 @@ function showWizardStudent() {
   document.querySelectorAll('.song-options .song-option-btn:not(.new-song-btn)').forEach(btn => {
     btn.onclick = () => {
       wizard.student = cachedStudents.find(s => s.name === btn.dataset.name);
-      wizard.song ? showWizardCapture() : showWizardSong();
+      proceedFromType();
     };
   });
 
@@ -1320,7 +1400,7 @@ function showWizardStudent() {
       const newStudent = { name, gender: '', age: '' };
       await saveStudents([...cachedStudents, newStudent]);
       wizard.student = newStudent;
-      wizard.song ? showWizardCapture() : showWizardSong();
+      proceedFromType();
     } catch (e) {
       btn.disabled = false; btn.textContent = 'Create';
       showError(e.message);
@@ -1407,8 +1487,9 @@ function renderWizardSong() {
 }
 
 function showWizardCapture() {
-  const isAudio = wizard.contentType !== 'teacher-notes';
+  const isVideo = wizard.contentType === 'student-practice' && wizard.mediaType === 'video';
   const isImage = wizard.contentType === 'teacher-notes';
+  const isAudio = !isVideo && !isImage;
 
   app().innerHTML = wizardShell(`
     <h3 class="wizard-title">Capture content</h3>
@@ -1421,12 +1502,19 @@ function showWizardCapture() {
         <button class="capture-btn" id="btn-upload-audio">📁 Upload a file</button>
         <input type="file" id="file-audio" accept="audio/*,.m4a,.opus,.ogg,.oga,.mp3,.aac,.caf,.wav,.mp4" style="display:none">
       </div>` : ''}
+    ${isVideo ? `
+      <div class="capture-options" id="capture-options">
+        <button class="capture-btn" id="btn-record-video">🎥 Record live</button>
+        <button class="capture-btn" id="btn-upload-video">📁 Upload a file</button>
+        <input type="file" id="file-video" accept="video/*,.mp4,.mov,.m4v" style="display:none">
+      </div>` : ''}
     ${isImage ? `
       <div class="capture-options">
         <label class="capture-btn" for="file-image">📷 Choose / take photo</label>
         <input type="file" id="file-image" accept="image/*" style="display:none">
       </div>` : ''}
     <div class="recording-panel" id="recording-panel" style="display:none">
+      <video id="record-preview" class="record-preview" autoplay muted playsinline style="display:none"></video>
       <div class="recording-indicator">
         <span class="rec-dot"></span>
         <span id="rec-timer">0:00</span>
@@ -1437,13 +1525,25 @@ function showWizardCapture() {
   document.getElementById('wizard-cancel').onclick = cancelWizard;
 
   if (isAudio) {
-    document.getElementById('btn-record').onclick = startRecording;
+    document.getElementById('btn-record').onclick = () => startMediaRecording({ audio: true }, 'audio');
     document.getElementById('btn-upload-audio').onclick = () => document.getElementById('file-audio').click();
     document.getElementById('file-audio').onchange = e => {
       const file = e.target.files[0];
       if (!file) return;
       const ext = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : 'audio';
       showWizardConfirm(file, file.type || 'audio/webm', ext);
+    };
+  }
+
+  if (isVideo) {
+    document.getElementById('btn-record-video').onclick = () =>
+      startMediaRecording({ video: { facingMode: 'environment' }, audio: true }, 'video');
+    document.getElementById('btn-upload-video').onclick = () => document.getElementById('file-video').click();
+    document.getElementById('file-video').onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const ext = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : 'mp4';
+      showWizardConfirm(file, file.type || 'video/mp4', ext);
     };
   }
 
@@ -1457,9 +1557,10 @@ function showWizardCapture() {
   }
 }
 
-async function startRecording() {
+// Shared live-recording lifecycle for both audio (mic only) and video (camera + mic) capture.
+async function startMediaRecording(constraints, kind) {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
     _recordingStream = stream;
     _recordingChunks = [];
     _recorder = new MediaRecorder(stream);
@@ -1468,6 +1569,11 @@ async function startRecording() {
 
     const captureOptions = document.getElementById('capture-options');
     if (captureOptions) captureOptions.style.display = 'none';
+    const preview = document.getElementById('record-preview');
+    if (kind === 'video' && preview) {
+      preview.srcObject = stream;
+      preview.style.display = 'block';
+    }
     document.getElementById('recording-panel').style.display = 'block';
 
     let secs = 0;
@@ -1481,17 +1587,18 @@ async function startRecording() {
     document.getElementById('btn-stop-record').onclick = () => {
       clearInterval(_recordingTimer); _recordingTimer = null;
       _recorder.onstop = () => {
-        const mimeType = _recorder.mimeType || 'audio/webm';
+        const mimeType = _recorder.mimeType || (kind === 'video' ? 'video/webm' : 'audio/webm');
         const blob = new Blob(_recordingChunks, { type: mimeType });
         _recordingStream.getTracks().forEach(t => t.stop()); _recordingStream = null;
         _recorder = null;
+        if (preview) { preview.srcObject = null; preview.style.display = 'none'; }
         const ext = mimeType.includes('ogg') ? 'ogg' : mimeType.includes('mp4') ? 'mp4' : 'webm';
         showWizardConfirm(blob, mimeType, ext);
       };
       if (_recorder.state !== 'inactive') _recorder.stop();
     };
   } catch (e) {
-    showError('Microphone access denied: ' + e.message);
+    showError(`${kind === 'video' ? 'Camera' : 'Microphone'} access denied: ` + e.message);
   }
 }
 
@@ -1501,9 +1608,10 @@ function showWizardConfirm(blob, mimeType, ext) {
   wizard.extension = ext;
 
   const previewUrl = trackBlob(URL.createObjectURL(blob));
-  const isAudio = mimeType.startsWith('audio');
-  const previewHtml = isAudio
+  const previewHtml = mimeType.startsWith('audio')
     ? `<audio controls src="${previewUrl}" class="audio-player"></audio>`
+    : isVideoMime(mimeType)
+    ? `<video controls playsinline src="${previewUrl}" class="video-player"></video>`
     : `<img src="${previewUrl}" class="notes-img" alt="Preview">`;
 
   app().innerHTML = wizardShell(`
