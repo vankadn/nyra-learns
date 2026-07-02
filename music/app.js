@@ -226,6 +226,41 @@ async function driveUpdateProperties(fileId, props) {
   return resp.json();
 }
 
+async function renameFile(fileId, name) {
+  const doFetch = () => fetch(`${BASE}/files/${fileId}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+  let resp = await doFetch();
+  if (resp.status === 401) { await requestToken({ prompt: '' }); resp = await doFetch(); }
+  if (!resp.ok) throw new Error(`Drive API error ${resp.status}`);
+  return resp.json();
+}
+
+async function apiDelete(path) {
+  const doFetch = () => fetch(`${BASE}/${path}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  let resp = await doFetch();
+  if (resp.status === 401) { await requestToken({ prompt: '' }); resp = await doFetch(); }
+  if (!resp.ok && resp.status !== 204) throw new Error(`Drive API error ${resp.status}`);
+}
+
+// Moves a whole file to Drive's trash (recoverable there) — not a permanent delete.
+async function driveTrashFile(fileId) {
+  const doFetch = () => fetch(`${BASE}/files/${fileId}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ trashed: true }),
+  });
+  let resp = await doFetch();
+  if (resp.status === 401) { await requestToken({ prompt: '' }); resp = await doFetch(); }
+  if (!resp.ok) throw new Error(`Drive API error ${resp.status}`);
+  return resp.json();
+}
+
 async function findGodsFolderId() {
   if (godsFolderId) return godsFolderId;
   const q = encodeURIComponent(
@@ -404,6 +439,26 @@ function updateQueueNav() {
   if (next) next.disabled = !queue || queue.cursor >= queue.order.length - 1;
 }
 
+// Toggles shuffle on the active queue only. History (everything up to and including the current
+// track) is left untouched — that's what makes ⏮ Prev walk back through actual play order. Only
+// the not-yet-played remainder is reordered: Fisher-Yates when turning on, back to original
+// sequential (track-build) order when turning off. Never touches cursor, so playback isn't
+// interrupted either way.
+function toggleQueueShuffle() {
+  if (!queue) return;
+  queue.shuffled = !queue.shuffled;
+
+  const history = queue.order.slice(0, queue.cursor + 1);
+  const remainder = queue.shuffled
+    ? shuffleArray(queue.order.slice(queue.cursor + 1))
+    : queue.tracks.map((_, i) => i).filter(i => !history.includes(i));
+  queue.order = [...history, ...remainder];
+
+  updateQueueNav();
+  const btn = document.getElementById('queue-shuffle');
+  if (btn) btn.setAttribute('aria-pressed', String(queue.shuffled));
+}
+
 function renderQueuePlayer() {
   const bar = document.getElementById('queue-bar');
   if (!bar || !queue) return;
@@ -414,11 +469,15 @@ function renderQueuePlayer() {
       <audio id="queue-audio" controls class="audio-player"></audio>
       <video id="queue-video" controls playsinline class="video-player" style="display:none"></video>
       <div class="queue-controls">
+        ${queue.tracks.length > 1 ? `<button class="queue-ctrl-btn" id="queue-shuffle" aria-pressed="${queue.shuffled}" title="Shuffle">🔀</button>` : ''}
         <button class="queue-ctrl-btn" id="queue-prev" disabled>⏮</button>
         <button class="queue-ctrl-btn" id="queue-next">⏭</button>
         <button class="queue-ctrl-btn queue-stop-btn" id="queue-stop">■ Stop</button>
       </div>
     </div>`;
+
+  const shuffleBtn = document.getElementById('queue-shuffle');
+  if (shuffleBtn) shuffleBtn.onclick = toggleQueueShuffle;
 
   document.getElementById('queue-prev').onclick = () => {
     if (queue && queue.cursor > 0) queueGoto(queue.cursor - 1);
@@ -460,7 +519,7 @@ function queueGoto(cursor) {
   }
 }
 
-async function startQueue(songs, mode, isShuffled, studentName = null) {
+async function startQueue(songs, mode, studentName = null) {
   stopQueue();
   stopCardVideo();
 
@@ -499,8 +558,7 @@ async function startQueue(songs, mode, isShuffled, studentName = null) {
     }
 
     const indices = tracks.map((_, i) => i);
-    const order = isShuffled ? shuffleArray(indices) : indices;
-    queue = { tracks, order, cursor: 0, showType: mode === 'both' };
+    queue = { tracks, order: shuffleArray(indices), cursor: 0, showType: mode === 'both', shuffled: true };
     renderQueuePlayer();
     await queueGoto(0);
 
@@ -514,7 +572,7 @@ async function startQueue(songs, mode, isShuffled, studentName = null) {
 async function playSingleTrack(songName, roleLabel, fileId) {
   stopQueue();
   stopCardVideo();
-  queue = { tracks: [{ songName: `${songName} (${roleLabel})`, fileId, type: 'single' }], order: [0], cursor: 0, showType: false };
+  queue = { tracks: [{ songName: `${songName} (${roleLabel})`, fileId, type: 'single' }], order: [0], cursor: 0, showType: false, shuffled: false };
   renderQueuePlayer();
   await queueGoto(0);
 }
@@ -680,7 +738,9 @@ async function showSong(folderId, songName, cachedSongs = null) {
   const studentSectionsHtml = cachedStudents.map((student, i) => `
     <div id="student-section-${i}" class="song-section">
       <h3 class="section-title">${genderIcon(student.gender)} ${esc(student.name)}'s Practice</h3>
-      <span id="student-status-${i}" class="loading-inline">Loading…</span>
+      <div id="student-content-${i}">
+        <span id="student-status-${i}" class="loading-inline">Loading…</span>
+      </div>
     </div>`).join('');
 
   app().innerHTML = `
@@ -688,20 +748,29 @@ async function showSong(folderId, songName, cachedSongs = null) {
       <button class="back-btn" id="back-btn">← Bhajans</button>
       ${addContentBtnHtml()}
     </div>
-    <h2 class="song-title">${esc(songName)}</h2>
-    <div id="god-tag-row"></div>
-    <div id="teacher-section" class="song-section">
-      <h3 class="section-title">🎵 Teacher Reference</h3>
-      <span id="teacher-status" class="loading-inline">Loading…</span>
+    <div class="song-title-row">
+      <h2 class="song-title">
+        <span id="song-title-text">${esc(songName)}</span>
+        <button class="title-edit-btn write-only" id="title-edit-btn" title="Rename">✏️</button>
+      </h2>
+      <div id="god-tag-row"></div>
+    </div>
+    <div id="teacher-audio-section" class="song-section">
+      <h3 class="section-title">🎵 Teacher Audio</h3>
+      <span id="teacher-audio-status" class="loading-inline">Loading…</span>
     </div>
     ${studentSectionsHtml}
+    <div id="notes-section" class="song-section">
+      <h3 class="section-title">Notes</h3>
+      <span class="loading-inline">Loading…</span>
+    </div>
     <div id="meaning-section" class="song-section">
       <h3 class="section-title">Meaning</h3>
       <span class="loading-inline">Loading…</span>
     </div>
-    <div id="notes-section" class="song-section">
-      <h3 class="section-title">Notes</h3>
-      <span class="loading-inline">Loading…</span>
+    <div id="teacher-notes-section" class="song-section">
+      <h3 class="section-title">📝 Teacher's Notes</h3>
+      <span id="teacher-notes-status" class="loading-inline">Loading…</span>
     </div>`;
 
   document.getElementById('back-btn').addEventListener('click', () => showSongList());
@@ -709,6 +778,41 @@ async function showSong(folderId, songName, cachedSongs = null) {
     try { await ensureAuth(); } catch (e) { showError(e.message); return; }
     startWizard({ fromSong, songs: cachedSongs, presetSong: fromSong });
   };
+  document.getElementById('title-edit-btn').onclick = async () => {
+    try { await ensureAuth(); } catch (e) { showError(e.message); return; }
+    showTitleEditInline();
+  };
+
+  function showTitleEditInline() {
+    const titleTextEl = document.getElementById('song-title-text');
+    const prevHtml = titleTextEl.innerHTML;
+    titleTextEl.innerHTML = `<input type="text" id="song-title-input" class="song-title-input" value="${esc(songName)}" maxlength="100">`;
+    const input = document.getElementById('song-title-input');
+    input.focus();
+    input.select();
+
+    let saved = false;
+    async function save() {
+      if (saved) return;
+      const newName = input.value.trim();
+      if (!newName || newName === songName) { saved = true; titleTextEl.innerHTML = prevHtml; return; }
+      saved = true;
+      try {
+        await renameFile(folderId, newName);
+        songName = newName;
+        fromSong.name = newName;
+        titleTextEl.textContent = newName;
+      } catch (e) {
+        showError(e.message);
+        titleTextEl.innerHTML = prevHtml;
+      }
+    }
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); save(); }
+      if (e.key === 'Escape') { saved = true; titleTextEl.innerHTML = prevHtml; }
+    });
+    input.addEventListener('blur', save);
+  }
 
   try {
     const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
@@ -723,46 +827,59 @@ async function showSong(folderId, songName, cachedSongs = null) {
     const teacherAudio = files.find(f => f.name.toLowerCase().startsWith('teacher-audio'));
     const teacherNotes = files.find(f => f.name.toLowerCase().startsWith('teacher-notes'));
 
-    // Teacher section
-    const teacherEl = document.getElementById('teacher-section');
-    if (!teacherAudio && !teacherNotes) {
-      document.getElementById('teacher-status').outerHTML = `
-        <p class="hint">No teacher files in this folder yet.</p>
-        <button class="btn-add-cta write-only" id="cta-teacher">+ Add teacher content</button>`;
-      document.getElementById('cta-teacher').onclick = async () => {
+    // Teacher audio section
+    const teacherAudioEl = document.getElementById('teacher-audio-section');
+    if (!teacherAudio) {
+      document.getElementById('teacher-audio-status').outerHTML = `
+        <p class="hint">No teacher audio yet.</p>
+        <button class="btn-add-cta write-only" id="cta-teacher-audio">+ Add teacher audio</button>`;
+      document.getElementById('cta-teacher-audio').onclick = async () => {
         try { await ensureAuth(); } catch (e) { showError(e.message); return; }
-        startWizard({ fromSong, songs: cachedSongs, presetSong: fromSong });
+        startWizard({ fromSong, songs: cachedSongs, presetType: 'teacher-audio', presetSong: fromSong });
       };
     } else {
-      document.getElementById('teacher-status').remove();
-      if (teacherAudio) {
-        teacherEl.insertAdjacentHTML('beforeend',
-          `<audio controls src="${driveMediaUrl(`files/${teacherAudio.id}?alt=media`)}" class="audio-player"></audio>`);
-      }
-      if (teacherNotes) {
-        teacherEl.insertAdjacentHTML('beforeend',
-          `<img src="${driveMediaUrl(`files/${teacherNotes.id}?alt=media`)}" class="notes-img" alt="Teacher notes">`);
-      }
+      document.getElementById('teacher-audio-status').remove();
+      teacherAudioEl.insertAdjacentHTML('beforeend',
+        `<audio controls src="${driveMediaUrl(`files/${teacherAudio.id}?alt=media`)}" class="audio-player"></audio>`);
     }
 
     for (let i = 0; i < cachedStudents.length; i++) {
       await renderStudentPracticeSection(i, cachedStudents[i], files, fromSong, cachedSongs);
     }
 
-    const meaningFile = files.find(f => f.name.toLowerCase().startsWith('meaning'));
     const notesFile = files.find(f => f.name.toLowerCase().startsWith('notes'));
-    await renderTextSection('meaning-section', 'meaning', 'Meaning', meaningFile, folderId);
+    const meaningFile = files.find(f => f.name.toLowerCase().startsWith('meaning'));
     await renderTextSection('notes-section', 'notes', 'Notes', notesFile, folderId);
+    await renderTextSection('meaning-section', 'meaning', 'Meaning', meaningFile, folderId);
+
+    // Teacher's notes (photo) section — deliberately last on the page
+    const teacherNotesEl = document.getElementById('teacher-notes-section');
+    if (!teacherNotes) {
+      document.getElementById('teacher-notes-status').outerHTML = `
+        <p class="hint">No notes photo yet.</p>
+        <button class="btn-add-cta write-only" id="cta-teacher-notes">+ Add notes photo</button>`;
+      document.getElementById('cta-teacher-notes').onclick = async () => {
+        try { await ensureAuth(); } catch (e) { showError(e.message); return; }
+        startWizard({ fromSong, songs: cachedSongs, presetType: 'teacher-notes', presetSong: fromSong });
+      };
+    } else {
+      document.getElementById('teacher-notes-status').remove();
+      teacherNotesEl.insertAdjacentHTML('beforeend',
+        `<img src="${driveMediaUrl(`files/${teacherNotes.id}?alt=media`)}" class="notes-img" alt="Teacher notes">`);
+    }
 
   } catch (e) {
     showError(e.message);
   }
 }
 
+// Re-entrant: safe to call again on an already-rendered section (e.g. after a revision restore),
+// since it always resets student-content-${index} back to a fresh loading state first.
 async function renderStudentPracticeSection(index, student, files, fromSong, cachedSongs) {
+  const contentEl = document.getElementById(`student-content-${index}`);
+  if (!contentEl) return;
+  contentEl.innerHTML = `<span id="student-status-${index}" class="loading-inline">Loading…</span>`;
   const statusEl = document.getElementById(`student-status-${index}`);
-  const sectionEl = document.getElementById(`student-section-${index}`);
-  if (!statusEl || !sectionEl) return;
 
   const studentFile = matchStudentFile(files, student.name);
 
@@ -781,8 +898,8 @@ async function renderStudentPracticeSection(index, student, files, fromSong, cac
   let revisions = [];
   try {
     const revData = accessToken
-      ? await apiJSON(`files/${studentFile.id}/revisions?fields=revisions(id,modifiedTime,keepForever)`)
-      : await readJSON(`files/${studentFile.id}/revisions?fields=revisions(id,modifiedTime,keepForever)`);
+      ? await apiJSON(`files/${studentFile.id}/revisions?fields=revisions(id,modifiedTime,keepForever,mimeType)`)
+      : await readJSON(`files/${studentFile.id}/revisions?fields=revisions(id,modifiedTime,keepForever,mimeType)`);
     revisions = (revData.revisions || []).reverse();
   } catch (_) {
     // revisions.list requires OAuth; anonymous visitors see latest only, no picker
@@ -798,36 +915,126 @@ async function renderStudentPracticeSection(index, student, files, fromSong, cac
     }
   }
 
-  const revOptions = revisions.map((r, i) => {
-    const label = new Date(r.modifiedTime).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-    const flag = r.keepForever ? ' ✓' : '';
-    return `<option value="${esc(r.id)}">${i === 0 ? `Latest — ${label}` : label}${flag}</option>`;
-  }).join('');
-
   const isVideo = isVideoMime(studentFile.mimeType);
   const audioId = `student-audio-${index}`;
   statusEl.remove();
-  sectionEl.insertAdjacentHTML('beforeend', `
+  contentEl.insertAdjacentHTML('beforeend', `
     ${ageWarning}
     ${isVideo
       ? `<video controls playsinline id="${audioId}" src="${latestUrl}" class="video-player"></video>`
       : `<audio controls id="${audioId}" src="${latestUrl}" class="audio-player"></audio>`}
-    ${revisions.length > 1 ? `
+    ${revisions.length <= 1 ? `
+      <div class="practice-file-actions write-only">
+        <button class="rev-action-btn rev-action-danger" id="practice-delete-${index}">🗑️ Delete this recording</button>
+      </div>` : ''}
+    <div id="rev-container-${index}"></div>`);
+
+  // Whole-file delete only makes sense with no revision history to fall back to (restore-then-
+  // delete-the-old-head, below) — with 2+ takes, use that flow instead of nuking the file outright.
+  if (revisions.length <= 1) {
+    document.getElementById(`practice-delete-${index}`).onclick = async () => {
+      try { await ensureAuth(); } catch (e) { showError(e.message); return; }
+      if (!confirm(`Delete ${student.name}'s practice take for this song? It'll move to Drive's trash and can be restored from there if needed.`)) return;
+      const btn = document.getElementById(`practice-delete-${index}`);
+      btn.disabled = true; btn.textContent = 'Deleting…';
+      try {
+        await driveTrashFile(studentFile.id);
+        const remainingFiles = files.filter(f => f.id !== studentFile.id);
+        await renderStudentPracticeSection(index, student, remainingFiles, fromSong, cachedSongs);
+      } catch (e) {
+        showError(e.message);
+        btn.disabled = false; btn.textContent = '🗑️ Delete this recording';
+      }
+    };
+  }
+
+  const revLabel = (r, isHead) => {
+    const label = new Date(r.modifiedTime).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    return isHead ? `Latest — ${label}` : label;
+  };
+
+  function renderRevisionPicker() {
+    const container = document.getElementById(`rev-container-${index}`);
+    if (!container) return;
+    if (revisions.length <= 1) { container.innerHTML = ''; return; }
+
+    const revOptions = revisions.map((r, i) => {
+      const flag = r.keepForever ? ' ✓' : '';
+      return `<option value="${esc(r.id)}">${revLabel(r, i === 0)}${flag}</option>`;
+    }).join('');
+
+    container.innerHTML = `
       <div class="revision-row">
         <label class="rev-label">Earlier takes:</label>
         <select id="rev-picker-${index}" class="rev-select">${revOptions}</select>
-      </div>` : ''}`);
+      </div>
+      <div class="revision-actions write-only" id="rev-actions-${index}">
+        <p class="hint rev-actions-hint" id="rev-actions-hint-${index}">Select an earlier take above to restore or delete it.</p>
+        <button class="rev-action-btn" id="rev-restore-${index}">↩️ Restore this take</button>
+        <button class="rev-action-btn rev-action-danger" id="rev-delete-${index}">🗑️ Delete this take</button>
+      </div>`;
 
-  if (revisions.length > 1) {
-    document.getElementById(`rev-picker-${index}`).addEventListener('change', function() {
+    const select = document.getElementById(`rev-picker-${index}`);
+    const audioEl = document.getElementById(audioId);
+    const hintEl = document.getElementById(`rev-actions-hint-${index}`);
+    const restoreBtn = document.getElementById(`rev-restore-${index}`);
+    const deleteBtn = document.getElementById(`rev-delete-${index}`);
+
+    const updateActionState = () => {
+      const isHead = select.value === latestRevId;
+      hintEl.style.display = isHead ? '' : 'none';
+      restoreBtn.style.display = isHead ? 'none' : '';
+      deleteBtn.style.display = isHead ? 'none' : '';
+    };
+    updateActionState();
+
+    select.addEventListener('change', function() {
       const url = this.value === latestRevId
         ? latestUrl
         : driveMediaUrl(`files/${studentFile.id}/revisions/${this.value}?alt=media`);
-      const audioEl = document.getElementById(audioId);
       audioEl.src = url;
       audioEl.load();
+      updateActionState();
     });
+
+    restoreBtn.onclick = async () => {
+      try { await ensureAuth(); } catch (e) { showError(e.message); return; }
+      if (!confirm("Make this the current take? Today's recording will move into history, not be deleted.")) return;
+      const revisionId = select.value;
+      restoreBtn.disabled = true; restoreBtn.textContent = 'Restoring…';
+      try {
+        const resp = await apiFetch(`${BASE}/files/${studentFile.id}/revisions/${revisionId}?alt=media`);
+        const blob = await resp.blob();
+        const rev = revisions.find(r => r.id === revisionId);
+        await driveUpload({ mimeType: rev?.mimeType || studentFile.mimeType }, blob, studentFile.id);
+        await renderStudentPracticeSection(index, student, files, fromSong, cachedSongs);
+      } catch (e) {
+        showError(e.message);
+        restoreBtn.disabled = false; restoreBtn.textContent = '↩️ Restore this take';
+      }
+    };
+
+    deleteBtn.onclick = async () => {
+      try { await ensureAuth(); } catch (e) { showError(e.message); return; }
+      const revisionId = select.value;
+      const rev = revisions.find(r => r.id === revisionId);
+      const dateLabel = rev ? revLabel(rev, false) : 'selected';
+      if (!confirm(`Permanently delete the ${dateLabel} take? This can't be undone.`)) return;
+      deleteBtn.disabled = true; deleteBtn.textContent = 'Deleting…';
+      try {
+        await apiDelete(`files/${studentFile.id}/revisions/${revisionId}`);
+        revisions = revisions.filter(r => r.id !== revisionId);
+        audioEl.src = latestUrl;
+        audioEl.load();
+        renderRevisionPicker();
+      } catch (e) {
+        showError(e.message);
+        deleteBtn.disabled = false; deleteBtn.textContent = '🗑️ Delete this take';
+      }
+    };
   }
+
+  renderRevisionPicker();
 }
 
 // --- Meaning / Notes text sections (in song detail) ---
@@ -921,32 +1128,19 @@ function renderGodTagSection(folderId, songName, godTag, cachedSongs) {
   if (!container) return;
   const gods = cachedGods || [];
   const godObj = godTag ? gods.find(g => g.name === godTag) : null;
-  const noPhoto = godObj && !godObj.blobUrl;
 
   container.innerHTML = `
     <div class="god-tag-section">
       ${godObj ? `
         <div class="god-tag-display">
-          <div class="god-tag-avatar" id="god-tag-avatar-el">
+          <div class="god-tag-avatar">
             ${godAvatarHtml(godObj)}
           </div>
           <span class="god-tag-name">${esc(godObj.name)}</span>
-          ${noPhoto ? `<button class="god-emoji-edit-btn write-only" id="god-emoji-edit-btn" title="Choose emoji">🖌️</button>` : ''}
           <button class="god-tag-btn write-only" id="god-tag-change">Change</button>
         </div>` : `
         <button class="god-tag-btn god-tag-btn-add write-only" id="god-tag-add">🙏 Tag with god</button>`}
     </div>`;
-
-  if (noPhoto) {
-    const editBtn = document.getElementById('god-emoji-edit-btn');
-    if (editBtn) editBtn.onclick = async () => {
-      try { await ensureAuth(); } catch (e) { showError(e.message); return; }
-      const avatarEl = document.getElementById('god-tag-avatar-el');
-      if (avatarEl) showEmojiInputInline(godObj, avatarEl, () =>
-        renderGodTagSection(folderId, songName, godTag, cachedSongs)
-      );
-    };
-  }
 
   const trigger = document.getElementById('god-tag-change') || document.getElementById('god-tag-add');
   if (trigger) trigger.onclick = () => showInlineGodPicker(folderId, songName, container, gods, cachedSongs);
@@ -1708,7 +1902,7 @@ function renderHeaderPlayPills() {
 function wireHeaderPlayButtons(songs) {
   document.querySelectorAll('#header-play-row .hdr-play-btn').forEach(btn => {
     btn.disabled = false;
-    btn.onclick = () => startQueue(songs, btn.dataset.mode, false, btn.dataset.student || null);
+    btn.onclick = () => startQueue(songs, btn.dataset.mode, btn.dataset.student || null);
   });
 }
 

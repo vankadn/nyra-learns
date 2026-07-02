@@ -136,15 +136,64 @@ and offers a date-labeled picker. Drive auto-purges revisions older than 30 days
 forever. Every save from the app sets `keepRevisionForever=true` automatically; the 25-day age warning
 is still shown for any revision not yet marked (e.g. files uploaded via Drive before this feature).
 
+The per-student practice revision picker (`renderStudentPracticeSection` → `renderRevisionPicker`,
+per-song-detail only, not teacher-audio — teacher-audio has no revision picker at all today) also
+supports **↩️ Restore** and **🗑️ Delete** on whichever revision is currently selected in the
+dropdown, both write-only and `ensureAuth()`-gated like every other mutation. Drive has no native
+"revert": Restore fetches the old revision's bytes (`revisions.get?alt=media`, authenticated) and
+feeds them into the same `driveUpload(...)`-with-`keepRevisionForever=true` update path every other
+save uses — same `fileId`, same name-preserved/mimeType-updated policy — which creates a **new head
+revision** with the old content; nothing is deleted, the take restored *from* stays in history, and
+the take that *was* current becomes a normal non-head revision. Delete (`revisions.delete`) is
+permanent, no trash — and only ever offered on non-head revisions, since Drive rejects deleting the
+head and a file must always have ≥1 revision; to get rid of a bad *current* take, restore a good one
+first (which demotes the bad one), then delete becomes available on it. Restore re-fetches the whole
+section (`renderStudentPracticeSection` is written to be safely re-entrant — it always resets its
+`student-content-${index}` wrapper to a fresh loading state first) since it needs the newly-created
+head revision's real ID from Drive; Delete instead just splices the deleted entry out of the
+in-memory `revisions` array and calls `renderRevisionPicker()` directly, no re-fetch.
+
+Separately, a 🗑️ **"Delete this recording"** button sits right below the player itself (not inside
+the revision dropdown) — but **only when there's exactly one revision** (`revisions.length <= 1`).
+That's the one case the per-revision Delete above can never cover (Drive won't let you delete a
+file's only/head revision, and there's no older take to restore-then-demote-then-delete instead).
+With 2+ revisions, use that restore/delete flow instead of nuking the file outright — the button
+doesn't render at all in that case. This one deletes the **whole file**, via `driveTrashFile()` — a
+`files.update` PATCH with `{ trashed: true }`, i.e. Drive's normal trash, recoverable from Drive —
+deliberately not the permanent no-trash semantics of the per-revision Delete. On success it
+re-renders the section with that file filtered out of the local `files` list, landing back on the
+"No practice take yet" empty state.
+
 **Global playback queues:** header pill buttons — 🎤 Teacher, one per student, then 🔀 All — start a
-queue across all songs with no shuffle. Pills are generated dynamically (`renderHeaderPlayPills()`,
-see "Students" below), not fixed markup. Queue order is session-only, never persisted. "All"
-unshuffled = teacher clip then every student's clip per song, alphabetical song order. Student
-queues always use latest revision only — no revision picker in queue context. `queueGoto` is sync
-per track — sets `src` directly to `driveMediaUrl(...)` on whichever of `#queue-audio`/`#queue-video`
-the track's mimeType needs (no blob fetch, no ObjectURL lifecycle; see the video-support paragraph
-above for the dual-element mechanics). Header buttons are wired by `wireHeaderPlayButtons(songs)`
-after `showSongList()` loads. Entering a song view stops the active queue.
+queue across all songs, **shuffled by default**. Pills are generated dynamically
+(`renderHeaderPlayPills()`, see "Students" below), not fixed markup. Queue order is session-only,
+never persisted. Unshuffled "All" (i.e. with the toggle turned off) = teacher clip then every
+student's clip per song, alphabetical song order — that's also the underlying track-build order
+shuffle reorders. Student queues always use latest revision only — no revision picker in queue
+context. `queueGoto` is sync per track — sets `src` directly to `driveMediaUrl(...)` on whichever of
+`#queue-audio`/`#queue-video` the track's mimeType needs (no blob fetch, no ObjectURL lifecycle; see
+the video-support paragraph above for the dual-element mechanics). Header buttons are wired by
+`wireHeaderPlayButtons(songs)` after `showSongList()` loads. Entering a song view stops the active
+queue.
+
+The queue bar's control row (only shown for multi-track queues, hidden for the single-track
+`playSingleTrack()` case) has a 🔀 shuffle toggle to the left of ⏮/⏭ — same `.queue-ctrl-btn` class
+as the transport buttons, filled with `--sun` via `[aria-pressed="true"]` when active (reusing the
+existing filled-when-active pattern, e.g. `.god-chip-all.active`, rather than a new one). It shows
+**pressed/active as soon as the queue starts** — `startQueue()` builds `queue.order` already
+Fisher-Yates shuffled and sets `queue.shuffled = true`, so the very first track played is randomized,
+not the fixed order's first track. It's a playback-order setting on the **currently active queue
+only** (`queue.shuffled`), toggled by `toggleQueueShuffle()` — not a separate mode, and it never
+starts/stops the queue or touches `queue.cursor`. Turning it off restores the original sequential
+(track-build) order for whatever hasn't played yet, without touching what's already played; turning
+it back on mid-queue Fisher-Yates-shuffles only the not-yet-played remainder of `queue.order`
+(`queue.order.slice(cursor + 1)`) — everything up to and including the current track is always left
+untouched either way, which is also what makes ⏮ Prev walk back through tracks in the order actually
+played rather than the original sequence. No auto-loop when the queue reaches its end, matching the
+pre-existing no-loop behavior. Session-only: `queue.shuffled` resets to `true` every time
+`startQueue()` builds a fresh queue (`playSingleTrack()`'s single-track queue stays unshuffled —
+`shuffled: false` — since there's nothing to shuffle and no toggle is shown for it); turning shuffle
+off applies only to that one queue instance, never persisted or carried to the next queue start.
 
 **Auth-aware UI:** the app opens in anonymous read-only mode (`body.anon` class set at boot). All
 write surfaces carry class `write-only`; CSS rule `body.anon .write-only { display:none!important }`
@@ -199,19 +248,37 @@ emoji property, just one property holding serialized JSON instead of one propert
   rename any Drive files (the UI shows a warning when the name field changes), since the old
   recordings would otherwise become permanently orphaned from a mismatched prefix.
 
-**Meaning / Notes (song detail):** two plain-text sections below the practice sections in the song
-detail view — `meaning.txt` (English meaning/translation) and `notes.txt` (freeform notes, distinct
-from `teacher-notes.*`, which is the handwritten-notes photo). Same self-discovering prefix pattern
-as everything else; read via the API key, no auth needed. Content itself can't be included in the
-folder's file-listing call (Drive's `files.list` has no way to inline a file's body), so
-`renderTextSection()` does one extra `alt=media` GET per matched file via the new `readText()`
-helper, reusing the same per-song `files` listing already fetched for teacher/student content — no
-separate listing call added. Editing is inline (not the multi-step Add Content wizard): a write-only
-✏️ button swaps the section for a `<textarea>` + Save/Cancel (`showTextEditForm`); Save calls
-`ensureAuth()` then `saveTextContent()`, which mirrors the exact same `files.update`-if-exists-else-
-`files.create` + `keepRevisionForever=true` pattern as every other save in this app (via the existing
-`driveUpload` helper). Re-renders optimistically from the just-saved text (`renderTextDisplay`) —
-no re-fetch, no full reload. No revision picker for these, same as the god tag.
+**Meaning / Notes (song detail):** two plain-text sections — `meaning.txt` (English
+meaning/translation) and `notes.txt` (freeform notes, distinct from `teacher-notes.*`, which is the
+handwritten-notes photo). Same self-discovering prefix pattern as everything else; read via the API
+key, no auth needed. Content itself can't be included in the folder's file-listing call (Drive's
+`files.list` has no way to inline a file's body), so `renderTextSection()` does one extra `alt=media`
+GET per matched file via the `readText()` helper, reusing the same per-song `files` listing already
+fetched for teacher/student content — no separate listing call added. Editing is inline (not the
+multi-step Add Content wizard): a write-only ✏️ button swaps the section for a `<textarea>` +
+Save/Cancel (`showTextEditForm`); Save calls `ensureAuth()` then `saveTextContent()`, which mirrors
+the exact same `files.update`-if-exists-else-`files.create` + `keepRevisionForever=true` pattern as
+every other save in this app (via the existing `driveUpload` helper). Re-renders optimistically from
+the just-saved text (`renderTextDisplay`) — no re-fetch, no full reload. No revision picker for
+these, same as the god tag.
+
+**Song detail page order** (deliberate, confirmed with the user — don't reshuffle without asking):
+title → god tag → 🎵 Teacher Audio (`teacher-audio-section`, audio only) → one practice section per
+student → Notes (`notes.txt`) → Meaning (`meaning.txt`) → 📝 Teacher's Notes
+(`teacher-notes-section`, the handwritten-notes photo — deliberately last on the page, separated from
+the teacher audio section it used to share). Each of Teacher Audio and Teacher's Notes has its own
+independent empty-state CTA now (`+ Add teacher audio` / `+ Add notes photo`, each presetting the
+wizard's `contentType` to skip the type-picker step) — they used to be one combined "Teacher
+Reference" section with a single generic CTA covering both.
+
+**Song title rename:** a write-only ✏️ button next to the title (`title-edit-btn`) swaps
+`#song-title-text` for a text input, same Enter/Escape/blur inline-edit pattern as
+`showEmojiInputInline`. Save calls `renameFile(folderId, name)` — a plain `files.update` PATCH with
+`{ name }` (the song folder's Drive folder name *is* the song name, no separate title field) — then
+updates `songName` and `fromSong.name` in place so every closure already wired in this `showSong()`
+call (Add content, teacher/student empty-state CTAs, etc.) picks up the new name immediately. Other
+cached song lists (the song-list grid, an open wizard's song picker) go stale until their next fetch,
+same as every other rename in this app (e.g. student rename) — no special propagation.
 
 **God tag/filter:** songs can be tagged with a god (Ganesha, Shiva, Krishna, etc.).
 
@@ -241,10 +308,12 @@ no re-fetch, no full reload. No revision picker for these, same as the god tag.
   Gods without a photo show a 🖌️ mini-button below their chip; clicking opens `showEmojiInputInline()`
   in the chip circle — saves to `properties.emoji`, updates `cachedGods` optimistically.
 - Song cards show a small round god avatar badge (top-right corner) if tagged.
-- Song detail view shows a god tag section (below title): "Tag with god" button if untagged, or avatar +
-  name + optional 🖌️ emoji-edit button (shown when no photo) + "Change" button if tagged. Clicking
-  "Change" or "Tag" opens an inline horizontal picker. Picker includes "None" (remove tag), all gods,
-  and "+ Add god" to create a new god entry.
+- Song detail view shows a god tag section (next to the title, same row): "Tag with god" button if
+  untagged, or avatar + name + "Change" button if tagged. Clicking "Change" or "Tag" opens an inline
+  horizontal picker. Picker includes "None" (remove tag), all gods, and "+ Add god" to create a new
+  god entry. No emoji-edit affordance here — that's deliberately only on the song-list filter row's
+  🖌️ mini-button (below), so the song detail's tag row stays about *which god this song is tagged
+  with*, not god profile editing.
 - `showEmojiInputInline(god, targetEl, onDone)`: replaces `targetEl` content with a text input;
   validates exactly 1 grapheme via `Array.from()`; on Enter/blur saves to `properties.emoji` via
   `driveUpdateProperties`, updates `cachedGods` optimistically, calls `onDone` to re-render.
