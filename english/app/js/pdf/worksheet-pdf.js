@@ -15,6 +15,12 @@ export function renderWorksheetSection(sections, stickerThemes = []) {
   ${buildSelectorHTML(sections, 'ws', { defaultCount: 25, minCount: 1, maxCount: 200, countLabel: 'Words per category:' })}
   <div class="ws-notes-row">
     <label>
+      <input type="checkbox" id="wsMixAll">
+      🎲 Mix all selected words together (one shuffled list instead of by category)
+    </label>
+  </div>
+  <div class="ws-notes-row" id="wsNotesRow">
+    <label>
       <input type="checkbox" id="wsIncludeNotes">
       📋 Include teaching notes in PDF
     </label>
@@ -24,6 +30,18 @@ export function renderWorksheetSection(sections, stickerThemes = []) {
   <div class="ws-status" id="wsStatus"></div>`;
 
   setupSelector(div, 'ws');
+
+  const mixAllCb = div.querySelector('#wsMixAll');
+  const notesCb = div.querySelector('#wsIncludeNotes');
+  const notesRow = div.querySelector('#wsNotesRow');
+  const countLabelEl = div.querySelector('#ws-count-label');
+  mixAllCb.addEventListener('change', () => {
+    const mixed = mixAllCb.checked;
+    notesCb.disabled = mixed;
+    if (mixed) notesCb.checked = false;
+    notesRow.style.opacity = mixed ? 0.5 : 1;
+    if (countLabelEl) countLabelEl.textContent = mixed ? 'Total words:' : 'Words per category:';
+  });
 
   if (stickerThemes.length) {
     const pickerEl = div.querySelector('#wsThemePicker');
@@ -75,39 +93,61 @@ async function generateWorksheetPDF(sections, theme = null) {
   const wordCount = Math.max(1, parseInt(document.getElementById('ws-word-count').value, 10) || 25);
   const selectedLevels = Array.from(document.querySelectorAll('.ws-level-cb:checked')).map(cb => cb.value);
   const includeNotes = document.getElementById('wsIncludeNotes').checked;
+  const mixAll = document.getElementById('wsMixAll').checked;
 
   const renderBlocks = [];
 
-  for (const sec of sections) {
-    const checkedItems = Array.from(
-      document.querySelectorAll(`.ws-item-cb[data-sec="${sec.id}"]:checked`)
-    ).map(cb => cb.dataset.item);
-    if (checkedItems.length === 0) continue;
-
-    if (includeNotes) {
+  if (mixAll) {
+    let words = [];
+    for (const sec of sections) {
+      const checkedItems = Array.from(
+        document.querySelectorAll(`.ws-item-cb[data-sec="${sec.id}"]:checked`)
+      ).map(cb => cb.dataset.item);
       for (const item of sec.items) {
         if (!checkedItems.includes(item.id)) continue;
-        let words = item.words
-          .filter(w => !selectedLevels.length || selectedLevels.includes(w.level || 'easy'))
-          .map(w => ({ word: w.word, emoji: getEmoji(w, item, sec) }));
-        if (!words.length) continue;
-        words = shuffle(words).slice(0, wordCount);
-        renderBlocks.push({ label: item.label, rgb: hexToRgb(sec.color), words, tn: item.teacherNotes || null });
-      }
-    } else {
-      let words = [];
-      for (const item of sec.items) {
-        if (checkedItems.includes(item.id)) {
-          for (const wObj of item.words) {
-            if (!selectedLevels.length || selectedLevels.includes(wObj.level || 'easy')) {
-              words.push({ word: wObj.word, emoji: getEmoji(wObj, item, sec) });
-            }
+        for (const wObj of item.words) {
+          if (!selectedLevels.length || selectedLevels.includes(wObj.level || 'easy')) {
+            words.push({ word: wObj.word, emoji: getEmoji(wObj, item, sec) });
           }
         }
       }
-      if (!words.length) continue;
+    }
+    if (words.length) {
       words = shuffle(words).slice(0, wordCount);
-      renderBlocks.push({ label: sec.title, rgb: hexToRgb(sec.color), words, tn: null });
+      renderBlocks.push({ label: 'Mixed Practice', rgb: hexToRgb('#9C27B0'), words, tn: null });
+    }
+  } else {
+    for (const sec of sections) {
+      const checkedItems = Array.from(
+        document.querySelectorAll(`.ws-item-cb[data-sec="${sec.id}"]:checked`)
+      ).map(cb => cb.dataset.item);
+      if (checkedItems.length === 0) continue;
+
+      if (includeNotes) {
+        for (const item of sec.items) {
+          if (!checkedItems.includes(item.id)) continue;
+          let words = item.words
+            .filter(w => !selectedLevels.length || selectedLevels.includes(w.level || 'easy'))
+            .map(w => ({ word: w.word, emoji: getEmoji(w, item, sec) }));
+          if (!words.length) continue;
+          words = shuffle(words).slice(0, wordCount);
+          renderBlocks.push({ label: item.label, rgb: hexToRgb(sec.color), words, tn: item.teacherNotes || null });
+        }
+      } else {
+        let words = [];
+        for (const item of sec.items) {
+          if (checkedItems.includes(item.id)) {
+            for (const wObj of item.words) {
+              if (!selectedLevels.length || selectedLevels.includes(wObj.level || 'easy')) {
+                words.push({ word: wObj.word, emoji: getEmoji(wObj, item, sec) });
+              }
+            }
+          }
+        }
+        if (!words.length) continue;
+        words = shuffle(words).slice(0, wordCount);
+        renderBlocks.push({ label: sec.title, rgb: hexToRgb(sec.color), words, tn: null });
+      }
     }
   }
 

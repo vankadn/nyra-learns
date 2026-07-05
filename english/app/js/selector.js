@@ -38,7 +38,7 @@ export function buildSelectorHTML(sections, prefix, opts = {}) {
   </div>`;
   if (showCount) {
     html += `<div class="ws-count-row">
-    <span>${countLabel}</span>
+    <span id="${prefix}-count-label">${countLabel}</span>
     <input type="number" id="${prefix}-word-count" value="${defaultCount}" min="${minCount}" max="${maxCount}">
   </div>`;
   }

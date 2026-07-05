@@ -3851,6 +3851,112 @@
           }
         }
       ]
+    },
+    {
+      "id": "g-variations",
+      "title": "Hard & Soft G",
+      "color": "#4A90D9",
+      "icon": "🦒",
+      "defaultEmoji": "🔤",
+      "tip": "G says two sounds — hard like 'go' or soft like 'giraffe'!",
+      "rule": "G is usually soft (/j/) before e, i, y — hard (/g/) everywhere else.",
+      "items": [
+        {
+          "id": "hard-g",
+          "label": "Hard G",
+          "defaultEmoji": "🐐",
+          "teacherNotes": {
+            "howToSay": "Say /g/ like in 'go' — sound comes from the back of your throat.",
+            "simpleRule": "Hard G sounds like the letter name G. Usually before a, o, u, or another consonant.",
+            "indianDadTip": "Same as Hindi ग (ga) — no difference in mouth shape, this one's easy.",
+            "commonMistake": "None typical — hard G maps cleanly to native sounds.",
+            "exampleSentence": "The goat ate the gum."
+          },
+          "words": [
+            { "word": "go", "emoji": "🚦", "level": "easy" },
+            { "word": "gap", "emoji": "🕳️", "level": "easy" },
+            { "word": "gum", "emoji": "🍬", "level": "easy" },
+            { "word": "got", "emoji": "✅", "level": "easy" },
+            { "word": "gas", "emoji": "⛽", "level": "easy" },
+            { "word": "big", "emoji": "🐘", "level": "easy" },
+            { "word": "dig", "emoji": "⛏️", "level": "easy" },
+            { "word": "leg", "emoji": "🦵", "level": "easy" },
+            { "word": "bug", "emoji": "🐛", "level": "easy" },
+            { "word": "hug", "emoji": "🤗", "level": "easy" },
+            { "word": "gob", "emoji": "🫙", "level": "easy" },
+            { "word": "gun", "emoji": "🔫", "level": "easy" },
+            { "word": "gut", "emoji": "🫃", "level": "easy" },
+            { "word": "fog", "emoji": "🌫️", "level": "easy" },
+            { "word": "jog", "emoji": "🏃", "level": "easy" },
+            { "word": "log", "emoji": "🪵", "level": "easy" },
+            { "word": "hog", "emoji": "🐖", "level": "easy" },
+            { "word": "wig", "emoji": "👨‍🦲", "level": "easy" },
+            { "word": "pig", "emoji": "🐷", "level": "easy" },
+            { "word": "rag", "emoji": "🧻", "level": "easy" },
+            { "word": "bag", "emoji": "👜", "level": "easy" },
+            { "word": "tag", "emoji": "🏷️", "level": "easy" },
+            { "word": "game", "emoji": "🎮", "level": "medium" },
+            { "word": "gate", "emoji": "🚪", "level": "medium" },
+            { "word": "goat", "emoji": "🐐", "level": "medium" },
+            { "word": "girl", "emoji": "👧", "level": "medium" },
+            { "word": "give", "emoji": "🎁", "level": "medium" },
+            { "word": "get", "emoji": "🫳", "level": "medium" },
+            { "word": "gold", "emoji": "🥇", "level": "medium" },
+            { "word": "grow", "emoji": "🌱", "level": "medium" },
+            { "word": "green", "emoji": "🟢", "level": "medium" },
+            { "word": "great", "emoji": "👍", "level": "medium" },
+            { "word": "grab", "emoji": "🤲", "level": "medium" },
+            { "word": "glue", "emoji": "🧴", "level": "medium" },
+            { "word": "glow", "emoji": "✨", "level": "medium" },
+            { "word": "goal", "emoji": "🥅", "level": "medium" },
+            { "word": "ghost", "emoji": "👻", "level": "medium" },
+            { "word": "guest", "emoji": "🙋", "level": "medium" },
+            { "word": "gravy", "emoji": "🍲", "level": "medium" },
+            { "word": "grape", "emoji": "🍇", "level": "hard" },
+            { "word": "guitar", "emoji": "🎸", "level": "hard" },
+            { "word": "garden", "emoji": "🌱", "level": "hard" }
+          ]
+        },
+        {
+          "id": "soft-g",
+          "label": "Soft G",
+          "defaultEmoji": "🦒",
+          "teacherNotes": {
+            "howToSay": "Say /j/ like in 'jump' — G borrows the J sound here.",
+            "simpleRule": "Soft G sounds like J. Happens before e, i, or y (gem, giant, gym).",
+            "indianDadTip": "This is the tricky one — G looking like J has no parallel in Hindi/Telugu, where ग is always hard. Point out it 'sounds like J' explicitly.",
+            "commonMistake": "Reading soft-G words with the hard /g/ sound (saying 'giraffe' with a hard g like 'go').",
+            "exampleSentence": "The giant giraffe ate a gem."
+          },
+          "words": [
+            { "word": "gem", "emoji": "💎", "level": "easy" },
+            { "word": "gym", "emoji": "🏋️", "level": "easy" },
+            { "word": "age", "emoji": "🎂", "level": "easy" },
+            { "word": "cage", "emoji": "🦜", "level": "easy" },
+            { "word": "page", "emoji": "📄", "level": "easy" },
+            { "word": "gel", "emoji": "🧴", "level": "easy" },
+            { "word": "wage", "emoji": "💵", "level": "easy" },
+            { "word": "rage", "emoji": "😡", "level": "easy" },
+            { "word": "sage", "emoji": "🌿", "level": "easy" },
+            { "word": "stage", "emoji": "🎭", "level": "medium" },
+            { "word": "giant", "emoji": "🗿", "level": "medium" },
+            { "word": "giraffe", "emoji": "🦒", "level": "medium" },
+            { "word": "gentle", "emoji": "🕊️", "level": "medium" },
+            { "word": "danger", "emoji": "⚠️", "level": "medium" },
+            { "word": "orange", "emoji": "🍊", "level": "medium" },
+            { "word": "cabbage", "emoji": "🥬", "level": "medium" },
+            { "word": "manage", "emoji": "📋", "level": "medium" },
+            { "word": "package", "emoji": "📦", "level": "medium" },
+            { "word": "village", "emoji": "🏘️", "level": "medium" },
+            { "word": "message", "emoji": "💬", "level": "medium" },
+            { "word": "engine", "emoji": "🚂", "level": "hard" },
+            { "word": "generous", "emoji": "🎁", "level": "hard" },
+            { "word": "gymnastics", "emoji": "🤸", "level": "hard" },
+            { "word": "germs", "emoji": "🦠", "level": "hard" },
+            { "word": "genius", "emoji": "🧠", "level": "hard" }
+          ]
+        }
+      ]
     }
   ]
 }

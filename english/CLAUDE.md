@@ -149,8 +149,9 @@ Never render a broken/empty emoji slot — always fall through.
 | `spelling-rules` | `use-ck` `use-k` `use-c` |
 | `consonant-digraphs` | `sh` `ch` `th` `ph` |
 | `consonant-blends` | `pl` `br` `cl` `cr` `fl` |
+| `g-variations` | `hard-g` `soft-g` |
 
-Word counts: 30 words per item (20 for `ei-eigh`, 24 for digraphs sh/ch/th, 14 for `ph`, 18 for blends).
+Word counts: 30 words per item (20 for `ei-eigh`, 24 for digraphs sh/ch/th, 14 for `ph`, 18 for blends, 42 for `hard-g`, 25 for `soft-g`).
 
 Top-level arrays: `completionPraises` (16 strings), `stickerThemes` (6 themes).
 
