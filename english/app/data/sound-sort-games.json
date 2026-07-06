@@ -1,0 +1,15 @@
+{
+  "games": [
+    {
+      "gameId": "sound-sort-g",
+      "sectionId": "g-variations",
+      "icon": "🦒",
+      "title": "Hard G or Soft G?",
+      "instructions": "Is it a hard /g/ or soft /j/ sound?",
+      "categories": [
+        { "id": "hard-g", "symbol": "/g/", "color": "#4A90D9" },
+        { "id": "soft-g", "symbol": "/j/", "color": "#D97A4A" }
+      ]
+    }
+  ]
+}

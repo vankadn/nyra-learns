@@ -23,7 +23,7 @@ belongs in JSON.
 app/index.html         Thin shell — no logic. All JS is in app/js/.
 app/css/styles.css     All styles.
 app/js/                ES module tree (see below).
-app/data/*.json        One file per subject/unit.
+app/data/*.json        One file per subject/unit, plus sound-sort-games.json (see below).
 worksheets/generate.py PDF generator (reportlab). Reads the same JSON files.
 ```
 
@@ -51,11 +51,14 @@ app/js/
     missing-letter.js  Game 3 (g3) — fill blanks only (1/2/3 by level)
     unscramble.js      Game 4 (g4) — reorder word's own letters, no decoys
     sentence-builder.js Game 5 (g5) — reorder sentence words
+    sound-sort.js      Sound Sort — generic config-driven "tap the sound bucket" engine
+    sound-sort-config.js  buildSoundSortConfigs() — merges sound-sort-games.json
+                        manifest with live phonics section data into full run configs
   pdf/
     pdf-utils.js       emojiCache, loadEmojiImage(), hexToRgb()
     worksheet-pdf.js   renderWorksheetSection, generateWorksheetPDF
     game-pdf.js        generateSpellItPDF, generateMatchPDF, generateMissingLetterPDF,
-                        generateUnscramblePDF, generateSentenceBuilderPDF
+                        generateUnscramblePDF, generateSentenceBuilderPDF, generateSoundSortPDF
 ```
 
 **Key rules:**
@@ -155,6 +158,65 @@ Word counts: 30 words per item (20 for `ei-eigh`, 24 for digraphs sh/ch/th, 14 f
 
 Top-level arrays: `completionPraises` (16 strings), `stickerThemes` (6 themes).
 
+## Sound Sort games (config-driven)
+
+**Games list (Games picker grid):** Quiz, Letter Builder, Word Match, Missing Letter,
+Unscramble, Sentence Builder, Sound Sort. Sound Sort is one entry point, dynamically
+instantiated once per config — not one hardcoded game like the other six.
+
+`sound-sort.js` is a generic engine: "show one word, tap which of 2–3 sound-category
+buckets it belongs to." It has no G-specific (or any subject-specific) code. Each
+instance is built from a config shaped:
+
+```json
+{
+  "gameId": "sound-sort-g",
+  "icon": "🦒",
+  "title": "Hard G or Soft G?",
+  "instructions": "Is it a hard /g/ or soft /j/ sound?",
+  "categories": [
+    { "id": "hard-g", "label": "Hard G", "symbol": "/g/", "color": "#4A90D9" },
+    { "id": "soft-g", "label": "Soft G", "symbol": "/j/", "color": "#D97A4A" }
+  ],
+  "deck": [
+    { "word": "gum", "emoji": "🍬", "level": "easy", "answer": "hard-g" }
+  ]
+}
+```
+
+This full config is never hand-written — `sound-sort-config.js`'s `buildSoundSortConfigs()`
+derives it at load time from two inputs, so word lists are never duplicated:
+- `app/data/sound-sort-games.json` — a small manifest of just the per-game cosmetic
+  metadata that doesn't exist in the phonics schema (`gameId`, `sectionId`, `icon`,
+  `title`, `instructions`, and per-category `symbol`/`color`).
+- The matching `vowels.json` section (looked up by `sectionId`) — supplies `deck`
+  (every word/emoji/level from that section's items) and each category's `label`
+  (pulled from the matching item's `label`, e.g. `g-variations`'s `hard-g`/`soft-g`).
+
+**First live config:** `sound-sort-g`, deck derived from the `g-variations` section
+of `vowels.json` (42 hard-g + 25 soft-g words).
+
+**Adding the next sound-sort game (e.g. a future Hard C/Soft C) requires zero engine
+code changes** — only a new entry in `sound-sort-games.json` pointing at a phonics
+section whose items are the 2–3 sound categories. `main.js` loops over every config
+`buildSoundSortConfigs()` returns, mounting a game section and a Games-grid card for
+each — no per-game wiring in `main.js` or `nav.js` either.
+
+Reuses existing engine pieces rather than reimplementing: `renderGameSection`/
+`celebrate`/`showReplay` from `game-shell.js` (setup screen, confetti, praise pool),
+`getSelectorWords`/`buildSelectorHTML` from `selector.js` (category/level/count
+picker — each config's categories are exposed as one section's checkbox items;
+`getSelectorWords` also tags each returned word with its source `itemId` so the
+engine can recover the correct-answer category), `speak`/`playChime` for round
+mechanics, and the `.quiz-card`/`.quiz-word`/`.score-bar` CSS classes from Quiz for
+the play screen. Only new pieces: the `.sort-bucket-btn` CSS (N-column tap-target
+buttons colored per category) and `generateSoundSortPDF` in `game-pdf.js` (prints a
+circle-the-answer worksheet).
+
+Tapping the word/emoji (not a bucket) re-speaks it via `speak()`, matching the
+app-wide "tap words to hear them" convention — same interaction as the Learn tab's
+word chips, without affecting round state or counting as an answer.
+
 ## Workflow split
 
 Homework notes, curriculum questions, emoji assignments, and JSON data blocks are handled in the **claude.ai project chat** — that chat holds curriculum memory and produces ready-to-paste JSON. This repo (Claude Code) is for wiring JSON into the app/worksheet. Do not decide content or emoji here.
@@ -175,7 +237,12 @@ python3 -c "from pdf2image import convert_from_path; [im.save(f'p{i}.png') for i
 
 ## Conventions
 
-- Worksheets default to 25 words per section.
+- Worksheets default to 25 words per section. A "🎲 Mix all selected words together"
+  toggle (`wsMixAll` checkbox in `worksheet-pdf.js`) switches the word-count field
+  between "Words per category" (default: one block per selected category, current
+  behavior) and "Total words" (one shuffled `Mixed Practice` block pooling words
+  across every selected category/item) — mutually exclusive with "Include teaching
+  notes" (notes are per-item and don't apply once categories are mixed together).
 - Python PDF uses Noto Color Emoji font (`assets/NotoColorEmoji.ttf`) — do not use reportlab default fonts for emoji.
 - In-app PDF uses Twemoji PNG CDN (`cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/`).
 - Deploy target: Netlify Drop or GitHub Pages — no server, no build step.

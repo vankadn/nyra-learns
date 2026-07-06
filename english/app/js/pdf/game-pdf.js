@@ -184,6 +184,56 @@ export async function generateMissingLetterPDF(words, { theme } = {}) {
   doc.save(`Nyra-MissingLetter-${new Date().toISOString().slice(0, 10)}.pdf`);
 }
 
+export async function generateSoundSortPDF(words, { theme } = {}, config = {}) {
+  if (!window.jspdf) throw new Error('PDF library not loaded');
+  await Promise.all([...new Set(words.map(w => w.emoji))].map(e => loadEmojiImage(e)));
+  if (theme) await Promise.all(theme.emoji.map(e => loadEmojiImage(e)));
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'letter', orientation: 'portrait' });
+  const pageW = 215.9, pageH = 279.4, mL = 20, mT = 20, mB = 15;
+  const emojiSz = 12, rowH = 16, circleR = 3;
+
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
+  doc.text(config.title || 'Sound Sort', pageW / 2, mT, { align: 'center' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+  doc.setTextColor(130, 130, 130);
+  doc.text('Name: _________________________', mL, mT + 9);
+  doc.setTextColor(0, 0, 0);
+
+  const categories = config.categories || [];
+  const bucketColW = 34;
+  const bucketsX = pageW - mL - categories.length * bucketColW;
+
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+  categories.forEach((cat, i) => {
+    const cx = bucketsX + i * bucketColW + bucketColW / 2;
+    doc.text(`${cat.symbol ? cat.symbol + ' ' : ''}${cat.label}`, cx, mT + 15, { align: 'center' });
+  });
+
+  let y = mT + 22;
+  for (const w of words) {
+    if (y + rowH > pageH - mB) { doc.addPage(); y = mT; }
+
+    const imgData = emojiCache.get(w.emoji);
+    if (imgData) doc.addImage(imgData, 'PNG', mL, y, emojiSz, emojiSz);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(20, 20, 20);
+    doc.text(w.word, mL + emojiSz + 5, y + emojiSz / 2 + 3);
+    doc.setTextColor(0, 0, 0);
+
+    categories.forEach((cat, i) => {
+      const cx = bucketsX + i * bucketColW + bucketColW / 2;
+      doc.setDrawColor(120, 120, 120); doc.setLineWidth(0.5);
+      doc.circle(cx, y + emojiSz / 2, circleR);
+    });
+
+    y += rowH;
+  }
+
+  drawCornerStickers(doc, theme, pageW, pageH);
+  doc.save(`Nyra-${config.gameId || 'SoundSort'}-${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
 export async function generateSentenceBuilderPDF(sentences, { theme } = {}) {
   if (!window.jspdf) throw new Error('PDF library not loaded');
   if (theme) await Promise.all(theme.emoji.map(e => loadEmojiImage(e)));

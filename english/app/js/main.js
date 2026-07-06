@@ -5,12 +5,16 @@ import { renderGame2Section } from './games/word-match.js';
 import { renderGame3Section } from './games/missing-letter.js';
 import { renderGame4Section } from './games/unscramble.js';
 import { renderGame5Section } from './games/sentence-builder.js';
+import { renderSoundSortSection, buildSoundSortGameCard } from './games/sound-sort.js';
+import { buildSoundSortConfigs } from './games/sound-sort-config.js';
 import { renderWorksheetSection } from './pdf/worksheet-pdf.js';
 import { initNav, showLearnTab, showGames, showTab, renderGamesSection } from './nav.js';
 
 async function init() {
   const res = await fetch('data/vowels.json');
   const DATA = await res.json();
+  const soundSortRes = await fetch('data/sound-sort-games.json');
+  const soundSortManifest = await soundSortRes.json();
 
   initNav(DATA.sections[0].id);
 
@@ -63,6 +67,16 @@ async function init() {
   content.appendChild(renderGame4Section(DATA.sections, praises, stickerThemes));
   content.appendChild(renderGame5Section(DATA.sections, praises, stickerThemes));
   content.appendChild(renderWorksheetSection(DATA.sections, stickerThemes));
+
+  // Sound Sort: one game instance per manifest entry — adding a new
+  // sound-classification game (e.g. Hard/Soft C) only needs a new entry
+  // in sound-sort-games.json, no changes here.
+  const soundSortConfigs = buildSoundSortConfigs(DATA.sections, soundSortManifest.games || []);
+  const gamesGrid = content.querySelector('#sec-games .games-grid');
+  for (const cfg of soundSortConfigs) {
+    content.appendChild(renderSoundSortSection(cfg, praises, stickerThemes));
+    gamesGrid.appendChild(buildSoundSortGameCard(cfg));
+  }
 }
 
 init();

@@ -276,6 +276,29 @@ header p { color: #E3F2FD; font-size: 0.95rem; margin-top: 4px; }
 
 .score-num { font-size: 1.8rem; color: var(--plum); }
 
+.sort-buckets {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+.sort-bucket-btn {
+  font-family: 'Baloo 2', cursive;
+  border: none;
+  border-radius: 18px;
+  cursor: pointer;
+  padding: 16px 8px;
+  color: white;
+  font-weight: 800;
+  text-align: center;
+  transition: transform 0.1s;
+}
+.sort-bucket-btn:active   { transform: translateY(3px); }
+.sort-bucket-btn:disabled { opacity: 0.55; cursor: default; }
+.sort-bucket-btn.correct  { outline: 4px solid #43A047; outline-offset: 2px; }
+.sort-bucket-btn.wrong    { outline: 4px solid #E53935; outline-offset: 2px; }
+.sort-bucket-symbol { display: block; font-size: 1.3rem; margin-bottom: 4px; opacity: 0.85; }
+.sort-bucket-label  { display: block; font-size: 1.05rem; }
+
 .next-btn {
   display: block;
   width: 100%;

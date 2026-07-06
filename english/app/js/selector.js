@@ -78,7 +78,7 @@ export function getSelectorWords(sections, containerEl, prefix) {
       if (!checkedItems.includes(item.id)) continue;
       for (const wObj of item.words) {
         if (!selectedLevels.length || selectedLevels.includes(wObj.level || 'easy')) {
-          words.push({ word: wObj.word, emoji: getEmoji(wObj, item, sec), level: wObj.level || 'easy' });
+          words.push({ word: wObj.word, emoji: getEmoji(wObj, item, sec), level: wObj.level || 'easy', itemId: item.id });
         }
       }
     }
