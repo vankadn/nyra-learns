@@ -28,6 +28,7 @@ export function renderGame2Section(sections, praises = [], stickerThemes = []) {
     startFn: startGame2,
     stickerThemes,
     onThemeChange: t => { _theme = t; },
+    enablePlayers: false, // simultaneous board -- turn order can't be enforced meaningfully here
   });
 }
 

@@ -200,8 +200,10 @@ write surfaces carry class `write-only`; CSS rule `body.anon .write-only { displ
 hides them globally — no re-render needed on sign-in. A "👤 Sign in" button (class `anon-only`)
 sits top-right in the header; clicking it calls `ensureAuth()` → on success `onSignIn()` removes
 `body.anon` and populates the header user pill. Hidden write surfaces: Add content buttons, empty-
-state CTAs, god filter + button, god emoji mini/edit buttons, god tag Change/Tag buttons, the ⚙️
-student settings button, the ✏️ Meaning/Notes edit buttons and their "+ Add" empty-state CTAs.
+state CTAs, god filter + button, the god filter row's 🖌️ emoji mini-button, god tag Change/Tag
+buttons, the ⚙️ student settings button, the ✏️ Meaning/Notes edit buttons and their "+ Add"
+empty-state CTAs, the ✏️ song title rename button, and the practice-take Restore/Delete/"Delete this
+recording" actions.
 
 **Students (multi-student support):** a folder can have any number of students (siblings sharing
 one Bhajans folder). Stored as a single Drive **folder property** on the active song-parent folder

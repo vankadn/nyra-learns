@@ -1054,3 +1054,57 @@ header p { color: #E3F2FD; font-size: 0.95rem; margin-top: 4px; }
   margin-bottom: 6px;
 }
 .g-print-btn:hover { background: #D1C4E9; }
+
+/* ── Players (session scoreboard) ── */
+.plyr-setup { margin: 14px 0; }
+.plyr-setup-label { font-family: 'Baloo 2', cursive; font-size: 0.95rem; color: var(--ink); margin-bottom: 8px; }
+.plyr-slots { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+.plyr-slot {
+  position: relative;
+  flex: 1 1 140px; min-width: 130px; max-width: 220px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: white; border-radius: 14px; padding: 10px 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.plyr-avatar-btn {
+  width: 52px; height: 52px; border-radius: 50%; background: #F3F4FF; border: 2px dashed #C5CAE9;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
+  font-size: 1.6rem; padding: 0;
+}
+.plyr-emoji-picker {
+  position: absolute; top: 68px; z-index: 5;
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;
+  background: white; border-radius: 12px; padding: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+}
+.plyr-emoji-picker[hidden] { display: none; }
+.plyr-emoji-opt {
+  font-size: 1.3rem; background: none; border: none; cursor: pointer;
+  border-radius: 8px; padding: 4px;
+}
+.plyr-emoji-opt:hover { background: #F3F4FF; }
+.plyr-name-input {
+  width: 100%; font-family: 'Nunito', sans-serif; font-size: 0.85rem;
+  padding: 6px 8px; border: 2px solid #E0E0E0; border-radius: 10px; text-align: center;
+}
+.plyr-clear-btn, .plyr-add-btn {
+  font-family: 'Baloo 2', cursive; font-size: 0.8rem; border: none; border-radius: 20px;
+  padding: 4px 10px; cursor: pointer; background: #EEE; color: #777;
+}
+.plyr-add-btn { display: block; margin: 0 auto; background: #F3E5F5; color: var(--plum); font-weight: 700; }
+
+.plyr-row { display: flex; gap: 10px; margin-bottom: 10px; }
+.plyr-card {
+  flex: 1 1 0; min-width: 0; max-width: 260px;
+  display: flex; flex-direction: column; align-items: center;
+  background: white; border-radius: 16px; padding: 10px 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  border: 3px solid transparent; transition: transform 0.15s, border-color 0.15s;
+}
+.plyr-card-active { border-color: var(--sun); transform: scale(1.06); box-shadow: 0 4px 14px rgba(0,0,0,0.15); }
+.plyr-avatar {
+  width: clamp(40px, 14vw, 64px); height: clamp(40px, 14vw, 64px); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(1.3rem, 6vw, 2rem); background: #F3F4FF; margin-bottom: 4px; border: 2px solid #E0E0E0;
+}
+.plyr-name { font-family: 'Baloo 2', cursive; font-weight: 700; color: var(--ink); font-size: clamp(0.75rem, 3vw, 0.95rem); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.plyr-score { font-family: 'Baloo 2', cursive; font-weight: 900; color: var(--plum); font-size: clamp(1.3rem, 6vw, 1.9rem); }
+.plyr-progress { text-align: center; font-size: 0.8rem; color: #888; margin-bottom: 10px; }
+.plyr-result-winner, .plyr-result-tie { font-family: 'Baloo 2', cursive; font-size: 1.2rem; color: var(--plum); margin-top: 10px; }

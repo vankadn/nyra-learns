@@ -36,8 +36,9 @@ app/js/
   learn.js
   quiz.js
   selector.js          buildSelectorHTML, getSelectorWords, getSelectorSentences
+  players.js           session-only Players scoreboard — see "Players scoreboard" section below
   emoji.js             getEmoji(), DEFAULT_EMOJI
-  utils.js             shuffle(), pickBlankPositions()
+  utils.js             shuffle(), pickBlankPositions(), escHtml()
   audio/
     tts.js             speak(), pickVoice(), cachedVoice
     tones.js           playChime()
@@ -216,6 +217,72 @@ circle-the-answer worksheet).
 Tapping the word/emoji (not a bucket) re-speaks it via `speak()`, matching the
 app-wide "tap words to hear them" convention — same interaction as the Learn tab's
 word chips, without affecting round state or counting as an answer.
+
+## Players scoreboard (session-only)
+
+Optional, opt-in sibling-competition mode: 1-2 kids each pick a name + an emoji
+avatar before a round; if 2 are entered, a big photo-style scorecard row replaces
+the plain score bar during play, turns alternate strictly sequentially (Player 1,
+2, 1, 2…), and the active player is highlighted. Entirely in-memory — matches the
+app's existing convention of zero `localStorage`/`sessionStorage` usage anywhere;
+nothing survives a page reload, by design ("just session," not a profile system).
+
+**`players.js`** owns this, mirroring the `selector.js` split: `buildPlayersSetupHTML`/
+`setupPlayersUI` (name input + a small fixed emoji-avatar picker, not a live camera —
+see "Later scope" below) build and wire the optional setup mini-form; `getPlayers`
+reads it back (`[]` if no name was typed in either slot); a shared `Map`-based
+registry keyed by game `prefix` holds live scores so no game's `startFn(containerEl, words)`
+signature needs to change. `renderPlayerBar`/`renderPlayerCardRow` render the card
+row (blank `''` when 0 players — safe to splice into any template unconditionally).
+`creditCurrentPlayer`/`advanceTurn` are the two primitives; `onItemComplete` bundles
+both for games with no wrong-answer concept (every completed item is simultaneously
+a point and the end of that turn).
+
+**Live in `game-shell.js`** via a new `enablePlayers = true` param on `renderGameSection` —
+the setup-screen injection and `startPlayersRound(div, prefix)` call happen there once,
+so Letter Builder, Missing Letter, Unscramble, and Sound Sort each only needed a
+`renderPlayerBar(prefix)` mount line, one `onItemComplete(prefix)` (or, for Sound
+Sort, `creditCurrentPlayer`/`advanceTurn` separately, since it distinguishes
+right/wrong) at their existing per-word completion point, and one
+`startPlayersRound(secEl, prefix, getPlayersState(prefix).players)` line in their
+`onPlayAgain` (keeps names/avatars, resets scores to 0 on a rematch). Zero players
+entered reproduces every game's exact pre-feature behavior — verified as the primary
+invariant, since this is a shared-shell change touching every `renderGameSection` caller.
+
+`getSelectorWords(sections, containerEl, prefix, { playerCount })` (`selector.js`) rounds
+the round's word count to the nearest multiple of `playerCount` via `roundToNearestMultiple`
+(`utils.js`, ties round up, floored at `playerCount` itself), so an N-player round always
+splits into equal turns — e.g. 5 words entered + 2 players → 6. Every call site that starts
+or restarts a round (the shared Start-button handler in `game-shell.js`, and each wired
+game's own `onPlayAgain`) passes `playerCount: <players active>.length || 1`, checked fresh
+each time — not baked into the word-count field itself, so solo play (`playerCount === 1`,
+a no-op multiple) is never forced off its entered count. `MAX_PLAYERS` in `players.js` is 2
+today, but this rounding logic is not 2-specific — raising that cap later needs no changes
+here.
+
+**`word-match.js` passes `enablePlayers: false` — intentionally excluded.** Its board
+shows every word/emoji pair clickable at once (no single "current item" the way every
+other game has), so "whose turn" could only ever be an unenforced honor-system
+convention there. Decided against shipping that ambiguity for this game specifically.
+
+### Later scope (deferred, not yet built)
+
+- **Live camera capture, replacing the emoji-avatar picker.** A kid taking an actual
+  photo of themselves (`getUserMedia` → live `<video>` preview → canvas snapshot →
+  `URL.createObjectURL`, mirroring the preview but not the captured still) was the
+  original ask and was fully designed, but deferred as the highest-risk/most-novel
+  piece to get right on a first pass (permissions, insecure-context fallback, stream
+  cleanup, retake flow) — no precedent for still-frame capture exists anywhere in this
+  repo yet (the sibling Music app only does file-picker photo upload and full
+  `MediaRecorder` video recording, not a live-preview-then-snapshot flow).
+- **`quiz.js` wiring.** Doesn't call `renderGameSection` at all — hand-built setup/play
+  screens, flat module-level `score`/`total`/`currentQ` globals, and a **manual**
+  "Next Word ➡️" advance (not auto-advance like every other game), so it needs the
+  same `players.js` primitives wired by hand rather than inherited "for free" from the
+  shared shell change.
+- **`sentence-builder.js` wiring.** Also doesn't call `renderGameSection` (hand-builds
+  its own `#sec-game5` shell) — needs the same setup-screen block added by hand,
+  mirroring exactly what the shell change gives the other four games automatically.
 
 ## Workflow split
 

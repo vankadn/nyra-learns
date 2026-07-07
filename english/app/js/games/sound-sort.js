@@ -2,9 +2,11 @@ import { speak } from '../audio/tts.js';
 import { playChime } from '../audio/tones.js';
 import { getSelectorWords } from '../selector.js';
 import { celebrate, renderGameSection, showReplay } from '../game-engine/game-shell.js';
+import { renderPlayerBar, renderPlayerCardRow, getPlayersState, creditCurrentPlayer, advanceTurn, startPlayersRound } from '../players.js';
 import { generateSoundSortPDF } from '../pdf/game-pdf.js';
 import { showGame } from '../nav.js';
 import { DEFAULT_EMOJI } from '../emoji.js';
+import { escHtml } from '../utils.js';
 
 function pickRandom(arr) {
   if (!arr || !arr.length) return null;
@@ -62,14 +64,20 @@ export function renderSoundSortSection(config, praises = [], stickerThemes = [])
   function renderRound(playEl) {
     const current = round.items[round.idx];
     const catCols = config.categories.length;
+    const { players } = getPlayersState(prefix);
+
+    const scoreboardHTML = players.length
+      ? `<div id="${prefix}-plyr-bar">${renderPlayerBar(prefix)}</div>
+         <div class="plyr-progress">Word ${round.idx + 1} of ${round.items.length}</div>`
+      : `<div class="score-bar">
+           <span>⭐ Score</span>
+           <span class="score-num">${round.score}</span>
+           <span>/ ${round.items.length}</span>
+           <span style="font-size:0.85rem;color:#888;">Word ${round.idx + 1} of ${round.items.length}</span>
+         </div>`;
 
     playEl.innerHTML = `
-      <div class="score-bar">
-        <span>⭐ Score</span>
-        <span class="score-num">${round.score}</span>
-        <span>/ ${round.items.length}</span>
-        <span style="font-size:0.85rem;color:#888;">Word ${round.idx + 1} of ${round.items.length}</span>
-      </div>
+      ${scoreboardHTML}
       <div class="quiz-card">
         <div class="quiz-question">${config.instructions}</div>
         <div class="sort-word-tap" id="${prefix}-word-tap" style="cursor:pointer;">
@@ -107,7 +115,7 @@ export function renderSoundSortSection(config, praises = [], stickerThemes = [])
     const correctLabel = config.categories.find(c => c.id === current.answer)?.label || '';
 
     if (isCorrect) {
-      round.score++;
+      if (getPlayersState(prefix).players.length) creditCurrentPlayer(prefix); else round.score++;
       chosenBtn?.classList.add('correct');
       playChime(659, 0.35);
       resultEl.textContent = pickRandom(praises) || '🎉 Yes! Great ears!';
@@ -123,6 +131,7 @@ export function renderSoundSortSection(config, praises = [], stickerThemes = [])
     setTimeout(() => {
       round.answered = false;
       round.idx++;
+      advanceTurn(prefix);
       if (round.idx >= round.items.length) finishRound(playEl);
       else renderRound(playEl);
     }, isCorrect ? 1000 : 1700);
@@ -130,17 +139,38 @@ export function renderSoundSortSection(config, praises = [], stickerThemes = [])
 
   function finishRound(playEl) {
     const total = round.items.length;
-    const scoreText = `${round.score}/${total} correct`;
+    const { players } = getPlayersState(prefix);
+
+    let summaryHTML, scoreText, trophy;
+    if (players.length > 1) {
+      const [p0, p1] = players;
+      scoreText = `${p0.score} vs ${p1.score}`;
+      summaryHTML = p0.score === p1.score
+        ? `${renderPlayerCardRow(players, { showScore: true })}<div class="plyr-result-tie">🤝 It's a tie! ${scoreText}</div>`
+        : `${renderPlayerCardRow(players, { showScore: true })}<div class="plyr-result-winner">🏆 ${escHtml((p0.score > p1.score ? p0 : p1).name)} wins! ${scoreText}</div>`;
+      trophy = Math.max(p0.score, p1.score) === total ? '🏆' : '⭐';
+    } else if (players.length === 1) {
+      scoreText = `${players[0].score}/${total}`;
+      summaryHTML = renderPlayerCardRow(players, { showScore: true });
+      trophy = players[0].score === total ? '🏆' : '⭐';
+    } else {
+      scoreText = `${round.score}/${total} correct`;
+      summaryHTML = `<div class="score-num" style="font-size:2.2rem;">${scoreText}</div>`;
+      trophy = round.score === total ? '🏆' : '⭐';
+    }
+
     playEl.innerHTML = `
       <div class="quiz-card" style="text-align:center;">
-        <div style="font-size:3rem;margin-bottom:8px;">${round.score === total ? '🏆' : '⭐'}</div>
-        <div class="score-num" style="font-size:2.2rem;">${scoreText}</div>
+        <div style="font-size:3rem;margin-bottom:8px;">${trophy}</div>
+        ${summaryHTML}
       </div>`;
 
     setTimeout(() => {
       const onPlayAgain = () => {
         const secEl = document.getElementById(`sec-${config.gameId}`);
-        startRound(secEl, getSelectorWords([pseudoSection], secEl, prefix));
+        const playerCount = getPlayersState(prefix).players.length || 1;
+        startPlayersRound(secEl, prefix, getPlayersState(prefix).players);
+        startRound(secEl, getSelectorWords([pseudoSection], secEl, prefix, { playerCount }));
       };
       showReplay(`${prefix}-play`, round.wordsSeen, praises, () =>
         celebrate(`${prefix}-play`, 'Great sorting!', `You got ${scoreText}!`, onPlayAgain)

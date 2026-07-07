@@ -1,5 +1,6 @@
 import { playChime } from '../audio/tones.js';
 import { buildSelectorHTML, setupSelector, getSelectorWords } from '../selector.js';
+import { buildPlayersSetupHTML, setupPlayersUI, startPlayersRound, getPlayers } from '../players.js';
 import { showGames } from '../nav.js';
 import { DEFAULT_EMOJI } from '../emoji.js';
 
@@ -59,7 +60,7 @@ export function celebrate(playElId, title, subtitle, onPlayAgain) {
   document.getElementById(btnId).addEventListener('click', onPlayAgain);
 }
 
-export function renderGameSection({ sections, id, prefix, icon, title, tip, pdfFn, startFn, stickerThemes = [], onThemeChange = null }) {
+export function renderGameSection({ sections, id, prefix, icon, title, tip, pdfFn, startFn, stickerThemes = [], onThemeChange = null, enablePlayers = true }) {
   let selectedTheme = null;
 
   const themePickerHTML = stickerThemes.length ? `
@@ -81,6 +82,7 @@ export function renderGameSection({ sections, id, prefix, icon, title, tip, pdfF
       <div class="tip">${tip}</div>
       ${buildSelectorHTML(sections, prefix, { defaultCount: 5, minCount: 2, maxCount: 10, countLabel: 'Words per round:' })}
       ${themePickerHTML}
+      ${enablePlayers ? buildPlayersSetupHTML(prefix) : ''}
       <div style="display:flex;gap:10px;margin-top:14px;">
         <button class="next-btn" id="${prefix}StartBtn" style="flex:1;">▶️ Start Game!</button>
         <button class="next-btn" id="${prefix}PdfBtn" style="flex:1;background:#2E7D32;box-shadow:0 5px 0 #1B5E20;">📄 Get PDF</button>
@@ -90,6 +92,7 @@ export function renderGameSection({ sections, id, prefix, icon, title, tip, pdfF
     <div id="${prefix}-play" style="display:none;"></div>
   `;
   setupSelector(div, prefix);
+  if (enablePlayers) setupPlayersUI(div, prefix);
 
   if (stickerThemes.length) {
     div.querySelectorAll('.ws-theme-card').forEach(card => {
@@ -106,10 +109,12 @@ export function renderGameSection({ sections, id, prefix, icon, title, tip, pdfF
   div.querySelector(`#${prefix}BackBtn`).addEventListener('click', () => showGames());
 
   div.querySelector(`#${prefix}StartBtn`).addEventListener('click', () => {
-    const words = getSelectorWords(sections, div, prefix);
+    const playerCount = enablePlayers ? (getPlayers(div, prefix).length || 1) : 1;
+    const words = getSelectorWords(sections, div, prefix, { playerCount });
     const err = div.querySelector(`#${prefix}SetupErr`);
     if (!words.length) { err.textContent = 'No words found — try selecting more categories or levels!'; return; }
     err.textContent = '';
+    if (enablePlayers) startPlayersRound(div, prefix);
     startFn(div, words);
   });
 

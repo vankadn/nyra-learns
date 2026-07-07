@@ -4,6 +4,7 @@ import { getSelectorWords } from '../selector.js';
 import { sharedRenderStrip } from '../game-engine/tile-tray.js';
 import { buildSeqState, renderSeqTiles, renderSeqSlots, wireSeqSlots, trySeqPlace } from '../game-engine/sequence.js';
 import { celebrate, renderGameSection, showReplay } from '../game-engine/game-shell.js';
+import { renderPlayerBar, onItemComplete, startPlayersRound, getPlayersState } from '../players.js';
 import { generateUnscramblePDF } from '../pdf/game-pdf.js';
 
 let _sections = null;
@@ -43,6 +44,7 @@ function startGame4(containerEl, words) {
   playEl.style.display = 'block';
   playEl.innerHTML = `
     <div style="text-align:right;"><button class="g-print-btn" id="g4-print-btn" title="Print these words">🖨️ PDF</button></div>
+    <div id="g4-plyr-bar">${renderPlayerBar('g4')}</div>
     <div class="g1-progress-strip" id="g4-strip"></div>
     <div class="g1-active-area">
       <div class="g1-emoji-large" id="g4-emoji"></div>
@@ -91,6 +93,7 @@ function g4TryPlace(tileId, slotPos) {
       const word = g4Words[g4ActiveIdx];
       word.done = true;
       g4CorrectWords.push({ word: word.word, emoji: word.emoji, level: word.level || 'easy' });
+      onItemComplete('g4');
       speak(word.word);
       playChime(659, 0.35);
       setTimeout(() => { g4RefreshStrip(); g4Advance(); }, 550);
@@ -104,7 +107,9 @@ function g4Advance() {
   if (next === -1) {
     const onPlayAgain = () => {
       const secEl = document.getElementById('sec-game4');
-      startGame4(secEl, getSelectorWords(_sections, secEl, 'g4'));
+      const playerCount = getPlayersState('g4').players.length || 1;
+      startPlayersRound(secEl, 'g4', getPlayersState('g4').players);
+      startGame4(secEl, getSelectorWords(_sections, secEl, 'g4', { playerCount }));
     };
     showReplay('g4-play', g4CorrectWords, _praises, () =>
       celebrate('g4-play', 'Fantastic!', 'You unscrambled all the words!', onPlayAgain)

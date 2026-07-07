@@ -4,6 +4,7 @@ import { playChime } from '../audio/tones.js';
 import { getSelectorWords } from '../selector.js';
 import { sharedRenderStrip, sharedRenderTray, sharedWireBlanks, sharedTryPlace } from '../game-engine/tile-tray.js';
 import { celebrate, renderGameSection, showReplay } from '../game-engine/game-shell.js';
+import { renderPlayerBar, onItemComplete, startPlayersRound, getPlayersState } from '../players.js';
 import { generateMissingLetterPDF } from '../pdf/game-pdf.js';
 
 let _sections = null;
@@ -60,6 +61,7 @@ function startGame3(containerEl, words) {
   playEl.style.display = 'block';
   playEl.innerHTML = `
     <div style="text-align:right;"><button class="g-print-btn" id="g3-print-btn" title="Print these words">🖨️ PDF</button></div>
+    <div id="g3-plyr-bar">${renderPlayerBar('g3')}</div>
     <div class="g1-progress-strip" id="g3-strip"></div>
     <div class="g1-active-area">
       <div class="g1-emoji-large" id="g3-emoji"></div>
@@ -111,6 +113,7 @@ function g3TryPlace(tileId, pos) {
     if (word.blanks.filter(b => !b.prefilled).every(b => b.filled)) {
       word.done = true;
       g3CorrectWords.push({ word: word.word, emoji: word.emoji, level: word.level || 'easy' });
+      onItemComplete('g3');
       speak(word.word);
       playChime(659, 0.35);
       setTimeout(() => { g3RefreshStrip(); g3Advance(); }, 550);
@@ -124,7 +127,9 @@ function g3Advance() {
   if (next === -1) {
     const onPlayAgain = () => {
       const secEl = document.getElementById('sec-game3');
-      startGame3(secEl, getSelectorWords(_sections, secEl, 'g3'));
+      const playerCount = getPlayersState('g3').players.length || 1;
+      startPlayersRound(secEl, 'g3', getPlayersState('g3').players);
+      startGame3(secEl, getSelectorWords(_sections, secEl, 'g3', { playerCount }));
     };
     showReplay('g3-play', g3CorrectWords, _praises, () =>
       celebrate('g3-play', 'Brilliant!', 'You found all the missing letters!', onPlayAgain)

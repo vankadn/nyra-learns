@@ -1,5 +1,5 @@
 import { getEmoji } from './emoji.js';
-import { shuffle } from './utils.js';
+import { shuffle, roundToNearestMultiple } from './utils.js';
 
 export function buildSelectorHTML(sections, prefix, opts = {}) {
   const {
@@ -64,11 +64,12 @@ export function setupSelector(containerEl, prefix) {
   });
 }
 
-export function getSelectorWords(sections, containerEl, prefix) {
+export function getSelectorWords(sections, containerEl, prefix, { playerCount = 1 } = {}) {
   const selectedLevels = Array.from(
     containerEl.querySelectorAll(`.${prefix}-level-cb:checked`)
   ).map(cb => cb.value);
-  const wordCount = Math.max(1, parseInt(containerEl.querySelector(`#${prefix}-word-count`).value, 10) || 5);
+  let wordCount = Math.max(1, parseInt(containerEl.querySelector(`#${prefix}-word-count`).value, 10) || 5);
+  if (playerCount > 1) wordCount = roundToNearestMultiple(wordCount, playerCount);
   let words = [];
   for (const sec of sections) {
     const checkedItems = Array.from(

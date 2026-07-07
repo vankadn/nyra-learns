@@ -4,6 +4,7 @@ import { playChime } from '../audio/tones.js';
 import { getSelectorWords } from '../selector.js';
 import { sharedRenderStrip, sharedRenderTray, sharedWireBlanks, sharedTryPlace } from '../game-engine/tile-tray.js';
 import { celebrate, renderGameSection, showReplay } from '../game-engine/game-shell.js';
+import { renderPlayerBar, onItemComplete, startPlayersRound, getPlayersState } from '../players.js';
 import { generateSpellItPDF } from '../pdf/game-pdf.js';
 
 let _sections = null;
@@ -54,6 +55,7 @@ function startGame1(containerEl, words) {
   playEl.style.display = 'block';
   playEl.innerHTML = `
     <div style="text-align:right;"><button class="g-print-btn" id="g1-print-btn" title="Print these words">🖨️ PDF</button></div>
+    <div id="g1-plyr-bar">${renderPlayerBar('g1')}</div>
     <div class="g1-progress-strip" id="g1-strip"></div>
     <div class="g1-active-area">
       <div class="g1-emoji-large" id="g1-emoji"></div>
@@ -104,6 +106,7 @@ function g1TryPlace(tileId, pos) {
     if (word.blanks.every(b => b.filled)) {
       word.done = true;
       g1CorrectWords.push({ word: word.word, emoji: word.emoji, level: word.level || 'easy' });
+      onItemComplete('g1');
       speak(word.word);
       playChime(659, 0.35);
       setTimeout(() => { g1RefreshStrip(); g1Advance(); }, 550);
@@ -117,7 +120,9 @@ function g1Advance() {
   if (next === -1) {
     const onPlayAgain = () => {
       const secEl = document.getElementById('sec-game1');
-      startGame1(secEl, getSelectorWords(_sections, secEl, 'g1'));
+      const playerCount = getPlayersState('g1').players.length || 1;
+      startPlayersRound(secEl, 'g1', getPlayersState('g1').players);
+      startGame1(secEl, getSelectorWords(_sections, secEl, 'g1', { playerCount }));
     };
     showReplay('g1-play', g1CorrectWords, _praises, () =>
       celebrate('g1-play', 'Amazing!', 'You spelled all the words!', onPlayAgain)
