@@ -7,13 +7,29 @@ const AVATAR_CHOICES = ['🦁', '🐯', '🐸', '🦄', '🐶', '🐱', '🐰', 
 // prefix -> { players: [{name, avatar, score}], currentPlayer }
 const _registry = new Map();
 
+// A captured/uploaded photo is stored as its blob: object URL string; a plain
+// emoji grapheme is stored as-is. This lets `avatar` stay a single string field
+// everywhere (registry, dataset, replay snapshots) with no shape change.
+function isPhotoAvatar(avatar) {
+  return typeof avatar === 'string' && avatar.startsWith('blob:');
+}
+
+// Photo URLs are self-generated (camera capture / local file picker), never
+// user-typed, so innerHTML here carries no injection risk.
+function avatarInnerHTML(avatar) {
+  const a = avatar || DEFAULT_AVATAR;
+  return isPhotoAvatar(a) ? `<img src="${a}" class="plyr-avatar-img" alt="">` : escHtml(a);
+}
+
 export function buildPlayersSetupHTML(prefix) {
   const slot = (i, extraBtn) => `
     <div class="plyr-slot" data-slot="${i}" data-emoji="${DEFAULT_AVATAR}" ${i > 0 ? 'style="display:none;"' : ''} id="${prefix}-plyr${i}-slot">
       <button type="button" class="plyr-avatar-btn" id="${prefix}-plyr${i}-avatarbtn">${DEFAULT_AVATAR}</button>
       <div class="plyr-emoji-picker" id="${prefix}-plyr${i}-picker" hidden>
         ${AVATAR_CHOICES.map(e => `<button type="button" class="plyr-emoji-opt" data-emoji="${e}">${e}</button>`).join('')}
+        <button type="button" class="plyr-emoji-opt plyr-photo-opt" data-action="photo" title="Take a photo">📷</button>
       </div>
+      <div class="plyr-camera-panel" id="${prefix}-plyr${i}-camera" hidden></div>
       <input type="text" class="plyr-name-input" id="${prefix}-plyr${i}-name" placeholder="Player ${i + 1} name" maxlength="20">
       ${extraBtn || ''}
     </div>`;
@@ -29,21 +45,130 @@ export function buildPlayersSetupHTML(prefix) {
     </div>`;
 }
 
+function stopStream(stream) {
+  stream?.getTracks().forEach(t => t.stop());
+}
+
+// Tracks the slot's live camera stream (if any) as a plain JS property -- not
+// dataset, since a MediaStream can't be serialized to a string attribute.
+function stopSlotCamera(slot) {
+  if (slot._camStream) { stopStream(slot._camStream); slot._camStream = null; }
+}
+
+function closeCameraPanel(slot, cameraPanel) {
+  stopSlotCamera(slot);
+  cameraPanel.hidden = true;
+  cameraPanel.innerHTML = '';
+}
+
+function setSlotAvatar(slot, avatarBtn, avatar) {
+  const prev = slot.dataset.emoji;
+  if (isPhotoAvatar(prev) && prev !== avatar) URL.revokeObjectURL(prev);
+  slot.dataset.emoji = avatar;
+  avatarBtn.innerHTML = avatarInnerHTML(avatar);
+}
+
+function renderPreviewConfirm(slot, avatarBtn, cameraPanel, url, onRetake) {
+  cameraPanel.innerHTML = `
+    <img class="plyr-camera-preview-img" src="${url}" alt="">
+    <div class="plyr-camera-btn-row">
+      <button type="button" class="plyr-camera-btn plyr-camera-use">✅ Use</button>
+      <button type="button" class="plyr-camera-btn plyr-camera-cancel">🔄 Retake</button>
+    </div>`;
+  cameraPanel.querySelector('.plyr-camera-use').addEventListener('click', () => {
+    setSlotAvatar(slot, avatarBtn, url);
+    cameraPanel.hidden = true;
+    cameraPanel.innerHTML = '';
+  });
+  cameraPanel.querySelector('.plyr-camera-cancel').addEventListener('click', () => {
+    URL.revokeObjectURL(url);
+    onRetake();
+  });
+}
+
+function renderFileFallback(slot, avatarBtn, cameraPanel) {
+  cameraPanel.innerHTML = `
+    <div class="plyr-camera-msg">Camera not available — pick a photo instead:</div>
+    <input type="file" accept="image/*" capture="user" class="plyr-camera-file">
+    <div class="plyr-camera-btn-row">
+      <button type="button" class="plyr-camera-btn plyr-camera-cancel">✕ Cancel</button>
+    </div>`;
+  cameraPanel.querySelector('.plyr-camera-cancel').addEventListener('click', () => closeCameraPanel(slot, cameraPanel));
+  cameraPanel.querySelector('.plyr-camera-file').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    renderPreviewConfirm(slot, avatarBtn, cameraPanel, url, () => renderFileFallback(slot, avatarBtn, cameraPanel));
+  });
+}
+
+function renderLivePreview(slot, avatarBtn, cameraPanel, stream) {
+  slot._camStream = stream;
+  cameraPanel.innerHTML = `
+    <video class="plyr-camera-video" autoplay playsinline muted></video>
+    <div class="plyr-camera-btn-row">
+      <button type="button" class="plyr-camera-btn plyr-camera-snap">📸 Capture</button>
+      <button type="button" class="plyr-camera-btn plyr-camera-cancel">✕ Cancel</button>
+    </div>`;
+  const video = cameraPanel.querySelector('.plyr-camera-video');
+  video.srcObject = stream;
+  // Mirror the on-screen preview only (natural "looking in a mirror" feel) --
+  // the canvas draw below reads the raw, unmirrored video frame, so the saved
+  // photo comes out correctly oriented, as others actually see the child.
+  video.style.transform = 'scaleX(-1)';
+
+  cameraPanel.querySelector('.plyr-camera-cancel').addEventListener('click', () => closeCameraPanel(slot, cameraPanel));
+  cameraPanel.querySelector('.plyr-camera-snap').addEventListener('click', () => {
+    const size = Math.min(video.videoWidth, video.videoHeight) || 160;
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    canvas.getContext('2d').drawImage(
+      video,
+      (video.videoWidth - size) / 2, (video.videoHeight - size) / 2, size, size,
+      0, 0, size, size
+    );
+    stopSlotCamera(slot);
+    canvas.toBlob(blob => {
+      const url = URL.createObjectURL(blob);
+      renderPreviewConfirm(slot, avatarBtn, cameraPanel, url, () => openCameraCapture(slot, avatarBtn, cameraPanel));
+    }, 'image/jpeg', 0.9);
+  });
+}
+
+async function openCameraCapture(slot, avatarBtn, cameraPanel) {
+  cameraPanel.hidden = false;
+  cameraPanel.innerHTML = `<div class="plyr-camera-msg">Starting camera…</div>`;
+
+  let stream = null;
+  try {
+    stream = await navigator.mediaDevices?.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+  } catch { /* permission denied, no camera, or insecure context -- fall through to file picker */ }
+
+  if (!stream) renderFileFallback(slot, avatarBtn, cameraPanel);
+  else renderLivePreview(slot, avatarBtn, cameraPanel, stream);
+}
+
 export function setupPlayersUI(containerEl, prefix) {
   for (let i = 0; i < MAX_PLAYERS; i++) {
     const slot = containerEl.querySelector(`#${prefix}-plyr${i}-slot`);
     if (!slot) continue;
     const avatarBtn = slot.querySelector(`#${prefix}-plyr${i}-avatarbtn`);
     const picker = slot.querySelector(`#${prefix}-plyr${i}-picker`);
+    const cameraPanel = slot.querySelector(`#${prefix}-plyr${i}-camera`);
 
-    avatarBtn.addEventListener('click', () => { picker.hidden = !picker.hidden; });
-    picker.querySelectorAll('.plyr-emoji-opt').forEach(opt => {
+    avatarBtn.addEventListener('click', () => {
+      closeCameraPanel(slot, cameraPanel);
+      picker.hidden = !picker.hidden;
+    });
+    picker.querySelectorAll('.plyr-emoji-opt[data-emoji]').forEach(opt => {
       opt.addEventListener('click', () => {
-        const emoji = opt.dataset.emoji;
-        avatarBtn.textContent = emoji;
-        slot.dataset.emoji = emoji;
+        setSlotAvatar(slot, avatarBtn, opt.dataset.emoji);
         picker.hidden = true;
       });
+    });
+    picker.querySelector('.plyr-photo-opt').addEventListener('click', () => {
+      picker.hidden = true;
+      openCameraCapture(slot, avatarBtn, cameraPanel);
     });
   }
 
@@ -58,8 +183,8 @@ export function setupPlayersUI(containerEl, prefix) {
     slot1.style.display = 'none';
     addBtn.style.display = '';
     slot1.querySelector(`#${prefix}-plyr1-name`).value = '';
-    slot1.dataset.emoji = DEFAULT_AVATAR;
-    slot1.querySelector(`#${prefix}-plyr1-avatarbtn`).textContent = DEFAULT_AVATAR;
+    closeCameraPanel(slot1, slot1.querySelector(`#${prefix}-plyr1-camera`));
+    setSlotAvatar(slot1, slot1.querySelector(`#${prefix}-plyr1-avatarbtn`), DEFAULT_AVATAR);
   });
 }
 
@@ -103,7 +228,7 @@ export function renderPlayerCardRow(players, { activeIndex = null, showScore = f
   if (!players.length) return '';
   return `<div class="plyr-row">${players.map((p, i) => `
     <div class="plyr-card${i === activeIndex ? ' plyr-card-active' : ''}">
-      <div class="plyr-avatar">${escHtml(p.avatar || DEFAULT_AVATAR)}</div>
+      <div class="plyr-avatar">${avatarInnerHTML(p.avatar)}</div>
       <div class="plyr-name">${escHtml(p.name || `Player ${i + 1}`)}</div>
       ${showScore ? `<div class="plyr-score">${p.score}</div>` : ''}
     </div>`).join('')}</div>`;

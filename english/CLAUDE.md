@@ -220,23 +220,50 @@ word chips, without affecting round state or counting as an answer.
 
 ## Players scoreboard (session-only)
 
-Optional, opt-in sibling-competition mode: 1-2 kids each pick a name + an emoji
-avatar before a round; if 2 are entered, a big photo-style scorecard row replaces
-the plain score bar during play, turns alternate strictly sequentially (Player 1,
-2, 1, 2…), and the active player is highlighted. Entirely in-memory — matches the
-app's existing convention of zero `localStorage`/`sessionStorage` usage anywhere;
-nothing survives a page reload, by design ("just session," not a profile system).
+Optional, opt-in sibling-competition mode: 1-2 kids each pick a name + an avatar
+(emoji or a photo — see below) before a round; if 2 are entered, a big photo-style
+scorecard row replaces the plain score bar during play, turns alternate strictly
+sequentially (Player 1, 2, 1, 2…), and the active player is highlighted. Entirely
+in-memory — matches the app's existing convention of zero `localStorage`/
+`sessionStorage` usage anywhere; nothing survives a page reload, by design ("just
+session," not a profile system).
 
 **`players.js`** owns this, mirroring the `selector.js` split: `buildPlayersSetupHTML`/
-`setupPlayersUI` (name input + a small fixed emoji-avatar picker, not a live camera —
-see "Later scope" below) build and wire the optional setup mini-form; `getPlayers`
-reads it back (`[]` if no name was typed in either slot); a shared `Map`-based
-registry keyed by game `prefix` holds live scores so no game's `startFn(containerEl, words)`
-signature needs to change. `renderPlayerBar`/`renderPlayerCardRow` render the card
-row (blank `''` when 0 players — safe to splice into any template unconditionally).
-`creditCurrentPlayer`/`advanceTurn` are the two primitives; `onItemComplete` bundles
-both for games with no wrong-answer concept (every completed item is simultaneously
-a point and the end of that turn).
+`setupPlayersUI` (name input + avatar picker) build and wire the optional setup
+mini-form; `getPlayers` reads it back (`[]` if no name was typed in either slot);
+a shared `Map`-based registry keyed by game `prefix` holds live scores so no game's
+`startFn(containerEl, words)` signature needs to change. `renderPlayerBar`/
+`renderPlayerCardRow` render the card row (blank `''` when 0 players — safe to
+splice into any template unconditionally). `creditCurrentPlayer`/`advanceTurn` are
+the two primitives; `onItemComplete` bundles both for games with no wrong-answer
+concept (every completed item is simultaneously a point and the end of that turn).
+
+**Avatar: emoji or photo, same round frame.** `avatar` stays a single string field
+everywhere (registry, `slot.dataset.emoji`, replay snapshots) — either a plain emoji
+grapheme, or a `blob:` object URL, distinguished by `isPhotoAvatar()` (checks the
+`blob:` prefix). `avatarInnerHTML()` renders either into the *same* circular
+`.plyr-avatar-btn` (setup) / `.plyr-avatar` (scoreboard card) containers — a photo
+just gets `object-fit:cover; border-radius:50%` (`.plyr-avatar-img`) to match the
+emoji's existing round frame, so no separate "photo card" layout was needed. The
+avatar picker popover (`.plyr-emoji-picker`) has the fixed emoji grid plus one more
+option, 📷, opening `.plyr-camera-panel`:
+1. Tries `getUserMedia({ video: { facingMode: 'user' } })` for a live front-camera
+   preview. The `<video>` is CSS-mirrored (`scaleX(-1)`) for a natural selfie feel,
+   but the canvas capture draws from the raw, unmirrored video element, so the
+   saved photo comes out correctly oriented (as others actually see the child) —
+   the mirroring is display-only and doesn't touch the captured frame.
+2. Capture center-crops to a square canvas (`Math.min(videoWidth, videoHeight)`)
+   and calls `canvas.toBlob` → `URL.createObjectURL`, then shows a ✅ Use / 🔄 Retake
+   preview step before committing to the slot.
+3. If `getUserMedia` throws or isn't available (denied permission, no camera,
+   insecure context — anything not `https:`/`localhost`), falls back to a plain
+   `<input type="file" accept="image/*" capture="user">`, same preview/confirm step.
+4. Camera streams are stopped (`getTracks().forEach(t => t.stop())`) on every exit
+   path (capture, cancel, retake, closing the panel to pick an emoji instead,
+   removing player 2) via `stopSlotCamera()`, tracked as a plain `_camStream`
+   property on the slot element (not `dataset` — a `MediaStream` isn't a string).
+   Object URLs are revoked (`URL.revokeObjectURL`) whenever a slot's avatar is
+   replaced or the slot is cleared, so retaken/discarded photos don't leak blobs.
 
 **Live in `game-shell.js`** via a new `enablePlayers = true` param on `renderGameSection` —
 the setup-screen injection and `startPlayersRound(div, prefix)` call happen there once,
@@ -267,14 +294,6 @@ convention there. Decided against shipping that ambiguity for this game specific
 
 ### Later scope (deferred, not yet built)
 
-- **Live camera capture, replacing the emoji-avatar picker.** A kid taking an actual
-  photo of themselves (`getUserMedia` → live `<video>` preview → canvas snapshot →
-  `URL.createObjectURL`, mirroring the preview but not the captured still) was the
-  original ask and was fully designed, but deferred as the highest-risk/most-novel
-  piece to get right on a first pass (permissions, insecure-context fallback, stream
-  cleanup, retake flow) — no precedent for still-frame capture exists anywhere in this
-  repo yet (the sibling Music app only does file-picker photo upload and full
-  `MediaRecorder` video recording, not a live-preview-then-snapshot flow).
 - **`quiz.js` wiring.** Doesn't call `renderGameSection` at all — hand-built setup/play
   screens, flat module-level `score`/`total`/`currentQ` globals, and a **manual**
   "Next Word ➡️" advance (not auto-advance like every other game), so it needs the

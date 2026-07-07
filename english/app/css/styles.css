@@ -1081,6 +1081,24 @@ header p { color: #E3F2FD; font-size: 0.95rem; margin-top: 4px; }
   border-radius: 8px; padding: 4px;
 }
 .plyr-emoji-opt:hover { background: #F3F4FF; }
+.plyr-camera-panel {
+  position: absolute; top: 68px; z-index: 6;
+  background: white; border-radius: 12px; padding: 10px; width: 180px; text-align: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+}
+.plyr-camera-panel[hidden] { display: none; }
+.plyr-camera-video, .plyr-camera-preview-img {
+  width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 12px; background: #222;
+}
+.plyr-camera-msg { font-family: 'Nunito', sans-serif; font-size: 0.75rem; color: #888; margin-bottom: 6px; }
+.plyr-camera-file { font-size: 0.75rem; max-width: 100%; margin-bottom: 6px; }
+.plyr-camera-btn-row { display: flex; gap: 6px; justify-content: center; margin-top: 8px; }
+.plyr-camera-btn {
+  font-family: 'Baloo 2', cursive; font-size: 0.78rem; border: none; border-radius: 20px;
+  padding: 5px 10px; cursor: pointer; background: #EEE; color: #555;
+}
+.plyr-camera-btn.plyr-camera-use { background: #C8E6C9; color: #2E7D32; }
+.plyr-avatar-img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
 .plyr-name-input {
   width: 100%; font-family: 'Nunito', sans-serif; font-size: 0.85rem;
   padding: 6px 8px; border: 2px solid #E0E0E0; border-radius: 10px; text-align: center;
