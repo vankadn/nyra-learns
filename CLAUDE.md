@@ -8,6 +8,13 @@
   shared/
     tokens.css         CSS custom properties: fonts (Nunito, Baloo 2), colors (--sun, --plum, --ink)
     nav.js             Root nav component (renderRootNav)
+    class-links-provider.js  Landing-page "Class Links" section (getClassLinks) — abstraction over
+                        Zoom/Google Classroom links, currently backed by class-links.json. Designed
+                        to swap for a Drive-backed source later (same pattern as Music app's
+                        meaning.txt/notes.txt) without touching call sites — only the function body
+                        changes, return shape stays [{label, icon, url}]. Real URLs live only in
+                        class-links.json (or its future Drive equivalent), never hardcoded in index.html.
+    class-links.json   Data for the above — {label, icon, url} entries
   english/             Phonics app — see english/CLAUDE.md
     app/               Web app (ES modules, no build step)
     worksheets/        Python PDF generator (reportlab)

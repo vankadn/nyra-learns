@@ -58,15 +58,38 @@
     color: #999;
     cursor: default;
   }
+  .section-heading {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    color: var(--ink);
+    text-align: center;
+    margin: 32px 0 16px;
+  }
 </style>
 </head>
 <body>
   <h1>🌟 Nyra Learns with Nana</h1>
   <p class="subtitle">Choose a subject to start learning!</p>
   <div id="root-nav"></div>
+  <div id="class-links"></div>
   <script type="module">
     import { renderRootNav } from './shared/nav.js';
+    import { getClassLinks } from './shared/class-links-provider.js';
+
     renderRootNav('root-nav');
+    renderClassLinks('class-links');
+
+    async function renderClassLinks(containerId) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      const links = await getClassLinks();
+      if (!links.length) return;
+      el.innerHTML = `
+        <h2 class="section-heading">🔗 Class Links</h2>
+        <nav class="root-nav">
+          ${links.map(l => `<a href="${l.url}" class="root-nav-link" target="_blank" rel="noopener">${l.icon} ${l.label}</a>`).join('')}
+        </nav>`;
+    }
   </script>
 </body>
 </html>
