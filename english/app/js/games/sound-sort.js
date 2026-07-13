@@ -6,12 +6,51 @@ import { renderPlayerBar, renderPlayerCardRow, getPlayersState, creditCurrentPla
 import { generateSoundSortPDF } from '../pdf/game-pdf.js';
 import { showGame } from '../nav.js';
 import { DEFAULT_EMOJI } from '../emoji.js';
-import { escHtml } from '../utils.js';
+import { escHtml, shuffle } from '../utils.js';
 
 function pickRandom(arr) {
   if (!arr || !arr.length) return null;
   return arr[Math.floor(Math.random() * arr.length)];
 }
+
+// Ice-cream theme: correct sorts stack a scoop on the matching cone instead
+// of just outlining a plain bucket. Caps the physical stack so cones never
+// overflow the screen — past that, the count keeps going numerically via
+// the small ×N badge (see cone-count below).
+const MAX_VISIBLE_SCOOPS = 6;
+
+function renderScoops(count, color) {
+  let html = '';
+  for (let i = 0; i < Math.min(count, MAX_VISIBLE_SCOOPS); i++) {
+    html += `<div class="cone-scoop" style="background:${color};bottom:${i * 18}px;"></div>`;
+  }
+  return html;
+}
+
+function renderBuckets(categories, scoopCounts, theme) {
+  if (theme === 'icecream') {
+    return categories.map(cat => {
+      const count = scoopCounts[cat.id] || 0;
+      return `
+        <button class="sort-bucket-btn cone-btn" data-cat="${cat.id}">
+          <div class="cone-scoops">${renderScoops(count, cat.color || '#F48FB1')}</div>
+          <div class="cone-shape"></div>
+          <span class="sort-bucket-label">${cat.label}</span>
+          ${count > MAX_VISIBLE_SCOOPS ? `<span class="cone-count">×${count}</span>` : ''}
+        </button>`;
+    }).join('');
+  }
+  return categories.map(cat => `
+    <button class="sort-bucket-btn" data-cat="${cat.id}"
+      style="background:${cat.color};box-shadow:0 5px 0 ${shade(cat.color)};">
+      <span class="sort-bucket-symbol">${cat.symbol || ''}</span>
+      <span class="sort-bucket-label">${cat.label}</span>
+    </button>`).join('');
+}
+
+// Extra words folded into the deck when a game with a `challengeCategory`
+// has Challenge Mode opted into for that round — see renderSoundSortSection.
+const CHALLENGE_EXTRA_WORDS = 4;
 
 // Darkens a hex color for a bucket button's 3D-shadow edge.
 function shade(hex) {
@@ -46,7 +85,7 @@ export function renderSoundSortSection(config, praises = [], stickerThemes = [])
     })),
   };
 
-  const round = { items: [], idx: 0, score: 0, wordsSeen: [], answered: false };
+  const round = { items: [], idx: 0, score: 0, wordsSeen: [], answered: false, scoopCounts: {}, activeCategories: config.categories };
 
   function startRound(containerEl, words) {
     round.items = words.map(w => ({ word: w.word, emoji: w.emoji, level: w.level, answer: w.itemId }));
@@ -54,6 +93,16 @@ export function renderSoundSortSection(config, praises = [], stickerThemes = [])
     round.score = 0;
     round.wordsSeen = [];
     round.answered = false;
+
+    const challengeOn = config.challengeCategory
+      && containerEl.querySelector(`#${prefix}-challenge-cb`)?.checked;
+    round.activeCategories = challengeOn ? [...config.categories, config.challengeCategory] : config.categories;
+    if (challengeOn) {
+      const extra = shuffle(config.challengeDeck).slice(0, CHALLENGE_EXTRA_WORDS)
+        .map(w => ({ word: w.word, emoji: w.emoji, level: w.level, answer: w.answer }));
+      round.items = shuffle([...round.items, ...extra]);
+    }
+    round.scoopCounts = Object.fromEntries(round.activeCategories.map(c => [c.id, 0]));
 
     containerEl.querySelector(`#${prefix}-setup`).style.display = 'none';
     const playEl = containerEl.querySelector(`#${prefix}-play`);
@@ -63,7 +112,7 @@ export function renderSoundSortSection(config, praises = [], stickerThemes = [])
 
   function renderRound(playEl) {
     const current = round.items[round.idx];
-    const catCols = config.categories.length;
+    const catCols = round.activeCategories.length;
     const { players } = getPlayersState(prefix);
 
     const scoreboardHTML = players.length
@@ -84,13 +133,8 @@ export function renderSoundSortSection(config, praises = [], stickerThemes = [])
           <div style="font-size:3.4rem;line-height:1.1;">${current.emoji}</div>
           <div class="quiz-word">${current.word}</div>
         </div>
-        <div class="sort-buckets" style="grid-template-columns:repeat(${catCols},1fr);">
-          ${config.categories.map(cat => `
-            <button class="sort-bucket-btn" data-cat="${cat.id}"
-              style="background:${cat.color};box-shadow:0 5px 0 ${shade(cat.color)};">
-              <span class="sort-bucket-symbol">${cat.symbol || ''}</span>
-              <span class="sort-bucket-label">${cat.label}</span>
-            </button>`).join('')}
+        <div class="sort-buckets${config.theme === 'icecream' ? ' sort-buckets-icecream' : ''}" style="grid-template-columns:repeat(${catCols},1fr);">
+          ${renderBuckets(round.activeCategories, round.scoopCounts, config.theme)}
         </div>
         <div class="quiz-result" id="${prefix}-result"></div>
       </div>
@@ -112,10 +156,11 @@ export function renderSoundSortSection(config, praises = [], stickerThemes = [])
     const chosenBtn = playEl.querySelector(`.sort-bucket-btn[data-cat="${catId}"]`);
     const resultEl = playEl.querySelector(`#${prefix}-result`);
     const isCorrect = catId === current.answer;
-    const correctLabel = config.categories.find(c => c.id === current.answer)?.label || '';
+    const correctLabel = round.activeCategories.find(c => c.id === current.answer)?.label || '';
 
     if (isCorrect) {
       if (getPlayersState(prefix).players.length) creditCurrentPlayer(prefix); else round.score++;
+      if (config.theme === 'icecream') round.scoopCounts[current.answer] = (round.scoopCounts[current.answer] || 0) + 1;
       chosenBtn?.classList.add('correct');
       playChime(659, 0.35);
       resultEl.textContent = pickRandom(praises) || '🎉 Yes! Great ears!';
@@ -178,7 +223,7 @@ export function renderSoundSortSection(config, praises = [], stickerThemes = [])
     }, 1200);
   }
 
-  return renderGameSection({
+  const div = renderGameSection({
     sections: [pseudoSection],
     id: config.gameId,
     prefix,
@@ -189,6 +234,21 @@ export function renderSoundSortSection(config, praises = [], stickerThemes = [])
     startFn: startRound,
     stickerThemes,
   });
+
+  // Challenge Mode: opt-in, off by default — only rendered when this config
+  // has a challengeCategory (see sound-sort-config.js). Lives outside the
+  // regular category/level/count selector so it stays a single obvious
+  // toggle rather than being buried in the expandable category checkboxes.
+  if (config.challengeCategory) {
+    const startBtnRow = div.querySelector(`#${prefix}StartBtn`)?.parentElement;
+    startBtnRow?.insertAdjacentHTML('beforebegin', `
+      <label class="sort-challenge-toggle">
+        <input type="checkbox" id="${prefix}-challenge-cb">
+        🏆 Challenge Mode — also include ${config.challengeCategory.label}
+      </label>`);
+  }
+
+  return div;
 }
 
 export function buildSoundSortGameCard(config) {

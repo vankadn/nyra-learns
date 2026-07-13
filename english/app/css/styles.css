@@ -258,6 +258,23 @@ header p { color: #E3F2FD; font-size: 0.95rem; margin-top: 4px; }
 .quiz-btn.correct  { background: #43A047; box-shadow: 0 4px 0 #2E7D32; }
 .quiz-btn.wrong    { background: #E53935; box-shadow: 0 4px 0 #B71C1C; }
 .quiz-btn:disabled { opacity: 0.7; cursor: default; }
+.quiz-btn.shake    { animation: g1Shake 0.4s ease; }
+
+/* Spelling Choice */
+.spell-word {
+  font-family: 'Baloo 2', cursive;
+  font-size: 2.6rem;
+  color: var(--plum);
+  margin: 8px 0 16px;
+  letter-spacing: 1px;
+}
+.spell-blank {
+  display: inline-block;
+  min-width: 1.2em;
+  border-bottom: 5px solid var(--sun);
+  margin: 0 3px;
+  vertical-align: -0.1em;
+}
 
 .quiz-result { font-family: 'Baloo 2', cursive; font-size: 1.4rem; margin-top: 14px; min-height: 40px; }
 
@@ -298,6 +315,79 @@ header p { color: #E3F2FD; font-size: 0.95rem; margin-top: 4px; }
 .sort-bucket-btn.wrong    { outline: 4px solid #E53935; outline-offset: 2px; }
 .sort-bucket-symbol { display: block; font-size: 1.3rem; margin-bottom: 4px; opacity: 0.85; }
 .sort-bucket-label  { display: block; font-size: 1.05rem; }
+
+/* Ice Cream Sort theme (Sound Sort with theme: "icecream") */
+.sort-buckets-icecream { align-items: end; }
+.cone-btn {
+  background: transparent;
+  box-shadow: none;
+  padding: 0 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.cone-btn .sort-bucket-label { margin-top: 4px; color: var(--ink); }
+.cone-scoops { position: relative; width: 100%; height: 130px; }
+.cone-scoop {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid rgba(0,0,0,0.12);
+  box-shadow: inset -4px -4px 0 rgba(0,0,0,0.08);
+}
+.cone-shape {
+  width: 0;
+  height: 0;
+  margin: 0 auto;
+  border-left: 26px solid transparent;
+  border-right: 26px solid transparent;
+  border-top: 46px solid #D7A86E;
+}
+.cone-count { display: block; font-size: 0.75rem; color: #888; margin-top: 2px; }
+
+.sort-challenge-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #FFF3E0;
+  border: 2px solid #FFB74D;
+  border-radius: 14px;
+  padding: 10px 14px;
+  margin: 10px 0;
+  font-family: 'Baloo 2', cursive;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+}
+.sort-challenge-toggle input { width: 20px; height: 20px; accent-color: #FB8C00; cursor: pointer; }
+
+/* Clap Counter */
+.cc-clap-btn {
+  display: block;
+  margin: 12px auto;
+  font-size: 3.2rem;
+  line-height: 1;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+}
+.cc-clap-btn.tapped { animation: ccBump 0.25s ease; }
+@keyframes ccBump {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+.cc-clap-count {
+  font-family: 'Baloo 2', cursive;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--plum);
+  margin: 10px 0;
+}
 
 .next-btn {
   display: block;

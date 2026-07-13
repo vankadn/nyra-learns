@@ -4,7 +4,10 @@
 
 A data-driven learning toolkit for Nyra (age 5): a self-contained HTML
 web app (interactive, no build step) plus a PDF worksheet generator. Currently
-covers English vowels (short, long, vowel teams, OU/OW), consonant digraphs (sh, ch, th, ph), and consonant blends (pl, br, cl, cr, fl). Designed to extend to
+covers English vowels (short, long, vowel teams, OU/OW), consonant digraphs (sh, ch, th, ph), consonant blends (pl, br, cl, cr, fl), spelling-choice patterns
+(C/K/CK, AI/AY, IGH/IE/Y), and syllable awareness (clapping/counting beats,
+sorting by count, building words from syllable chunks — its own independent
+dataset, see "Syllables curriculum" below). Designed to extend to
 other subjects (e.g. Telugu, Maths) by adding new data files — not new code.
 
 ## Why this structure
@@ -23,7 +26,8 @@ belongs in JSON.
 app/index.html         Thin shell — no logic. All JS is in app/js/.
 app/css/styles.css     All styles.
 app/js/                ES module tree (see below).
-app/data/*.json        One file per subject/unit, plus sound-sort-games.json (see below).
+app/data/*.json        One file per subject/unit, plus sound-sort-games.json and
+                        spelling-choice.json (both manifests, see below).
 worksheets/generate.py PDF generator (reportlab). Reads the same JSON files.
 ```
 
@@ -55,6 +59,18 @@ app/js/
     sound-sort.js      Sound Sort — generic config-driven "tap the sound bucket" engine
     sound-sort-config.js  buildSoundSortConfigs() — merges sound-sort-games.json
                         manifest with live phonics section data into full run configs
+    spelling-choice.js  Spelling Choice — generic config-driven "tap the right
+                        letters to finish the word" engine, reads
+                        app/data/spelling-choice.json
+    clap-counter.js     Clap Counter — new engine: show a word, tap 👏 once per
+                        syllable, tap Done to check against syllables.json's
+                        count. No scoring/streak, retry-until-correct like
+                        Spelling Choice. Reads app/data/syllables.json.
+    syllable-builder.js Syllable Builder — same reorder mechanic as Unscramble
+                        (game-engine/sequence.js), but the chunk unit is a
+                        syllable (`entry.syllables`) instead of a letter, using
+                        Sentence Builder's variable-width seq-chip tiles since
+                        chunks aren't 1 character. Reads app/data/syllables.json.
   pdf/
     pdf-utils.js       emojiCache, loadEmojiImage(), hexToRgb()
     worksheet-pdf.js   renderWorksheetSection, generateWorksheetPDF
@@ -149,7 +165,7 @@ Never render a broken/empty emoji slot — always fall through.
 |---|---|
 | `short-vowels` | `short-a` `short-e` `short-i` `short-o` `short-u` |
 | `long-vowels` | `long-a` `long-e` `long-i` `long-o` `long-u` |
-| `vowel-teams` | `ai-ay` `ee-ea` `oa-ow` `oo` `ui-ue` `oi-oy` `ou-ow` `ei-eigh` |
+| `vowel-teams` | `ai-ay` `ee-ea` `oa-ow` `oo` `ui-ue` `oi-oy` `ou-ow` `ei-eigh` `igh-ie-y` |
 | `spelling-rules` | `use-ck` `use-k` `use-c` |
 | `consonant-digraphs` | `sh` `ch` `th` `ph` |
 | `consonant-blends` | `pl` `br` `cl` `cr` `fl` |
@@ -159,11 +175,40 @@ Word counts: 30 words per item (20 for `ei-eigh`, 24 for digraphs sh/ch/th, 14 f
 
 Top-level arrays: `completionPraises` (16 strings), `stickerThemes` (6 themes).
 
+## Syllables curriculum (syllables.json)
+
+`app/data/syllables.json` is a new sibling dataset, independent of `vowels.json` —
+different schema, not a `vowels.json` section. Syllable awareness (clapping/counting
+beats, sorting by count, building words from chunks) doesn't fit the
+subject/section/item/word shape at all, so it gets its own flat top-level object:
+
+```json
+{
+  "oneSyllable":          [ { "word": "cat", "emoji": "🐱", "syllables": ["cat"], "count": 1 } ],
+  "twoSyllable":           [ { "word": "apple", "emoji": "🍎", "syllables": ["ap", "ple"], "count": 2 } ],
+  "threeSyllable":         [ { "word": "banana", "emoji": "🍌", "syllables": ["ba", "na", "na"], "count": 3 } ],
+  "fourSyllableChallenge": [ { "word": "alligator", "emoji": "🐊", "syllables": ["al","li","ga","tor"], "count": 4 } ]
+}
+```
+
+Four tiers, each a flat array (no nested items/sections). `count` always equals
+`syllables.length` — kept as an explicit field rather than derived, since Clap
+Counter needs to compare it directly against a tap count. `fourSyllableChallenge`
+(12 words) is deliberately excluded from every game's *default* deck — each of the
+three syllables games below has its own opt-in "🏆 Challenge Mode" checkbox
+(off by default) that folds it in; nothing reads it unconditionally. Word counts:
+32 one-syllable, 34 two-syllable, 30 three-syllable, 12 four-syllable-challenge.
+
+Three games consume this file — Syllable Sort (reuses Sound Sort), Clap Counter
+(new engine), and Syllable Builder (reuses Unscramble's reorder mechanic) — see
+their respective sections below.
+
 ## Sound Sort games (config-driven)
 
 **Games list (Games picker grid):** Quiz, Letter Builder, Word Match, Missing Letter,
-Unscramble, Sentence Builder, Sound Sort. Sound Sort is one entry point, dynamically
-instantiated once per config — not one hardcoded game like the other six.
+Unscramble, Sentence Builder, Sound Sort, Spelling Choice. Sound Sort is one entry
+point, dynamically instantiated once per config — not one hardcoded game like the
+others; likewise Spelling Choice mounts one set-picker covering all its `sets[]`.
 
 `sound-sort.js` is a generic engine: "show one word, tap which of 2–3 sound-category
 buckets it belongs to." It has no G-specific (or any subject-specific) code. Each
@@ -175,6 +220,7 @@ instance is built from a config shaped:
   "icon": "🦒",
   "title": "Hard G or Soft G?",
   "instructions": "Is it a hard /g/ or soft /j/ sound?",
+  "theme": null,
   "categories": [
     { "id": "hard-g", "label": "Hard G", "symbol": "/g/", "color": "#4A90D9" },
     { "id": "soft-g", "label": "Soft G", "symbol": "/j/", "color": "#D97A4A" }
@@ -186,22 +232,68 @@ instance is built from a config shaped:
 ```
 
 This full config is never hand-written — `sound-sort-config.js`'s `buildSoundSortConfigs()`
-derives it at load time from two inputs, so word lists are never duplicated:
-- `app/data/sound-sort-games.json` — a small manifest of just the per-game cosmetic
-  metadata that doesn't exist in the phonics schema (`gameId`, `sectionId`, `icon`,
-  `title`, `instructions`, and per-category `symbol`/`color`).
-- The matching `vowels.json` section (looked up by `sectionId`) — supplies `deck`
+derives it at load time from a manifest plus one word-data source, so word lists are
+never duplicated. The manifest, `app/data/sound-sort-games.json`, holds just the
+per-game cosmetic metadata that doesn't exist in the word-data schema (`gameId`,
+`icon`, `title`, `instructions`, optional `theme`, and per-category `symbol`/`color`/
+`label`) plus one of two pointers to where the actual words/categories live:
+- `sectionId` — the original path. Looks up a `vowels.json` section whose items map
+  1:1 onto this game's categories (each item *is* one category); supplies `deck`
   (every word/emoji/level from that section's items) and each category's `label`
   (pulled from the matching item's `label`, e.g. `g-variations`'s `hard-g`/`soft-g`).
+- `setId` — used when a game's categories don't correspond to separate phonics items
+  (e.g. igh/ie/y are one bundled `vowel-teams` item, not three separate ones). Looks
+  up a Spelling Choice set (`app/data/spelling-choice.json`) instead, whose deck
+  entries already carry a per-word `answer` matching a category id — so the
+  igh/ie/y-per-word mapping is read from Spelling Choice, never hand-duplicated into
+  `sound-sort-games.json`. `label`/`symbol`/`color` per category come straight from
+  the manifest entry itself in this path (there's no phonics item to pull `label` from).
+- `tiers` — used when the word source isn't sections/items at all: an array of
+  `{ tierKey, id, label, color, symbol }` pointing at flat top-level arrays in
+  `syllables.json` (e.g. `tierKey: "oneSyllable"`). An optional sibling
+  `challengeTier` (same shape, singular, pointing at `fourSyllableChallenge`) is
+  parsed the same way into `config.challengeCategory`/`config.challengeDeck` —
+  kept separate from `categories`/`deck` so the base game never includes it; see
+  "Challenge Mode" below for how it gets folded in at runtime.
 
-**First live config:** `sound-sort-g`, deck derived from the `g-variations` section
-of `vowels.json` (42 hard-g + 25 soft-g words).
+**Live configs:** `sound-sort-g` (`sectionId`, deck derived from the `g-variations`
+section of `vowels.json` — 42 hard-g + 25 soft-g words), `sound-sort-igh-ie-y`
+("Ice Cream Scoops", `setId: "igh-ie-y"`, deck derived from Spelling Choice's
+`igh-ie-y` set — same 17 words feeding that game's IGH/IE/Y set, single source of
+truth, no duplication), and `sound-sort-syllables` ("Syllable Sort", `tiers` pointing
+at `syllables.json`'s `oneSyllable`/`twoSyllable`/`threeSyllable`, `theme: "icecream"`
+— cones map naturally onto "how many syllables/scoops," and `challengeTier` pointing
+at `fourSyllableChallenge`).
 
-**Adding the next sound-sort game (e.g. a future Hard C/Soft C) requires zero engine
-code changes** — only a new entry in `sound-sort-games.json` pointing at a phonics
-section whose items are the 2–3 sound categories. `main.js` loops over every config
-`buildSoundSortConfigs()` returns, mounting a game section and a Games-grid card for
-each — no per-game wiring in `main.js` or `nav.js` either.
+**Challenge Mode** (`sound-sort.js`, only rendered when `config.challengeCategory` is
+set): a single "🏆 Challenge Mode" checkbox injected into the setup screen right
+before the Start/PDF button row — deliberately outside the regular category/level/
+count selector, so it stays one obvious opt-in toggle instead of being buried in the
+expandable category checkboxes. Off by default. `startRound` reads the checkbox at
+round-start time (not baked into the config) and, if checked, folds in
+`CHALLENGE_EXTRA_WORDS` (4) shuffled words from `config.challengeDeck` plus the
+challenge category itself into `round.activeCategories` — the *only* thing
+`renderRound`/`handleTap`/the icecream scoop logic read for "how many buckets and
+which ones," never `config.categories` directly, so a config without a
+`challengeCategory` behaves exactly as before (`round.activeCategories` just equals
+`config.categories`). Purely additive, zero risk to `sound-sort-g`/`sound-sort-igh-ie-y`.
+
+**Optional `theme` field** (`sound-sort.js`): purely additive — omitted or `null`
+renders the original plain colored-bucket buckets unchanged. `theme: "icecream"`
+renders the categories as ice-cream cones (simple CSS triangle + circles, no image
+assets) instead, and each correct sort stacks a scoop on the matching cone
+(`round.scoopCounts`, capped at `MAX_VISIBLE_SCOOPS = 6` — past that the cone stays
+at 6 scoops and a small `×N` badge keeps the count going numerically). Only the
+bucket *rendering* changes; interaction, scoring, and the shake/correct feedback are
+identical to the plain-bucket path. The next themed Sound Sort variant only needs a
+new config (and a new `theme` value if it wants a new visual skin) — no engine changes.
+
+**Adding the next sound-sort game requires zero engine code changes** — only a new
+entry in `sound-sort-games.json`, pointing at a phonics section (`sectionId`, when
+categories map 1:1 onto separate items) or a Spelling Choice set (`setId`, when they
+don't). `main.js` loops over every config `buildSoundSortConfigs()` returns, mounting
+a game section and a Games-grid card for each — no per-game wiring in `main.js` or
+`nav.js` either.
 
 Reuses existing engine pieces rather than reimplementing: `renderGameSection`/
 `celebrate`/`showReplay` from `game-shell.js` (setup screen, confetti, praise pool),
@@ -217,6 +309,127 @@ circle-the-answer worksheet).
 Tapping the word/emoji (not a bucket) re-speaks it via `speak()`, matching the
 app-wide "tap words to hear them" convention — same interaction as the Learn tab's
 word chips, without affecting round state or counting as an answer.
+
+## Spelling Choice game (config-driven)
+
+`spelling-choice.js` is a generic engine: "show a picture + a partially-spelled
+word, tap the correct chunk from a small fixed set of choices" (e.g. `si__` + 🤒,
+choices `[c, k, ck]`, answer `ck`). Config-driven the same way as Sound Sort, reading
+`app/data/spelling-choice.json`:
+
+```json
+{
+  "gameId": "spelling-choice",
+  "sets": [
+    {
+      "id": "c-k-ck",
+      "title": "C, K, or CK?",
+      "choices": ["c", "k", "ck"],
+      "deck": [
+        { "word": "sick", "prefix": "si", "suffix": "", "answer": "ck", "emoji": "🤒" }
+      ]
+    }
+  ]
+}
+```
+
+Each deck entry is `{word, prefix, suffix, answer, emoji}` — the blank renders
+between `prefix` and `suffix` (`.spell-word`/`.spell-blank` CSS, sized to the
+longest choice in that set so the blank's width never hints at the answer's letter
+count); `choices` are per-set and fixed (every word in a set shows the full set of
+choices, never a subset, shuffled in display order only).
+
+Tapping the setup screen shows one card per `sets[]` entry (title + a few example
+emoji), reusing `.topic-card` styling from Quiz's topic picker. Picking a set starts
+a drill reusing Quiz's `.quiz-card`/`.quiz-options`/`.quiz-btn` CSS and the
+`⭐ Score N / Total` `.score-bar` verbatim. Correct tap: green flash + a random
+`completionPraises` message + chime + auto-advance after a beat, same pattern as
+Sound Sort. Wrong tap: red shake (`.quiz-btn.shake`, reuses the `g1Shake` keyframes)
+on just that button, which then stays disabled — the word doesn't advance, so she
+retries from the remaining choices. `finishRound()` reuses `showReplay`/`celebrate`
+from `game-shell.js` rather than hand-rolling a summary screen.
+
+Doesn't use `renderGameSection`/`selector.js` (no category/level/count picker — sets
+are a small fixed list, not a phonics section) and has no PDF export yet, matching
+Quiz's current unwired state for that piece (see "Later scope" below). It does wire
+Players manually the same way Sound Sort does: `buildPlayersSetupHTML`/
+`setupPlayersUI` render the optional name/avatar setup block under the set-picker
+(built once, shared across all sets); tapping a set card calls `startPlayersRound`,
+which snapshots whatever was typed there. Since every word is retried until correct
+(no wrong-answer turn-ending), a correct tap credits the current player
+(`creditCurrentPlayer`) and advances the turn (`advanceTurn`) together — same
+"completion == point == turn end" semantics as `onItemComplete`, just not called
+through that helper because the score/no-score branch needs to fork on
+`getPlayersState(PREFIX).players.length` first. `finishRound()` branches three ways:
+0 players keeps the original solo `showReplay`/`celebrate` flow unchanged; 1 or 2
+players first shows a brief score/tie/winner summary (`renderPlayerCardRow`, mirrors
+Sound Sort's finish screen) before the same replay/celebrate. "Play Again" passes the
+just-finished `players` array back into `startPlayersRound` as its replay snapshot,
+so a rematch keeps the same names/avatars and resets scores to 0.
+
+Tapping the emoji/word (`#sc-word-tap`, wraps both) speaks the full word via
+`speak()`, same "tap words to hear them" convention as everywhere else in the app —
+safe here because every set is a same-sound/different-spelling choice (e.g. `rain`
+and `day` sound identical in their vowel), so hearing the word never reveals which
+spelling is correct.
+
+**First three live sets:** `c-k-ck`, `ai-ay`, `igh-ie-y` — the last shares its word
+list 1:1 with Sound Sort's `sound-sort-igh-ie-y` config (see above), read from this
+same file via `setId`, never duplicated as a second hand-written list.
+
+**Adding the next spelling-pattern set (e.g. a future OI/OY) requires zero engine
+code changes** — only a new object in `spelling-choice.json`'s `sets[]`.
+
+## Clap Counter (new engine)
+
+`clap-counter.js` — "show a word, clap once per syllable you hear, tap Done to
+check." No existing game had a tap-and-count mechanic, so this is the one fully new
+engine in the syllables curriculum (Syllable Sort and Syllable Builder both reuse
+existing engines — see their sections). Hand-built setup (word count + Challenge
+Mode checkbox, no `renderGameSection`/`selector.js` — there's no category/level
+concept here, just a flat pool with one opt-in toggle), deck pulled straight from
+`syllables.json`'s `oneSyllable`/`twoSyllable`/`threeSyllable` (+ `fourSyllableChallenge`
+if Challenge Mode is checked), shuffled and sliced to the requested count.
+
+Each word: tapping 👏 increments a visible counter (`round.taps`) with a chime and a
+CSS bump animation (`.cc-clap-btn.tapped`, `ccBump` keyframes); tapping "✅ Done"
+compares `round.taps` to `entry.count`. Correct → praise pool message + reveals the
+syllable breakdown (`entry.syllables.join('-')`, e.g. "ba-na-na") + auto-advance.
+Incorrect → gentle retry prompt, taps reset to 0, same word (no advance) — same
+stay-on-the-word-until-correct pattern as Spelling Choice. **No scoring/streak by
+design** (per spec) and **no Players-scoreboard wiring** — deliberately kept simple,
+unlike Spelling Choice which got Players wired in on request; add it later the same
+way (`buildPlayersSetupHTML`/`creditCurrentPlayer`/`advanceTurn`) if needed.
+
+Word is never auto-spoken with a syllable pause (Web Speech API has no SSML break
+support via plain utterance text) — `speak(current.word)` just fires normally on
+render and on tapping the emoji/word, same as everywhere else in the app; per spec
+("don't over-engineer this part"), no attempt is made to insert artificial pauses.
+
+## Syllable Builder (reuses Unscramble's reorder mechanic)
+
+`syllable-builder.js` — same drag/tap-to-reorder mechanic as Unscramble
+(`game-engine/sequence.js`: `buildSeqState`/`renderSeqTiles`/`renderSeqSlots`/
+`wireSeqSlots`/`trySeqPlace`), but the chunk unit is a syllable (`entry.syllables`,
+e.g. `["ba","na","na"]`) instead of a single letter (`word.split('')`) — zero changes
+needed to `sequence.js` itself, since it already operates on arbitrary text tokens
+matched by content, not length. Uses the `seq-chip`/`seq-chip-slot` CSS classes
+(Sentence Builder's variable-width tile/slot variant) rather than Unscramble's
+fixed 44px `seq-tile`/`seq-slot`, since syllable chunks range from 1 to ~6 characters.
+
+Hand-built setup (word count + Challenge Mode checkbox), same shape as Clap Counter
+— no `renderGameSection`/`selector.js`, since there's no category/level concept, and
+no PDF export (out of scope for this curriculum pass). Deck pulled straight from
+`syllables.json`'s three base tiers (+ `fourSyllableChallenge` if Challenge Mode is
+checked), mirroring Unscramble's `g1-progress-strip`/`sharedRenderStrip` per-word
+progress chips. On completing a word: reveals `"{word} — {count} syllable(s)!"` (e.g.
+"banana — 3 syllables!") alongside the usual chime, then advances — same
+find-next-undone-word loop as `unscramble.js`'s `g4Advance`. Finish screen reuses
+`showReplay`/`celebrate` from `game-shell.js`; "Play Again" restarts immediately
+(`startRound` directly, not a return-to-setup step). **No Players-scoreboard wiring**
+in this pass either, for the same reason as Clap Counter — can be added later
+mirroring `unscramble.js`'s `onItemComplete('g4')` usage, since the per-word
+completion model is identical.
 
 ## Players scoreboard (session-only)
 

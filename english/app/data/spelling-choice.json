@@ -1,0 +1,76 @@
+{
+  "gameId": "spelling-choice",
+  "sets": [
+    {
+      "id": "c-k-ck",
+      "title": "C, K, or CK?",
+      "choices": ["c", "k", "ck"],
+      "deck": [
+        { "word": "cup",   "prefix": "",    "suffix": "up",  "answer": "c",  "emoji": "☕" },
+        { "word": "can",   "prefix": "",    "suffix": "an",  "answer": "c",  "emoji": "🥫" },
+        { "word": "cat",   "prefix": "",    "suffix": "at",  "answer": "c",  "emoji": "🐱" },
+        { "word": "cub",   "prefix": "",    "suffix": "ub",  "answer": "c",  "emoji": "🐻" },
+        { "word": "cake",  "prefix": "",    "suffix": "ake", "answer": "c",  "emoji": "🎂" },
+        { "word": "kid",   "prefix": "",    "suffix": "id",  "answer": "k",  "emoji": "🧒" },
+        { "word": "kit",   "prefix": "",    "suffix": "it",  "answer": "k",  "emoji": "🧰" },
+        { "word": "kite",  "prefix": "",    "suffix": "ite", "answer": "k",  "emoji": "🪁" },
+        { "word": "sick",  "prefix": "si",  "suffix": "",    "answer": "ck", "emoji": "🤒" },
+        { "word": "lick",  "prefix": "li",  "suffix": "",    "answer": "ck", "emoji": "👅" },
+        { "word": "pick",  "prefix": "pi",  "suffix": "",    "answer": "ck", "emoji": "👉" },
+        { "word": "sock",  "prefix": "so",  "suffix": "",    "answer": "ck", "emoji": "🧦" },
+        { "word": "luck",  "prefix": "lu",  "suffix": "",    "answer": "ck", "emoji": "🍀" },
+        { "word": "lock",  "prefix": "lo",  "suffix": "",    "answer": "ck", "emoji": "🔒" },
+        { "word": "tick",  "prefix": "ti",  "suffix": "",    "answer": "ck", "emoji": "⏱️" },
+        { "word": "duck",  "prefix": "du",  "suffix": "",    "answer": "ck", "emoji": "🦆" },
+        { "word": "clock", "prefix": "clo", "suffix": "",    "answer": "ck", "emoji": "🕐" },
+        { "word": "book",  "prefix": "boo", "suffix": "",    "answer": "k",  "emoji": "📚" },
+        { "word": "milk",  "prefix": "mil", "suffix": "",    "answer": "k",  "emoji": "🥛" },
+        { "word": "desk",  "prefix": "des", "suffix": "",    "answer": "k",  "emoji": "🪑" }
+      ]
+    },
+    {
+      "id": "ai-ay",
+      "title": "AI or AY?",
+      "choices": ["ai", "ay"],
+      "deck": [
+        { "word": "rain",  "prefix": "r",  "suffix": "n",  "answer": "ai", "emoji": "🌧️" },
+        { "word": "train", "prefix": "tr", "suffix": "n",  "answer": "ai", "emoji": "🚂" },
+        { "word": "paint", "prefix": "p",  "suffix": "nt", "answer": "ai", "emoji": "🎨" },
+        { "word": "wait",  "prefix": "w",  "suffix": "t",  "answer": "ai", "emoji": "⏳" },
+        { "word": "mail",  "prefix": "m",  "suffix": "l",  "answer": "ai", "emoji": "📬" },
+        { "word": "snail", "prefix": "sn", "suffix": "l",  "answer": "ai", "emoji": "🐌" },
+        { "word": "chain", "prefix": "ch", "suffix": "n",  "answer": "ai", "emoji": "⛓️" },
+        { "word": "day",   "prefix": "d",  "suffix": "",   "answer": "ay", "emoji": "📅" },
+        { "word": "play",  "prefix": "pl", "suffix": "",   "answer": "ay", "emoji": "🎮" },
+        { "word": "stay",  "prefix": "st", "suffix": "",   "answer": "ay", "emoji": "🏕️" },
+        { "word": "say",   "prefix": "s",  "suffix": "",   "answer": "ay", "emoji": "🗣️" },
+        { "word": "tray",  "prefix": "tr", "suffix": "",   "answer": "ay", "emoji": "🍽️" },
+        { "word": "gray",  "prefix": "gr", "suffix": "",   "answer": "ay", "emoji": "🌫️" }
+      ]
+    },
+    {
+      "id": "igh-ie-y",
+      "title": "IGH, IE, or Y?",
+      "choices": ["igh", "ie", "y"],
+      "deck": [
+        { "word": "night",  "prefix": "n",  "suffix": "t", "answer": "igh", "emoji": "🌙" },
+        { "word": "light",  "prefix": "l",  "suffix": "t", "answer": "igh", "emoji": "💡" },
+        { "word": "right",  "prefix": "r",  "suffix": "t", "answer": "igh", "emoji": "✅" },
+        { "word": "sight",  "prefix": "s",  "suffix": "t", "answer": "igh", "emoji": "👀" },
+        { "word": "tight",  "prefix": "t",  "suffix": "t", "answer": "igh", "emoji": "🔒" },
+        { "word": "fight",  "prefix": "f",  "suffix": "t", "answer": "igh", "emoji": "🥊" },
+        { "word": "bright", "prefix": "br", "suffix": "t", "answer": "igh", "emoji": "✨" },
+        { "word": "high",   "prefix": "h",  "suffix": "",  "answer": "igh", "emoji": "⛰️" },
+        { "word": "pie",    "prefix": "p",  "suffix": "",  "answer": "ie",  "emoji": "🥧" },
+        { "word": "tie",    "prefix": "t",  "suffix": "",  "answer": "ie",  "emoji": "👔" },
+        { "word": "sky",    "prefix": "sk", "suffix": "",  "answer": "y",   "emoji": "🌤️" },
+        { "word": "fly",    "prefix": "fl", "suffix": "",  "answer": "y",   "emoji": "🪰" },
+        { "word": "cry",    "prefix": "cr", "suffix": "",  "answer": "y",   "emoji": "😢" },
+        { "word": "try",    "prefix": "tr", "suffix": "",  "answer": "y",   "emoji": "🔁" },
+        { "word": "my",     "prefix": "m",  "suffix": "",  "answer": "y",   "emoji": "🙋" },
+        { "word": "shy",    "prefix": "sh", "suffix": "",  "answer": "y",   "emoji": "😳" },
+        { "word": "dry",    "prefix": "dr", "suffix": "",  "answer": "y",   "emoji": "🌵" }
+      ]
+    }
+  ]
+}

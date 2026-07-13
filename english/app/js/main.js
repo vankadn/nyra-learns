@@ -7,6 +7,9 @@ import { renderGame4Section } from './games/unscramble.js';
 import { renderGame5Section } from './games/sentence-builder.js';
 import { renderSoundSortSection, buildSoundSortGameCard } from './games/sound-sort.js';
 import { buildSoundSortConfigs } from './games/sound-sort-config.js';
+import { renderSpellingChoiceSection, buildSpellingChoiceGameCard } from './games/spelling-choice.js';
+import { renderClapCounterSection, buildClapCounterGameCard } from './games/clap-counter.js';
+import { renderSyllableBuilderSection, buildSyllableBuilderGameCard } from './games/syllable-builder.js';
 import { renderWorksheetSection } from './pdf/worksheet-pdf.js';
 import { initNav, showLearnTab, showGames, showTab, renderGamesSection } from './nav.js';
 
@@ -15,6 +18,10 @@ async function init() {
   const DATA = await res.json();
   const soundSortRes = await fetch('data/sound-sort-games.json');
   const soundSortManifest = await soundSortRes.json();
+  const spellingChoiceRes = await fetch('data/spelling-choice.json');
+  const spellingChoiceData = await spellingChoiceRes.json();
+  const syllablesRes = await fetch('data/syllables.json');
+  const syllablesData = await syllablesRes.json();
 
   initNav(DATA.sections[0].id);
 
@@ -68,11 +75,25 @@ async function init() {
   content.appendChild(renderGame5Section(DATA.sections, praises, stickerThemes));
   content.appendChild(renderWorksheetSection(DATA.sections, stickerThemes));
 
+  const gamesGrid = content.querySelector('#sec-games .games-grid');
+
+  content.appendChild(renderSpellingChoiceSection(spellingChoiceData, praises));
+  gamesGrid.appendChild(buildSpellingChoiceGameCard());
+
+  content.appendChild(renderClapCounterSection(syllablesData, praises));
+  gamesGrid.appendChild(buildClapCounterGameCard());
+
+  content.appendChild(renderSyllableBuilderSection(syllablesData, praises));
+  gamesGrid.appendChild(buildSyllableBuilderGameCard());
+
   // Sound Sort: one game instance per manifest entry — adding a new
   // sound-classification game (e.g. Hard/Soft C) only needs a new entry
-  // in sound-sort-games.json, no changes here.
-  const soundSortConfigs = buildSoundSortConfigs(DATA.sections, soundSortManifest.games || []);
-  const gamesGrid = content.querySelector('#sec-games .games-grid');
+  // in sound-sort-games.json, no changes here. A manifest entry may source
+  // its deck from a vowels.json section (sectionId), a Spelling Choice set
+  // (setId) whose per-word `answer` field already carries the category, or
+  // syllables.json's flat tiers (tiers/challengeTier) — either way the word
+  // list is never hand-duplicated into sound-sort-games.json.
+  const soundSortConfigs = buildSoundSortConfigs(DATA.sections, soundSortManifest.games || [], spellingChoiceData.sets || [], syllablesData);
   for (const cfg of soundSortConfigs) {
     content.appendChild(renderSoundSortSection(cfg, praises, stickerThemes));
     gamesGrid.appendChild(buildSoundSortGameCard(cfg));

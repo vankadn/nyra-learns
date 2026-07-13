@@ -10,6 +10,32 @@
         { "id": "hard-g", "symbol": "/g/", "color": "#4A90D9" },
         { "id": "soft-g", "symbol": "/j/", "color": "#D97A4A" }
       ]
+    },
+    {
+      "gameId": "sound-sort-igh-ie-y",
+      "setId": "igh-ie-y",
+      "icon": "🍦",
+      "title": "Ice Cream Scoops",
+      "theme": "icecream",
+      "instructions": "Sort each word into the right cone: igh, ie, or y!",
+      "categories": [
+        { "id": "igh", "label": "igh", "color": "#F48FB1" },
+        { "id": "ie",  "label": "ie",  "color": "#80CBC4" },
+        { "id": "y",   "label": "y",   "color": "#FFD54F" }
+      ]
+    },
+    {
+      "gameId": "sound-sort-syllables",
+      "icon": "👏",
+      "title": "Syllable Sort",
+      "theme": "icecream",
+      "instructions": "How many syllables (beats) does each word have?",
+      "tiers": [
+        { "tierKey": "oneSyllable",   "id": "1", "label": "1 Syllable",  "color": "#4A90D9" },
+        { "tierKey": "twoSyllable",   "id": "2", "label": "2 Syllables", "color": "#7CB342" },
+        { "tierKey": "threeSyllable", "id": "3", "label": "3 Syllables", "color": "#D97A4A" }
+      ],
+      "challengeTier": { "tierKey": "fourSyllableChallenge", "id": "4", "label": "4 Syllables", "color": "#AB47BC" }
     }
   ]
 }

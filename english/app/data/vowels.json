@@ -3047,6 +3047,29 @@
             "commonMistake": "Don't pronounce the GH. Eight = 'ayt'. Weight = 'wayt'. The whole -EIGH is just the 'ay' sound.",
             "exampleSentence": "Eight friends came to weigh the sleigh."
           }
+        },
+        {
+          "id": "igh-ie-y", "label": "igh / ie / y", "sound": "Long I sound (ī)",
+          "defaultEmoji": "🌙",
+          "words": [
+            { "word": "night",  "emoji": "🌙" },
+            { "word": "light",  "emoji": "💡" },
+            { "word": "right",  "emoji": "✅" },
+            { "word": "sight",  "emoji": "👀" },
+            { "word": "tight",  "emoji": "🔒" },
+            { "word": "fight",  "emoji": "🥊" },
+            { "word": "bright", "emoji": "✨" },
+            { "word": "high",   "emoji": "⛰️" },
+            { "word": "pie",    "emoji": "🥧" },
+            { "word": "tie",    "emoji": "👔" },
+            { "word": "sky",    "emoji": "🌤️" },
+            { "word": "fly",    "emoji": "🪰" },
+            { "word": "cry",    "emoji": "😢" },
+            { "word": "try",    "emoji": "🔁" },
+            { "word": "my",     "emoji": "🙋" },
+            { "word": "shy",    "emoji": "😳" },
+            { "word": "dry",    "emoji": "🌵" }
+          ]
         }
       ]
     },
