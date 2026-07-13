@@ -28,6 +28,15 @@ function genderIcon(gender) { return GENDER_ICON[gender] || '🧒'; }
 
 function isVideoMime(mimeType) { return !!mimeType && mimeType.startsWith('video/'); }
 
+// Fixed pool, single constant so it's easy to adjust later — see "Practice recording tags" below.
+const EMOTION_POOL = [
+  { id: 'happy',      label: 'Happy',      emoji: '😄' },
+  { id: 'silly',      label: 'Silly',      emoji: '🤪' },
+  { id: 'focused',    label: 'Focused',    emoji: '🎯' },
+  { id: 'frustrated', label: 'Frustrated', emoji: '😤' },
+  { id: 'proud',      label: 'Proud',      emoji: '🌟' },
+];
+
 // God filter state — persists for the session (survive revokeBlobs)
 let godsFolderId = null;
 let cachedGods = null;       // null=not fetched; array of { name, fileId, blobUrl }
@@ -873,6 +882,88 @@ async function showSong(folderId, songName, cachedSongs = null) {
   }
 }
 
+// --- Practice recording tags (sidecar JSON per song+student) ---
+//
+// Emotion/star tags live in their own small JSON file per song per student —
+// `student-{name}-practice-tags.json`, a sibling of the practice recording itself
+// in the song folder — rather than encoded into the recording's filename. Tags
+// change over time (re-rating a take after hearing it again later) and a
+// filename approach would mean a Drive rename on every edit plus fragile
+// parsing; a JSON sidecar is a fast, isolated write and keeps the practice
+// file's own name/extension untouched. Same "Drive properties / small JSON,
+// not encoded into names" convention as god tags and student properties.
+//
+// Shape: { revisions: { [revisionId]: { emotions: [...], stars: 1-5, review: "..." } } }
+// All three fields are fully independent and optional — any combination, or
+// (no entry at all) none of them.
+
+function tagsFileName(studentName) {
+  return `student-${studentName}-practice-tags.json`;
+}
+
+// Read-only, uses the API key like meaning.txt/notes.txt — no auth required.
+// Returns { fileId: null, tags: { revisions: {} } } if the sidecar doesn't exist yet.
+async function fetchTagsFile(songFolderId, studentName) {
+  const targetName = tagsFileName(studentName).toLowerCase();
+  try {
+    const q = encodeURIComponent(`'${songFolderId}' in parents and trashed=false`);
+    const data = await readJSON(`files?q=${q}&fields=files(id,name)`);
+    const file = (data.files || []).find(f => f.name.toLowerCase() === targetName);
+    if (!file) return { fileId: null, tags: { revisions: {} } };
+    const text = await readText(`files/${file.id}?alt=media`);
+    let parsed = {};
+    try { parsed = JSON.parse(text); } catch (_) { /* corrupt/empty — treat as untagged */ }
+    return { fileId: file.id, tags: { revisions: parsed.revisions || {} } };
+  } catch (_) {
+    return { fileId: null, tags: { revisions: {} } };
+  }
+}
+
+// Sets (or clears) one revision's tags. An empty result (no emotions, no stars,
+// no review) deletes that revision's entry entirely rather than storing `{}`.
+// Always re-fetches current tags first (rather than trusting caller-held state)
+// so rapid taps never clobber a concurrent edit — write-gated behind
+// ensureAuth() by every call site. Mirrors saveTextContent()'s files.update-if-
+// exists-else-files.create pattern; doesn't need keepRevisionForever since only
+// this file's *current* content matters, never its own revision history.
+async function saveRevisionTags(songFolderId, studentName, revisionId, { emotions = [], stars, review } = {}) {
+  const { fileId, tags } = await fetchTagsFile(songFolderId, studentName);
+  const revisions = { ...tags.revisions };
+  const trimmedReview = (review || '').trim();
+  if (!emotions.length && !stars && !trimmedReview) {
+    delete revisions[revisionId];
+  } else {
+    const entry = {};
+    if (emotions.length) entry.emotions = emotions;
+    if (stars) entry.stars = stars;
+    if (trimmedReview) entry.review = trimmedReview;
+    revisions[revisionId] = entry;
+  }
+  const newTags = { revisions };
+  const blob = new Blob([JSON.stringify(newTags)], { type: 'application/json' });
+  let newFileId = fileId;
+  if (fileId) {
+    await driveUpload({ mimeType: 'application/json' }, blob, fileId);
+  } else {
+    const file = await driveUpload(
+      { name: tagsFileName(studentName), mimeType: 'application/json', parents: [songFolderId] },
+      blob
+    );
+    newFileId = file.id;
+  }
+  return { fileId: newFileId, tags: newTags };
+}
+
+function tagSummaryText(tagsByRevision, revisionId) {
+  const t = tagsByRevision[revisionId];
+  if (!t) return '';
+  const stars = t.stars ? '★'.repeat(t.stars) + '☆'.repeat(5 - t.stars) : '';
+  const emojis = (t.emotions || []).map(id => EMOTION_POOL.find(e => e.id === id)?.emoji || '').join('');
+  const reviewMark = t.review ? '📝' : '';
+  const parts = [stars, emojis, reviewMark].filter(Boolean);
+  return parts.length ? ' ' + parts.join(' ') : '';
+}
+
 // Re-entrant: safe to call again on an already-rendered section (e.g. after a revision restore),
 // since it always resets student-content-${index} back to a fresh loading state first.
 async function renderStudentPracticeSection(index, student, files, fromSong, cachedSongs) {
@@ -906,6 +997,17 @@ async function renderStudentPracticeSection(index, student, files, fromSong, cac
   }
   const latestRevId = revisions[0]?.id;
 
+  // Tags fetched alongside revisions so they're available the moment the picker renders.
+  let tagsFileId = null;
+  let tagsByRevision = {};
+  try {
+    const tagsResult = await fetchTagsFile(fromSong.id, student.name);
+    tagsFileId = tagsResult.fileId;
+    tagsByRevision = tagsResult.tags.revisions;
+  } catch (_) {
+    // best-effort — an unreadable sidecar just means no tags render, not a page error
+  }
+
   const DAY_MS = 86_400_000;
   let ageWarning = '';
   if (revisions[0] && !revisions[0].keepForever) {
@@ -923,6 +1025,7 @@ async function renderStudentPracticeSection(index, student, files, fromSong, cac
     ${isVideo
       ? `<video controls playsinline id="${audioId}" src="${latestUrl}" class="video-player"></video>`
       : `<audio controls id="${audioId}" src="${latestUrl}" class="audio-player"></audio>`}
+    <div id="tag-current-${index}"></div>
     ${revisions.length <= 1 ? `
       <div class="practice-file-actions write-only">
         <button class="rev-action-btn rev-action-danger" id="practice-delete-${index}">🗑️ Delete this recording</button>
@@ -953,6 +1056,146 @@ async function renderStudentPracticeSection(index, student, files, fromSong, cac
     return isHead ? `Latest — ${label}` : label;
   };
 
+  // --- Tag control: lives next to the player itself, not inside the "Earlier takes"
+  // dropdown — so it's reachable even for a take with only one revision (the dropdown
+  // never renders in that case, which is the common case for a freshly uploaded take).
+  // Targets whichever revision is currently loaded in the player: the head by default,
+  // retargeted to an older take once picked from the dropdown below (if it exists at all).
+  // Requires knowing the loaded revision's real ID, which needs revisions.list (OAuth) —
+  // so for anonymous visitors this control simply doesn't render, same as the picker.
+  let currentRevisionId = latestRevId;
+  let tagPanelOpen = false;
+
+  function mountTagControl() {
+    const mount = document.getElementById(`tag-current-${index}`);
+    if (!mount) return;
+    if (!currentRevisionId) { mount.innerHTML = ''; return; }
+
+    const current = tagsByRevision[currentRevisionId] || {};
+    const summary = tagSummaryText(tagsByRevision, currentRevisionId).trim();
+    // Review is a read affordance, not a write one — shown whenever this revision has
+    // one, regardless of whether the tag panel is open, so it surfaces just by viewing
+    // that take (not marked write-only, unlike the button that edits it).
+    mount.innerHTML = `
+      <div class="tag-current-row write-only">
+        <button class="rev-tag-btn" id="tag-current-btn-${index}" title="Tag this take">🏷️</button>
+        ${summary ? `<span class="tag-current-summary">${summary}</span>` : ''}
+      </div>
+      ${current.review ? `<p class="tag-review-display">${esc(current.review)}</p>` : ''}
+      <div id="tag-panel-${index}"></div>`;
+
+    document.getElementById(`tag-current-btn-${index}`).onclick = async () => {
+      try { await ensureAuth(); } catch (e) { showError(e.message); return; }
+      tagPanelOpen = !tagPanelOpen;
+      renderTagPanel();
+    };
+
+    if (tagPanelOpen) renderTagPanel();
+  }
+
+  // Lightweight inline panel (not the full wizard-shell modal). Emotions/stars write
+  // immediately on tap; the review textarea has an explicit Save (free text shouldn't
+  // fire a network write per keystroke) — either way every write goes through
+  // applyTagUpdate, which reflects the confirmed saved state back into the panel and
+  // the "currently viewing" display, not a pre-save guess.
+  function renderTagPanel() {
+    const tagPanelEl = document.getElementById(`tag-panel-${index}`);
+    if (!tagPanelEl) return;
+    if (!tagPanelOpen) { tagPanelEl.innerHTML = ''; return; }
+
+    const current = tagsByRevision[currentRevisionId] || {};
+    const emotions = current.emotions || [];
+    const stars = current.stars || 0;
+
+    tagPanelEl.innerHTML = `
+      <div class="tag-panel">
+        <div class="tag-panel-row">
+          ${EMOTION_POOL.map(em => `
+            <button type="button" class="tag-emotion-btn" data-emotion="${em.id}"
+              aria-pressed="${emotions.includes(em.id)}" title="${esc(em.label)}">${em.emoji}</button>`).join('')}
+        </div>
+        <div class="tag-panel-row tag-stars-row">
+          ${[1, 2, 3, 4, 5].map(n => `
+            <button type="button" class="tag-star-btn" data-star="${n}"
+              aria-pressed="${n <= stars}">${n <= stars ? '★' : '☆'}</button>`).join('')}
+        </div>
+        <textarea class="tag-review-input" id="tag-review-input-${index}"
+          placeholder="Write a review of this take…" maxlength="1000">${esc(current.review || '')}</textarea>
+        <button type="button" class="rev-action-btn" id="tag-review-save-${index}">💾 Save review</button>
+        <button type="button" class="rev-action-btn" id="tag-panel-done-${index}">Done</button>
+      </div>`;
+
+    tagPanelEl.querySelectorAll('.tag-emotion-btn').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.dataset.emotion;
+        const cur = tagsByRevision[currentRevisionId]?.emotions || [];
+        const next = cur.includes(id) ? cur.filter(e => e !== id) : [...cur, id];
+        applyTagUpdate({
+          emotions: next,
+          stars: tagsByRevision[currentRevisionId]?.stars,
+          review: tagsByRevision[currentRevisionId]?.review,
+        });
+      };
+    });
+
+    // Tapping the currently-set star again clears the rating back to unset.
+    tagPanelEl.querySelectorAll('.tag-star-btn').forEach(btn => {
+      btn.onclick = () => {
+        const n = parseInt(btn.dataset.star, 10);
+        const curStars = tagsByRevision[currentRevisionId]?.stars;
+        const nextStars = curStars === n ? undefined : n;
+        applyTagUpdate({
+          emotions: tagsByRevision[currentRevisionId]?.emotions || [],
+          stars: nextStars,
+          review: tagsByRevision[currentRevisionId]?.review,
+        });
+      };
+    });
+
+    document.getElementById(`tag-review-save-${index}`).onclick = async () => {
+      const btn = document.getElementById(`tag-review-save-${index}`);
+      const text = document.getElementById(`tag-review-input-${index}`).value;
+      btn.disabled = true; btn.textContent = 'Saving…';
+      await applyTagUpdate({
+        emotions: tagsByRevision[currentRevisionId]?.emotions || [],
+        stars: tagsByRevision[currentRevisionId]?.stars,
+        review: text,
+      });
+    };
+
+    document.getElementById(`tag-panel-done-${index}`).onclick = () => {
+      tagPanelOpen = false;
+      renderTagPanel();
+    };
+  }
+
+  async function applyTagUpdate(tagUpdate) {
+    try {
+      const result = await saveRevisionTags(fromSong.id, student.name, currentRevisionId, tagUpdate);
+      tagsFileId = result.fileId;
+      tagsByRevision = result.tags.revisions;
+      mountTagControl();
+      updateRevOptionText(currentRevisionId);
+    } catch (e) {
+      showError(e.message);
+    }
+  }
+
+  // Keeps an already-rendered dropdown option's tag summary in sync after a save,
+  // without rebuilding the whole <select> (which would lose the current selection).
+  function updateRevOptionText(revisionId) {
+    const select = document.getElementById(`rev-picker-${index}`);
+    if (!select) return;
+    const rev = revisions.find(r => r.id === revisionId);
+    const opt = Array.from(select.options).find(o => o.value === revisionId);
+    if (opt && rev) {
+      const flag = rev.keepForever ? ' ✓' : '';
+      opt.textContent = `${revLabel(rev, rev.id === latestRevId)}${flag}${tagSummaryText(tagsByRevision, revisionId)}`;
+    }
+  }
+
+  mountTagControl();
+
   function renderRevisionPicker() {
     const container = document.getElementById(`rev-container-${index}`);
     if (!container) return;
@@ -960,7 +1203,7 @@ async function renderStudentPracticeSection(index, student, files, fromSong, cac
 
     const revOptions = revisions.map((r, i) => {
       const flag = r.keepForever ? ' ✓' : '';
-      return `<option value="${esc(r.id)}">${revLabel(r, i === 0)}${flag}</option>`;
+      return `<option value="${esc(r.id)}">${revLabel(r, i === 0)}${flag}${tagSummaryText(tagsByRevision, r.id)}</option>`;
     }).join('');
 
     container.innerHTML = `
@@ -995,6 +1238,12 @@ async function renderStudentPracticeSection(index, student, files, fromSong, cac
       audioEl.src = url;
       audioEl.load();
       updateActionState();
+      // Retarget the tag control (next to the player) to whatever's now loaded — closing
+      // rather than re-rendering an already-open panel, so there's never ambiguity about
+      // which take is being tagged.
+      currentRevisionId = this.value;
+      tagPanelOpen = false;
+      mountTagControl();
     });
 
     restoreBtn.onclick = async () => {
@@ -1007,6 +1256,22 @@ async function renderStudentPracticeSection(index, student, files, fromSong, cac
         const blob = await resp.blob();
         const rev = revisions.find(r => r.id === revisionId);
         await driveUpload({ mimeType: rev?.mimeType || studentFile.mimeType }, blob, studentFile.id);
+
+        // Restore creates a *new* head revision with a new Drive-assigned ID — copy this
+        // revision's tags forward onto it, or they'd silently vanish even though it's the
+        // same take content-wise. Best-effort: never let a tag-copy failure block the restore.
+        const sourceTags = tagsByRevision[revisionId];
+        if (sourceTags) {
+          try {
+            const freshRevData = accessToken
+              ? await apiJSON(`files/${studentFile.id}/revisions?fields=revisions(id,modifiedTime)`)
+              : await readJSON(`files/${studentFile.id}/revisions?fields=revisions(id,modifiedTime)`);
+            const freshRevisions = (freshRevData.revisions || []).slice().reverse();
+            const newHeadId = freshRevisions[0]?.id;
+            if (newHeadId) await saveRevisionTags(fromSong.id, student.name, newHeadId, sourceTags);
+          } catch (_) { /* tags just won't carry forward — restore itself already succeeded */ }
+        }
+
         await renderStudentPracticeSection(index, student, files, fromSong, cachedSongs);
       } catch (e) {
         showError(e.message);
@@ -1024,8 +1289,22 @@ async function renderStudentPracticeSection(index, student, files, fromSong, cac
       try {
         await apiDelete(`files/${studentFile.id}/revisions/${revisionId}`);
         revisions = revisions.filter(r => r.id !== revisionId);
+        // Clean up the now-orphaned tags entry so stale tags don't accumulate for
+        // takes that no longer exist — best-effort, doesn't block the delete itself.
+        if (tagsByRevision[revisionId]) {
+          delete tagsByRevision[revisionId];
+          try { await saveRevisionTags(fromSong.id, student.name, revisionId, {}); }
+          catch (_) { /* revision delete already succeeded; tag cleanup is secondary */ }
+        }
         audioEl.src = latestUrl;
         audioEl.load();
+        // Playback reverts to latest — the tag control follows so it never points at a
+        // now-deleted revision.
+        if (currentRevisionId === revisionId) {
+          currentRevisionId = latestRevId;
+          tagPanelOpen = false;
+          mountTagControl();
+        }
         renderRevisionPicker();
       } catch (e) {
         showError(e.message);

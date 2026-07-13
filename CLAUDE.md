@@ -171,6 +171,70 @@ deliberately not the permanent no-trash semantics of the per-revision Delete. On
 re-renders the section with that file filtered out of the local `files` list, landing back on the
 "No practice take yet" empty state.
 
+**Practice recording tags:** each revision of a student's practice take can optionally carry an
+emotion tag (multi-select), a 1–5 star rating, and/or a free-text review — moment markers ("this
+one was a proud personal best," or a sentence about how the take went), none required. Storage is
+a **sidecar JSON file per song per student**, `student-{name}-practice-tags.json`, living in the
+song folder alongside the practice recording itself — same "Drive properties / small JSON, not
+encoded into names" convention as god tags and student properties, chosen over filename-encoding
+because tags get edited over time (re-rating a take after hearing it again later) and a filename
+approach means a Drive rename on every edit plus fragile parsing. Shape:
+`{ revisions: { [revisionId]: { emotions: ["happy","silly"], stars: 5, review: "..." } } }` — all
+three fields fully independent (any combination, or no entry at all); an entry with none of them
+is deleted rather than stored as `{}`.
+
+`fetchTagsFile(songFolderId, studentName)` reads it read-only via the API key (same pattern as
+`meaning.txt`/`notes.txt`), returning an empty `{ revisions: {} }` shape if the sidecar doesn't
+exist yet — no error. `saveRevisionTags(songFolderId, studentName, revisionId, { emotions, stars,
+review })` re-fetches current tags first (so rapid taps never clobber a concurrent edit),
+merges/deletes the one revision's entry, and writes back via the same `driveUpload`-update-if-
+exists-else-create pattern as `saveTextContent()` — no `keepRevisionForever` significance here
+since only this file's *current* content matters, never its own revision history. Every call site
+passes all three fields together (reading whichever two it isn't changing off the current
+in-memory `tagsByRevision` entry first) so a star tap, say, never silently clobbers an existing
+review. The emotion pool is a fixed constant, `EMOTION_POOL` (near the top of `music/app.js`) —
+`{ id, label, emoji }` per emotion, five today (happy/silly/focused/frustrated/proud), edit that
+array to add more.
+
+**UI lives next to the player itself** (`mountTagControl`, called from
+`renderStudentPracticeSection`), not inside the "Earlier takes" dropdown — a take with only one
+revision never gets a dropdown at all (see Versioning above), which is the *common* case for a
+freshly uploaded or never-re-recorded take, so anchoring the control there would make tagging
+unreachable for most takes. Instead a write-only 🏷️ button sits directly under the player, and
+`currentRevisionId` — the revision the control targets — starts at the head and is retargeted
+whenever an older take is picked from the dropdown (if one exists), so one control always tracks
+"whatever's currently loaded in the player." Requires knowing that revision's real ID, which needs
+`revisions.list` (OAuth) — so for anonymous visitors the whole control silently doesn't render,
+same as the picker itself.
+
+Next to the button, a plain-text tag summary renders whenever tagged (`★★★☆☆`-style stars, emotion
+emoji inline, a 📝 mark if there's a review) — same summary text also appended to each `<option>`
+in the "Earlier takes" dropdown, so older takes show at a glance which are tagged without opening
+each one. The review text itself, if set, renders as its own read-only block right under the
+summary — **not** gated `write-only`, since displaying it is a read action; it just happens to
+also require the same OAuth-resolved `currentRevisionId` the write controls need. Tapping 🏷️ opens
+a lightweight inline panel (not the full wizard-shell modal) for `currentRevisionId` specifically —
+reachable for any revision reachable via the dropdown, not just the head, since re-tagging older
+takes later is an explicit use case. Emotion/star taps write immediately via `saveRevisionTags`
+(no Save button — tapping the currently-set star again clears the rating back to unset, the "tap
+active to clear" convention this app now uses for single-value toggles); the review textarea has
+an explicit "💾 Save review" button instead, since free text shouldn't fire a network write per
+keystroke. Every write reflects the *confirmed saved* state back into the panel and the summary/
+review display, not a pre-save guess. Changing the dropdown selection closes the panel rather than
+re-targeting it, so there's never ambiguity about which take is being tagged; deleting the
+currently-targeted revision (below) resets the control back to the head for the same reason.
+
+Tags stay consistent with the revision they describe across both mutating flows: **Restore**
+copies the source revision's tags forward onto the newly-created head revision (best-effort, via
+a fresh `revisions.list` call to learn its real ID after the restore upload — a tag-copy failure
+never blocks the restore itself), since otherwise re-tagging would silently vanish even though the
+restored content is the same take. **Delete** removes that revision's entry from the tags sidecar
+in the same operation, so stale tags don't accumulate for takes that no longer exist.
+
+Scope: practice recordings only (audio + video) — teacher audio has no revision picker today (see
+above), so it gets no tagging either. No required fields anywhere; a recording can stay completely
+untagged forever.
+
 **Global playback queues:** header pill buttons — 🎤 Teacher, one per student, then 🔀 All — start a
 queue across all songs, **shuffled by default**. Pills are generated dynamically
 (`renderHeaderPlayPills()`, see "Students" below), not fixed markup. Queue order is session-only,
@@ -209,8 +273,10 @@ sits top-right in the header; clicking it calls `ensureAuth()` → on success `o
 `body.anon` and populates the header user pill. Hidden write surfaces: Add content buttons, empty-
 state CTAs, god filter + button, the god filter row's 🖌️ emoji mini-button, god tag Change/Tag
 buttons, the ⚙️ student settings button, the ✏️ Meaning/Notes edit buttons and their "+ Add"
-empty-state CTAs, the ✏️ song title rename button, and the practice-take Restore/Delete/"Delete this
-recording" actions.
+empty-state CTAs, the ✏️ song title rename button, the practice-take Restore/Delete/"Delete this
+recording" actions, and the practice-take 🏷️ Tag button (the inline emotion/star/review panel it
+opens is only ever reachable through it, so nothing further inside it needs the class too — except
+the review *display*, which is intentionally not write-only since showing it is a read action).
 
 **Students (multi-student support):** a folder can have any number of students (siblings sharing
 one Bhajans folder). Stored as a single Drive **folder property** on the active song-parent folder
