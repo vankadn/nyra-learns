@@ -27,7 +27,8 @@ app/index.html         Thin shell — no logic. All JS is in app/js/.
 app/css/styles.css     All styles.
 app/js/                ES module tree (see below).
 app/data/*.json        One file per subject/unit, plus sound-sort-games.json and
-                        spelling-choice.json (both manifests, see below).
+                        spelling-choice.json (both manifests, see below),
+                        singleConsonantSounds.json, and readingPassages.json.
 worksheets/generate.py PDF generator (reportlab). Reads the same JSON files.
 ```
 
@@ -42,7 +43,7 @@ app/js/
   selector.js          buildSelectorHTML, getSelectorWords, getSelectorSentences
   players.js           session-only Players scoreboard — see "Players scoreboard" section below
   emoji.js             getEmoji(), DEFAULT_EMOJI
-  utils.js             shuffle(), pickBlankPositions(), escHtml()
+  utils.js             shuffle(), pickBlankPositions(), computeMissingLetterBlanks(), escHtml()
   audio/
     tts.js             speak(), pickVoice(), cachedVoice
     tones.js           playChime()
@@ -53,7 +54,9 @@ app/js/
   games/
     letter-builder.js  Game 1 (g1) — spell word from full letter tray + decoys
     word-match.js      Game 2 (g2) — match word to emoji, two columns
-    missing-letter.js  Game 3 (g3) — fill blanks only (1/2/3 by level)
+    missing-letter.js  Missing Letter — generic config-driven "fill the blanks" engine
+                        (see "Missing Letter" section below); game3/g3 is the original
+                        by-level instance, plus 2 new start/end-blank instances
     unscramble.js      Game 4 (g4) — reorder word's own letters, no decoys
     sentence-builder.js Game 5 (g5) — reorder sentence words
     sound-sort.js      Sound Sort — generic config-driven "tap the sound bucket" engine
@@ -71,6 +74,9 @@ app/js/
                         syllable (`entry.syllables`) instead of a letter, using
                         Sentence Builder's variable-width seq-chip tiles since
                         chunks aren't 1 character. Reads app/data/syllables.json.
+    reading-passage.js  Reading Passages — new engine, parent-led shared reading
+                        (see "Reading Passages" section below). Reads
+                        app/data/readingPassages.json.
   pdf/
     pdf-utils.js       emojiCache, loadEmojiImage(), hexToRgb()
     worksheet-pdf.js   renderWorksheetSection, generateWorksheetPDF
@@ -167,11 +173,21 @@ Never render a broken/empty emoji slot — always fall through.
 | `long-vowels` | `long-a` `long-e` `long-i` `long-o` `long-u` |
 | `vowel-teams` | `ai-ay` `ee-ea` `oa-ow` `oo` `ui-ue` `oi-oy` `ou-ow` `ei-eigh` `igh-ie-y` |
 | `spelling-rules` | `use-ck` `use-k` `use-c` |
-| `consonant-digraphs` | `sh` `ch` `th` `ph` |
+| `consonant-digraphs` | `sh` `ch` `th` `ph` `wh` |
 | `consonant-blends` | `pl` `br` `cl` `cr` `fl` |
 | `g-variations` | `hard-g` `soft-g` |
 
-Word counts: 30 words per item (20 for `ei-eigh`, 24 for digraphs sh/ch/th, 14 for `ph`, 18 for blends, 42 for `hard-g`, 25 for `soft-g`).
+Word counts: 30 words per item by default, with these exceptions — `long-a` 35,
+`ai-ay` 48 (both grew from a homework-driven long-a enrichment pass), 20 for
+`ei-eigh`, 25 for `sh`, 26 each for `ch`/`th`, 14 for `ph`, 5 for the new `wh`,
+18 for blends, 42 for `hard-g`, 25 for `soft-g`.
+
+**Deliberately excluded from the long-a enrichment:** `break` — it's the
+irregular `ea` spelling for the long-a sound (like "steak"), not `ai`/`ay`/`a_e`.
+Force-fitting it into one of those buckets would corrupt the sort-by-pattern
+games (Sound Sort's `igh-ie-y`-style item-per-pattern grouping, Spelling
+Choice). Add it later only as its own tagged exception if an `ea`-irregular
+bucket is ever built — don't fold it into `ai-ay` or `long-a`.
 
 Top-level arrays: `completionPraises` (16 strings), `stickerThemes` (6 themes).
 
@@ -203,12 +219,36 @@ Three games consume this file — Syllable Sort (reuses Sound Sort), Clap Counte
 (new engine), and Syllable Builder (reuses Unscramble's reorder mechanic) — see
 their respective sections below.
 
+## Single consonant sounds (singleConsonantSounds.json)
+
+`app/data/singleConsonantSounds.json` is another flat sibling dataset (same
+shape convention as `syllables.json`) filling the long-standing "single
+beginning/ending consonant sound" gap — not a `vowels.json` section. One flat
+array; each entry carries both `beginningSound` and `endingSound` so the same
+word list serves both directions, rather than forking into separate files:
+
+```json
+{ "singleConsonantSounds": [
+  { "word": "bike", "emoji": "🚲", "beginningSound": "b", "endingSound": "k" }
+] }
+```
+
+37 words, ~16 distinct beginning sounds and ~16 distinct ending sounds — most
+individual sounds only have 1-4 words, so no single config attempts to sort
+across all of them at once (see Sound Sort below). Consumed by four configs
+across two engines: two Sound Sort games (curated 2-3-sound subsets, grouped
+by `beginningSound`/`endingSound`) and two Missing Letter games (always
+blanking the first/last letter, sourced from the full word list) — see their
+respective sections below.
+
 ## Sound Sort games (config-driven)
 
 **Games list (Games picker grid):** Quiz, Letter Builder, Word Match, Missing Letter,
-Unscramble, Sentence Builder, Sound Sort, Spelling Choice. Sound Sort is one entry
-point, dynamically instantiated once per config — not one hardcoded game like the
-others; likewise Spelling Choice mounts one set-picker covering all its `sets[]`.
+Unscramble, Sentence Builder, Sound Sort, Spelling Choice, Clap Counter, Syllable
+Builder, Reading Passages. Sound Sort and Missing Letter are each one config-driven
+entry point, dynamically instantiated once per config (see "Missing Letter" below)
+— not one hardcoded game like Letter Builder/Word Match/Unscramble/Sentence Builder;
+likewise Spelling Choice mounts one set-picker covering all its `sets[]`.
 
 `sound-sort.js` is a generic engine: "show one word, tap which of 2–3 sound-category
 buckets it belongs to." It has no G-specific (or any subject-specific) code. Each
@@ -260,10 +300,24 @@ per-game cosmetic metadata that doesn't exist in the word-data schema (`gameId`,
 section of `vowels.json` — 42 hard-g + 25 soft-g words), `sound-sort-igh-ie-y`
 ("Ice Cream Scoops", `setId: "igh-ie-y"`, deck derived from Spelling Choice's
 `igh-ie-y` set — same 17 words feeding that game's IGH/IE/Y set, single source of
-truth, no duplication), and `sound-sort-syllables` ("Syllable Sort", `tiers` pointing
+truth, no duplication), `sound-sort-syllables` ("Syllable Sort", `tiers` pointing
 at `syllables.json`'s `oneSyllable`/`twoSyllable`/`threeSyllable`, `theme: "icecream"`
 — cones map naturally onto "how many syllables/scoops," and `challengeTier` pointing
-at `fourSyllableChallenge`).
+at `fourSyllableChallenge`), `sound-sort-begin-bdp` ("Beginning Sound: B, D, or P?",
+`groupBy: "beginningSound"`), and `sound-sort-end-tdp` ("Ending Sound: T, D, or P?",
+`groupBy: "endingSound"`) — the last two both source from `singleConsonantSounds.json`.
+
+**`groupBy` source** (`sound-sort-config.js`): used when the word source is one flat
+array (`singleConsonantSounds.json`) and the category is just a per-word field value,
+rather than a separate item/tier/set. The manifest entry's `categories` is a
+**deliberately curated subset** of that field's possible values — `singleConsonantSounds.json`
+has ~16 distinct beginning/ending sounds, but Sound Sort's bucket UI is built for 2-3
+buckets on screen at once (every other config here uses 2-3), so `sound-sort-begin-bdp`/
+`sound-sort-end-tdp` each pick one confusable trio (b/d/p — classic reversal-prone
+letters; t/d/p — a matching final-consonant trio) rather than exposing every sound as
+its own bucket. Entries whose field value isn't one of the declared category ids are
+filtered out of the deck — adding another curated subset (e.g. a future m/n pair) is
+just another manifest entry, no engine change.
 
 **Challenge Mode** (`sound-sort.js`, only rendered when `config.challengeCategory` is
 set): a single "🏆 Challenge Mode" checkbox injected into the setup screen right
@@ -290,10 +344,11 @@ new config (and a new `theme` value if it wants a new visual skin) — no engine
 
 **Adding the next sound-sort game requires zero engine code changes** — only a new
 entry in `sound-sort-games.json`, pointing at a phonics section (`sectionId`, when
-categories map 1:1 onto separate items) or a Spelling Choice set (`setId`, when they
-don't). `main.js` loops over every config `buildSoundSortConfigs()` returns, mounting
-a game section and a Games-grid card for each — no per-game wiring in `main.js` or
-`nav.js` either.
+categories map 1:1 onto separate items), a Spelling Choice set (`setId`, when they
+don't), or a curated subset of `singleConsonantSounds.json` grouped by a per-word
+field (`groupBy`). `main.js` loops over every config `buildSoundSortConfigs()`
+returns, mounting a game section and a Games-grid card for each — no per-game wiring
+in `main.js` or `nav.js` either.
 
 Reuses existing engine pieces rather than reimplementing: `renderGameSection`/
 `celebrate`/`showReplay` from `game-shell.js` (setup screen, confetti, praise pool),
@@ -309,6 +364,36 @@ circle-the-answer worksheet).
 Tapping the word/emoji (not a bucket) re-speaks it via `speak()`, matching the
 app-wide "tap words to hear them" convention — same interaction as the Learn tab's
 word chips, without affecting round state or counting as an answer.
+
+## Missing Letter (config-driven)
+
+`missing-letter.js` was originally one hardcoded game (module-level state,
+`pickBlankPositions(word, level)` always deciding blank *count* by level with
+random position). Generalized to config-driven, mirroring Sound Sort's pattern
+— `renderMissingLetterSection(config, praises, stickerThemes)` closes over
+per-instance state instead of module-level globals, so multiple instances can
+run side by side. Config shape: `{ gameId, prefix, icon, title, tip, sections,
+blankMode }`.
+
+`blankMode` picks the blanking strategy via `computeMissingLetterBlanks(word,
+level, blankMode)` (`utils.js`, shared with `generateMissingLetterPDF` so the
+printed worksheet always matches on-screen blanks):
+- `'byLevel'` (default) — `pickBlankPositions(word, level)`, a random count
+  (1/2/3 by easy/medium/hard) at random position(s). Original behavior.
+- `'start'` / `'end'` — always blanks exactly the first/last letter, regardless
+  of level. Powers the two new single-consonant-sound configs.
+
+**Live instances** (wired directly in `main.js`, no JSON manifest — only 3
+instances total, not enough to justify one): `game3`/`g3` (`blankMode:
+'byLevel'`, `sections: DATA.sections` — the original game; its Games-grid card
+is still the static markup in `nav.js`, unchanged, so it's the one instance
+`main.js` does *not* also build a dynamic card for), `missing-letter-start`/`g3s`
+and `missing-letter-end`/`g3e` (`blankMode: 'start'`/`'end'`, sourced from a
+single pseudoSection wrapping all of `singleConsonantSounds.json` as one flat
+"Consonant Words" category — mirrors Sound Sort's pseudoSection trick for
+feeding a flat array through `renderGameSection`/`getSelectorWords`'s
+category/level/count selector unmodified). Both new instances get a dynamic
+Games-grid card via `buildMissingLetterGameCard(config)`.
 
 ## Spelling Choice game (config-driven)
 
@@ -431,6 +516,68 @@ in this pass either, for the same reason as Clap Counter — can be added later
 mirroring `unscramble.js`'s `onItemComplete('g4')` usage, since the per-word
 completion model is identical.
 
+## Reading Passages (new engine, readingPassages.json)
+
+`reading-passage.js` — a genuinely new content type and engine: short decodable
+passages plus mixed-type comprehension questions, not a single-word/sentence drill
+like every other game. None of the existing 7 engines fit (all operate on single
+words/sentences, not connected text + mixed question types), so this reuses only
+CSS (`.quiz-btn`/`.quiz-options`/`.topic-card`) and `speak()`, not any shared
+game-engine module.
+
+**Data** (`app/data/readingPassages.json`): flat top-level array, independent of
+`vowels.json` — same "new sibling dataset" convention as `syllables.json`/
+`singleConsonantSounds.json`. Four passages today (short-a/e/i/u); **no short-o
+passage yet** — that homework page was a CVC word-search grid instead of a
+passage, and a word-search needs a genuinely new grid/tap-to-select mechanic
+with low reuse elsewhere. Deliberately not built as a placeholder; if it's
+wanted later, covering the same short-o CVC words via Missing Letter or Word
+Match was the recommended alternative to a new engine. Schema:
+
+```json
+{ "readingPassages": [{
+  "id": "kebab-case-id", "title": "string", "vowelSound": "short-a",
+  "text": "string",
+  "questions": [
+    { "prompt": "string", "type": "multiple-choice", "choices": ["a","b"], "answer": "a" },
+    { "prompt": "string", "type": "short-answer", "answer": "string" },
+    { "prompt": "string", "type": "word-list", "answer": ["word1","word2"] }
+  ]
+}] }
+```
+
+**Landing screen:** a plain list of passages (title + vowel-sound badge,
+`.topic-card` styling, mirrors Spelling Choice's set-picker) — picking one shows
+the passage text plus every question in order underneath.
+
+**No Player Select step, by design** — this is parent-led shared reading, not
+a competitive/turn-based drill, so it skips the standard game-open flow
+entirely (no `renderGameSection`, no Players scoreboard wiring). Flagged as an
+assumption when built; reverse if it turns out a turn-based mode is wanted.
+
+**Passage text** renders as a large, plain read-along block (`.rp-passage-text`)
+— tapping it re-speaks the whole passage via `speak()`, same "tap to hear"
+convention as everywhere else. Not a quiz/scoring surface itself.
+
+**Questions render per `type`, each independently, no shared scoring across
+question types:**
+- `multiple-choice` — tappable `.quiz-btn` options (shuffled), reuses the
+  Quiz/Spelling Choice correct/wrong CSS classes. Tapping locks in an answer
+  and reveals correct/incorrect immediately (no retry).
+- `short-answer` — a plain text input (`.rp-q-input`) for the parent to jot
+  down or mark against what the child says out loud, plus a "👀 Show Answer"
+  button that reveals `question.answer` on demand. No auto-checking — there's
+  nothing to compare free text against reliably.
+- `word-list` — every word in `question.answer[]` renders as a tappable chip
+  (`.rp-chip`); tapping toggles a "found" visual state (green fill). Self-
+  directed marking, not validated against the passage text — the array is
+  already the correct word list, tapping just tracks which ones the child
+  found.
+
+No PDF export, no Players scoreboard, no scoring/replay screen — this game
+doesn't end in a celebrate/showReplay flow like the others; it just stays on
+the passage until the parent taps "⬅️ Change" to pick another one.
+
 ## Players scoreboard (session-only)
 
 Optional, opt-in sibling-competition mode: 1-2 kids each pick a name + an avatar
@@ -505,13 +652,34 @@ shows every word/emoji pair clickable at once (no single "current item" the way 
 other game has), so "whose turn" could only ever be an unenforced honor-system
 convention there. Decided against shipping that ambiguity for this game specifically.
 
+**`quiz.js` — hand-wired Players (not via the shared shell) + picture support.** Quiz
+doesn't call `renderGameSection` — hand-built setup/play screens, flat module-level
+`score`/`total`/`currentQ` globals, and a **manual** "Next Word ➡️" advance (not
+auto-advance like every other game) — so it wires `players.js`' primitives by hand
+instead of inheriting them from the shared `renderGameSection` shell change:
+`buildPlayersSetupHTML(PREFIX)`/`setupPlayersUI` render the optional name/avatar
+setup block under the level picker; `startPlayersRound` snapshots it when a round
+starts. During play, `#quizSoloBar` (the original `⭐ Score N / M` bar) and
+`#quiz-plyr-bar` are sibling elements toggled by `updateScoreboardMode()` — solo
+score-bar when 0 players, `renderPlayerBar` card row when 1–2 — mirroring Sound
+Sort's `players.length ? plyrBar : scoreBar` branch. Because advance is manual,
+turn-passing happens in `nextQuestion()` (`advanceTurn(PREFIX)`) rather than
+auto-firing after each answer; `checkAnswer()` calls `creditCurrentPlayer(PREFIX)`
+on a correct answer (or increments the plain `score` global with 0 players). The
+"⬅️ Change" button moved out of `.score-bar` into its own always-visible
+`.quiz-play-top` row, since it needs to stay reachable regardless of which
+scoreboard variant is showing.
+
+Each question also now shows a **picture**: `buildQuizData` tags every question
+with `emoji: getEmoji(wObj, item, sec)` (same fallback chain as everywhere else),
+rendered above the word (`#quizPicture`, tap to re-speak, same convention as
+Sound Sort's word-tap). Answer option buttons show each topic's `sec.icon` next to
+its title (`iconByTitle`, built once per `renderQuizSection` call from `sections`) —
+correctness checks now key off `btn.dataset.opt` instead of `btn.textContent`,
+since the button label is icon + text, not the bare topic title anymore.
+
 ### Later scope (deferred, not yet built)
 
-- **`quiz.js` wiring.** Doesn't call `renderGameSection` at all — hand-built setup/play
-  screens, flat module-level `score`/`total`/`currentQ` globals, and a **manual**
-  "Next Word ➡️" advance (not auto-advance like every other game), so it needs the
-  same `players.js` primitives wired by hand rather than inherited "for free" from the
-  shared shell change.
 - **`sentence-builder.js` wiring.** Also doesn't call `renderGameSection` (hand-builds
   its own `#sec-game5` shell) — needs the same setup-screen block added by hand,
   mirroring exactly what the shell change gives the other four games automatically.

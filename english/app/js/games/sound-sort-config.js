@@ -27,7 +27,16 @@ function tierDeck(tierWords, categoryId) {
 //   into `config.challengeCategory`/`config.challengeDeck`, kept separate
 //   from `categories`/`deck` so the base game never includes it — it's only
 //   folded in at runtime if the player opts into Challenge Mode.
-export function buildSoundSortConfigs(sections, manifestGames = [], spellingChoiceSets = [], syllablesData = null) {
+// - `groupBy`: a field name (e.g. `beginningSound`) read directly off each
+//   entry of singleConsonantSounds.json's flat array — used when the word
+//   source is one flat list and the category is just a per-word field value,
+//   rather than a separate item/tier/set. `categories` in the manifest entry
+//   is a deliberately curated subset of that field's possible values (e.g.
+//   just b/d/p, not all ~16 consonants) so Sound Sort's bucket UI — designed
+//   for 2-3 buckets — never has to render every distinct sound at once;
+//   entries whose field value isn't one of the declared category ids are
+//   filtered out of the deck.
+export function buildSoundSortConfigs(sections, manifestGames = [], spellingChoiceSets = [], syllablesData = null, singleConsonantSoundsData = null) {
   const configs = [];
   for (const game of manifestGames) {
     let categories = [];
@@ -45,6 +54,18 @@ export function buildSoundSortConfigs(sections, manifestGames = [], spellingChoi
         challengeCategory = tierCategory(game.challengeTier);
         challengeDeck = tierDeck(syllablesData[game.challengeTier.tierKey], game.challengeTier.id);
       }
+    } else if (game.groupBy) {
+      if (!singleConsonantSoundsData) continue;
+      const validIds = new Set(game.categories.map(c => c.id));
+      categories = game.categories.map(tierCategory);
+      deck = singleConsonantSoundsData
+        .filter(entry => validIds.has(entry[game.groupBy]))
+        .map(entry => ({
+          word: entry.word,
+          emoji: entry.emoji,
+          level: entry.level || 'easy',
+          answer: entry[game.groupBy],
+        }));
     } else if (game.setId) {
       const set = spellingChoiceSets.find(s => s.id === game.setId);
       if (!set) continue;

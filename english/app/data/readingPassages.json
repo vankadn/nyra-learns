@@ -1,0 +1,47 @@
+{
+  "readingPassages": [
+    {
+      "id": "short-a-fat-cat",
+      "title": "The Fat Cat",
+      "vowelSound": "short-a",
+      "text": "Pat has a cat. The cat is fat. The fat cat sat. It sat on a mat. It sat on a hat. It sat on a rat. The fat cat sat. Sat, sat, sat.",
+      "questions": [
+        { "prompt": "Pat has a ___.", "type": "multiple-choice", "choices": ["cat", "bat", "ham"], "answer": "cat" },
+        { "prompt": "The cat is ___.", "type": "multiple-choice", "choices": ["sad", "fat", "mad"], "answer": "fat" }
+      ]
+    },
+    {
+      "id": "short-e-ben-and-the-red-leaf",
+      "title": "Ben and the Red Leaf",
+      "vowelSound": "short-e",
+      "text": "Ben gets up and sees a red leaf. He bends to pick it up. The leaf smells fresh and feels soft. Ben sets it on his desk to keep. He tells his mom, \"Fall is the best!\"",
+      "questions": [
+        { "prompt": "What does Ben find?", "type": "short-answer", "answer": "a red leaf" },
+        { "prompt": "Where does he put the leaf?", "type": "short-answer", "answer": "on his desk" },
+        { "prompt": "What does Ben say about fall?", "type": "short-answer", "answer": "fall is the best" }
+      ]
+    },
+    {
+      "id": "short-i-jims-pig",
+      "title": "Jim's Pig",
+      "vowelSound": "short-i",
+      "text": "Jim got a pink pig. His name is Kit. Jim and Kit went to eat a big fig. Kit, the pig, likes Jim. Kit is a happy pink pig.",
+      "questions": [
+        { "prompt": "Jim got a pink ___.", "type": "multiple-choice", "choices": ["cow", "pig"], "answer": "pig" },
+        { "prompt": "Jim and Kit went to eat a big ___.", "type": "multiple-choice", "choices": ["fig", "kiwi"], "answer": "fig" },
+        { "prompt": "Kit is a ___ pink pig.", "type": "multiple-choice", "choices": ["happy", "sad"], "answer": "happy" }
+      ]
+    },
+    {
+      "id": "short-u-the-blue-rug",
+      "title": "The Blue Rug",
+      "vowelSound": "short-u",
+      "text": "Where is my rug? My rug is big and my rug is blue. I can not find my rug. I can not find my jug. I can not find my mug. I can find a bug. The bug can hug me. The bug can hug you. The bug can find my big blue rug.",
+      "questions": [
+        { "prompt": "What am I looking for?", "type": "short-answer", "answer": "my rug" },
+        { "prompt": "What color is my rug?", "type": "multiple-choice", "choices": ["blue", "red", "yellow"], "answer": "blue" },
+        { "prompt": "Find 3 -ug words in the story.", "type": "word-list", "answer": ["rug", "jug", "mug", "bug", "hug"] }
+      ]
+    }
+  ]
+}

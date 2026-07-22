@@ -1,8 +1,17 @@
 import { shuffle } from './utils.js';
 import { speak } from './audio/tts.js';
 import { showGames } from './nav.js';
+import { getEmoji, DEFAULT_EMOJI } from './emoji.js';
+import {
+  buildPlayersSetupHTML, setupPlayersUI, startPlayersRound,
+  getPlayersState, renderPlayerBar, creditCurrentPlayer, advanceTurn,
+} from './players.js';
+
+const PREFIX = 'quiz';
 
 let currentQ = 0, score = 0, total = 0, answered = false, shuffledQuiz = [];
+let quizSectionEl = null;
+let iconByTitle = {};
 
 export function buildQuizData(sections) {
   const titles = sections.map(s => s.title);
@@ -15,6 +24,7 @@ export function buildQuizData(sections) {
           topic: sec.id,
           level: wObj.level || 'easy',
           word: wObj.word,
+          emoji: getEmoji(wObj, item, sec),
           answer: sec.title,
           options: shuffle([sec.title, ...wrong]),
         });
@@ -28,6 +38,8 @@ export function renderQuizSection(quizData, sections) {
   const div = document.createElement('div');
   div.id = 'sec-quiz';
   div.className = 'section';
+  quizSectionEl = div;
+  iconByTitle = Object.fromEntries(sections.map(s => [s.title, s.icon || DEFAULT_EMOJI]));
 
   let html = `<button class="back-btn" id="quizBackBtn">← Games</button>
   <div class="section-title">⭐ Quiz Time!</div>
@@ -52,6 +64,7 @@ export function renderQuizSection(quizData, sections) {
       <button class="lvl-btn"          data-level="medium">⭐⭐ Medium</button>
       <button class="lvl-btn"          data-level="hard">⭐⭐⭐ Hard</button>
     </div>
+    ${buildPlayersSetupHTML(PREFIX)}
     <button class="next-btn" id="startQuizBtn">▶️ Start Quiz!</button>
     <div id="topicWarning" style="color:#E53935;font-weight:700;text-align:center;margin-top:8px;display:none;">
       Please pick at least one topic and level! 🙏
@@ -59,14 +72,18 @@ export function renderQuizSection(quizData, sections) {
   </div>
 
   <div id="quizPlay" style="display:none;">
-    <div class="score-bar">
+    <div class="quiz-play-top">
+      <button id="changeTopicsBtn" class="quiz-change-btn">⬅️ Change</button>
+    </div>
+    <div class="score-bar" id="quizSoloBar">
       <span>⭐ Score</span>
       <span class="score-num" id="scoreDisplay">0</span>
       <span>/ <span id="totalDisplay">0</span></span>
-      <button id="changeTopicsBtn" style="font-family:'Baloo 2',cursive;background:#90CAF9;border:none;padding:6px 12px;border-radius:20px;cursor:pointer;font-weight:700;">⬅️ Change</button>
     </div>
+    <div id="${PREFIX}-plyr-bar" style="display:none;"></div>
     <div class="quiz-card">
       <div class="quiz-question">Which group does this word belong to?</div>
+      <div class="quiz-picture" id="quizPicture"></div>
       <div class="quiz-word" id="quizWord"></div>
       <div class="quiz-options" id="quizOptions"></div>
       <div class="quiz-result" id="quizResult"></div>
@@ -75,6 +92,7 @@ export function renderQuizSection(quizData, sections) {
   </div>`;
 
   div.innerHTML = html;
+  setupPlayersUI(div, PREFIX);
 
   div.querySelector('#quizBackBtn').addEventListener('click', () => showGames());
 
@@ -123,6 +141,8 @@ function startQuiz(quizData) {
     return;
   }
   currentQ = 0; score = 0; total = 0; answered = false;
+  startPlayersRound(quizSectionEl, PREFIX);
+  updateScoreboardMode();
   updateScore();
   document.getElementById('quizSetup').style.display = 'none';
   document.getElementById('quizPlay').style.display = 'block';
@@ -134,20 +154,34 @@ function backToSetup() {
   document.getElementById('quizPlay').style.display = 'none';
 }
 
+function updateScoreboardMode() {
+  const hasPlayers = getPlayersState(PREFIX).players.length > 0;
+  document.getElementById('quizSoloBar').style.display = hasPlayers ? 'none' : 'flex';
+  const bar = document.getElementById(`${PREFIX}-plyr-bar`);
+  bar.style.display = hasPlayers ? 'block' : 'none';
+  bar.innerHTML = renderPlayerBar(PREFIX);
+}
+
 function renderQuestion() {
   if (currentQ >= shuffledQuiz.length) currentQ = 0;
   const q = shuffledQuiz[currentQ];
+  const picture = document.getElementById('quizPicture');
+  picture.textContent = q.emoji;
   document.getElementById('quizWord').textContent = q.word;
   document.getElementById('quizResult').textContent = '';
   speak(q.word);
   answered = false;
+
+  picture.onclick = () => speak(q.word);
 
   const container = document.getElementById('quizOptions');
   container.innerHTML = '';
   shuffle(q.options).forEach(opt => {
     const btn = document.createElement('button');
     btn.className = 'quiz-btn';
-    btn.textContent = opt;
+    btn.dataset.opt = opt;
+    const icon = iconByTitle[opt] || DEFAULT_EMOJI;
+    btn.innerHTML = `<span class="quiz-opt-icon">${icon}</span>${opt}`;
     btn.addEventListener('click', () => checkAnswer(btn, opt, q.answer, container));
     container.appendChild(btn);
   });
@@ -159,11 +193,12 @@ function checkAnswer(btn, chosen, correct, container) {
   total++;
   container.querySelectorAll('.quiz-btn').forEach(b => {
     b.disabled = true;
-    if (b.textContent === correct) b.classList.add('correct');
+    if (b.dataset.opt === correct) b.classList.add('correct');
   });
   const result = document.getElementById('quizResult');
+  const hasPlayers = getPlayersState(PREFIX).players.length > 0;
   if (chosen === correct) {
-    score++;
+    if (hasPlayers) creditCurrentPlayer(PREFIX); else score++;
     btn.classList.add('correct');
     result.textContent = '🎉 Wah, correct! Shabash! 🌟';
     speak('Correct! Great job!');
@@ -175,7 +210,11 @@ function checkAnswer(btn, chosen, correct, container) {
   updateScore();
 }
 
-function nextQuestion() { currentQ++; renderQuestion(); }
+function nextQuestion() {
+  advanceTurn(PREFIX);
+  currentQ++;
+  renderQuestion();
+}
 
 function updateScore() {
   document.getElementById('scoreDisplay').textContent = score;

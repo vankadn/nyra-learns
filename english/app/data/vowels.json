@@ -1009,6 +1009,31 @@
               "level": "easy"
             },
             {
+              "word": "game",
+              "emoji": "🎮",
+              "level": "easy"
+            },
+            {
+              "word": "snake",
+              "emoji": "🐍",
+              "level": "easy"
+            },
+            {
+              "word": "place",
+              "emoji": "📍",
+              "level": "easy"
+            },
+            {
+              "word": "tame",
+              "emoji": "🐾",
+              "level": "easy"
+            },
+            {
+              "word": "fake",
+              "emoji": "🎭",
+              "level": "easy"
+            },
+            {
               "word": "brave",
               "emoji": "🦁",
               "level": "medium"
@@ -1839,6 +1864,31 @@
               "level": "easy"
             },
             {
+              "word": "pain",
+              "emoji": "🤕",
+              "level": "easy"
+            },
+            {
+              "word": "main",
+              "emoji": "⭐",
+              "level": "easy"
+            },
+            {
+              "word": "gray",
+              "emoji": "☁️",
+              "level": "easy"
+            },
+            {
+              "word": "stay",
+              "emoji": "🛑",
+              "level": "easy"
+            },
+            {
+              "word": "tray",
+              "emoji": "🍽️",
+              "level": "easy"
+            },
+            {
               "word": "train",
               "emoji": "🚂",
               "level": "medium"
@@ -1889,6 +1939,41 @@
               "level": "medium"
             },
             {
+              "word": "sailor",
+              "emoji": "⛵",
+              "level": "medium"
+            },
+            {
+              "word": "trailer",
+              "emoji": "🚛",
+              "level": "medium"
+            },
+            {
+              "word": "mermaid",
+              "emoji": "🧜‍♀️",
+              "level": "medium"
+            },
+            {
+              "word": "grain",
+              "emoji": "🌾",
+              "level": "medium"
+            },
+            {
+              "word": "failed",
+              "emoji": "❌",
+              "level": "medium"
+            },
+            {
+              "word": "stain",
+              "emoji": "☕",
+              "level": "medium"
+            },
+            {
+              "word": "holiday",
+              "emoji": "🎉",
+              "level": "medium"
+            },
+            {
               "word": "afraid",
               "emoji": "😨",
               "level": "hard"
@@ -1936,6 +2021,36 @@
             {
               "word": "maintain",
               "emoji": "🔧",
+              "level": "hard"
+            },
+            {
+              "word": "explain",
+              "emoji": "🗣️",
+              "level": "hard"
+            },
+            {
+              "word": "sprain",
+              "emoji": "🤕",
+              "level": "hard"
+            },
+            {
+              "word": "remain",
+              "emoji": "⏳",
+              "level": "hard"
+            },
+            {
+              "word": "waist",
+              "emoji": "📏",
+              "level": "hard"
+            },
+            {
+              "word": "delay",
+              "emoji": "⏰",
+              "level": "hard"
+            },
+            {
+              "word": "decay",
+              "emoji": "🍂",
               "level": "hard"
             }
           ],
@@ -3080,7 +3195,7 @@
       "icon": "🟢",
       "defaultEmoji": "🔤",
       "tip": "Two consonants team up to make ONE brand new sound!",
-      "rule": "Sh, ch, th, and ph each make a single new sound — say it once, not letter by letter!",
+      "rule": "Sh, ch, th, ph, and wh each make a single new sound — say it once, not letter by letter!",
       "items": [
         { "id": "sh", "label": "Sh — /sh/", "defaultEmoji": "🤫",
           "teacherNotes": {
@@ -3114,7 +3229,8 @@
             { "word": "vanish", "emoji": "💨", "level": "hard" },
             { "word": "publish", "emoji": "📚", "level": "hard" },
             { "word": "mustache", "emoji": "🥸", "level": "hard" },
-            { "word": "shampoo", "emoji": "🧴", "level": "hard" }
+            { "word": "shampoo", "emoji": "🧴", "level": "hard" },
+            { "word": "shirt", "emoji": "👕", "level": "easy" }
           ]
         },
         { "id": "ch", "label": "Ch — /ch/", "defaultEmoji": "🍫",
@@ -3149,7 +3265,9 @@
             { "word": "children", "emoji": "🧒", "level": "hard" },
             { "word": "chimney", "emoji": "🏠", "level": "hard" },
             { "word": "butcher", "emoji": "🥩", "level": "hard" },
-            { "word": "sandwich", "emoji": "🥪", "level": "hard" }
+            { "word": "sandwich", "emoji": "🥪", "level": "hard" },
+            { "word": "cheese", "emoji": "🧀", "level": "easy" },
+            { "word": "chicken", "emoji": "🐔", "level": "medium" }
           ]
         },
         { "id": "th", "label": "Th — /th/", "defaultEmoji": "👍",
@@ -3179,12 +3297,14 @@
             { "word": "month", "emoji": "📅", "level": "medium" },
             { "word": "north", "emoji": "🧭", "level": "medium" },
             { "word": "thread", "emoji": "🪡", "level": "medium" },
+            { "word": "thorn", "emoji": "🌵", "level": "medium" },
             { "word": "thousand", "emoji": "💰", "level": "hard" },
             { "word": "Thursday", "emoji": "🗓️", "level": "hard" },
             { "word": "healthy", "emoji": "💪", "level": "hard" },
             { "word": "breathe", "emoji": "🫁", "level": "hard" },
             { "word": "feather", "emoji": "🪶", "level": "hard" },
-            { "word": "brother", "emoji": "👬", "level": "hard" }
+            { "word": "brother", "emoji": "👬", "level": "hard" },
+            { "word": "thimble", "emoji": "🪡", "level": "hard" }
           ]
         },
         { "id": "ph", "label": "Ph — /f/", "defaultEmoji": "📞",
@@ -3210,6 +3330,22 @@
             { "word": "pharmacy", "emoji": "💊", "level": "hard" },
             { "word": "physical", "emoji": "🏃", "level": "hard" },
             { "word": "phantom", "emoji": "👻", "level": "hard" }
+          ]
+        },
+        { "id": "wh", "label": "Wh — /wh/", "defaultEmoji": "🐋",
+          "teacherNotes": {
+            "howToSay": "Push a little puff of air out as you say it — 'hw' — lips rounded like you're about to whistle.",
+            "simpleRule": "W and H together make one sound at the start of a word — say it like you're blowing out a candle.",
+            "indianDadTip": "Hindi/Telugu speakers often flatten 'wh' to a plain 'w' (whale sounds like 'wail') — the puff of air gets dropped. Exaggerate the breath on 'wh' words until it feels silly-obvious.",
+            "commonMistake": "Mixing up 'wh' words with plain 'w' words that sound almost identical (whale/wail, white/wight) — lean on spelling, not just sound.",
+            "exampleSentence": "The whale blew a whistle-shaped spray of white water."
+          },
+          "words": [
+            { "word": "whale", "emoji": "🐋", "level": "easy" },
+            { "word": "wheel", "emoji": "🛞", "level": "easy" },
+            { "word": "white", "emoji": "⚪", "level": "easy" },
+            { "word": "whistle", "emoji": "🎶", "level": "medium" },
+            { "word": "whisk", "emoji": "🥄", "level": "medium" }
           ]
         }
       ]

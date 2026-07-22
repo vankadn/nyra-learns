@@ -1,5 +1,5 @@
 import { emojiCache, loadEmojiImage, drawCornerStickers } from './pdf-utils.js';
-import { shuffle, pickBlankPositions } from '../utils.js';
+import { shuffle, computeMissingLetterBlanks } from '../utils.js';
 
 export async function generateMatchPDF(words, { theme } = {}) {
   if (!window.jspdf) throw new Error('PDF library not loaded');
@@ -113,7 +113,7 @@ export function generateUnscramblePDF(words, { theme } = {}) {
   });
 }
 
-export async function generateMissingLetterPDF(words, { theme } = {}) {
+export async function generateMissingLetterPDF(words, { theme, blankMode = 'byLevel' } = {}) {
   if (!window.jspdf) throw new Error('PDF library not loaded');
   await Promise.all([...new Set(words.map(w => w.emoji))].map(e => loadEmojiImage(e)));
   if (theme) await Promise.all(theme.emoji.map(e => loadEmojiImage(e)));
@@ -136,7 +136,7 @@ export async function generateMissingLetterPDF(words, { theme } = {}) {
 
   let y = mT + 18;
   for (const w of words) {
-    const blankPos = pickBlankPositions(w.word, w.level || 'easy');
+    const blankPos = computeMissingLetterBlanks(w.word, w.level || 'easy', blankMode);
     const letters = w.word.toUpperCase().split('');
     const missing = shuffle(letters.filter((_, i) => blankPos.has(i)));
     const boxSectionW = letters.length * boxW + (letters.length - 1) * boxGap;

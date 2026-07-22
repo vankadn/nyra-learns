@@ -6,6 +6,16 @@ export function pickBlankPositions(word, level) {
   return new Set(shuffle([...Array(word.length).keys()]).slice(0, count));
 }
 
+// Missing Letter's blanking strategy: 'byLevel' (default) blanks a random
+// count of letters via pickBlankPositions; 'start'/'end' always blank
+// exactly the first/last letter, regardless of level — used by the
+// beginning/ending single-consonant-sound configs.
+export function computeMissingLetterBlanks(word, level, blankMode) {
+  if (blankMode === 'start') return new Set([0]);
+  if (blankMode === 'end') return new Set([word.length - 1]);
+  return pickBlankPositions(word, level);
+}
+
 // Rounds `value` to the nearest multiple of `multiple` (ties round up), never
 // below `multiple` itself -- so an N-player round always splits into whole turns.
 export function roundToNearestMultiple(value, multiple) {

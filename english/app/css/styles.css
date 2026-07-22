@@ -231,6 +231,8 @@ header p { color: #E3F2FD; font-size: 0.95rem; margin-top: 4px; }
 
 .quiz-question { font-family: 'Baloo 2', cursive; font-size: 1.6rem; color: var(--ink); margin-bottom: 6px; }
 
+.quiz-picture { font-size: 3.4rem; line-height: 1.1; cursor: pointer; }
+
 .quiz-word {
   font-family: 'Baloo 2', cursive;
   font-size: 3rem;
@@ -259,6 +261,18 @@ header p { color: #E3F2FD; font-size: 0.95rem; margin-top: 4px; }
 .quiz-btn.wrong    { background: #E53935; box-shadow: 0 4px 0 #B71C1C; }
 .quiz-btn:disabled { opacity: 0.7; cursor: default; }
 .quiz-btn.shake    { animation: g1Shake 0.4s ease; }
+.quiz-opt-icon     { margin-right: 6px; }
+
+.quiz-play-top { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+.quiz-change-btn {
+  font-family: 'Baloo 2', cursive;
+  background: #90CAF9;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 700;
+}
 
 /* Spelling Choice */
 .spell-word {
@@ -277,6 +291,58 @@ header p { color: #E3F2FD; font-size: 0.95rem; margin-top: 4px; }
 }
 
 .quiz-result { font-family: 'Baloo 2', cursive; font-size: 1.4rem; margin-top: 14px; min-height: 40px; }
+
+/* Reading Passages */
+.rp-passage-title {
+  font-family: 'Baloo 2', cursive;
+  font-size: 1.6rem;
+  color: var(--plum);
+  margin-bottom: 10px;
+}
+.rp-passage-text {
+  background: white;
+  border-radius: 14px;
+  padding: 16px 18px;
+  font-size: 1.3rem;
+  line-height: 1.7;
+  color: var(--ink);
+  cursor: pointer;
+  margin-bottom: 18px;
+}
+.rp-questions { display: flex; flex-direction: column; gap: 16px; }
+.rp-question { background: white; border-radius: 14px; padding: 14px 16px; }
+.rp-q-prompt { font-family: 'Baloo 2', cursive; font-size: 1.15rem; color: var(--ink); margin-bottom: 10px; }
+.rp-q-input {
+  width: 100%;
+  font-family: 'Baloo 2', cursive;
+  font-size: 1rem;
+  padding: 8px 10px;
+  border: 2px solid #ddd;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  box-sizing: border-box;
+}
+.rp-q-reveal-btn {
+  font-family: 'Baloo 2', cursive;
+  background: #90CAF9;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 700;
+}
+.rp-q-answer { margin-top: 8px; font-family: 'Baloo 2', cursive; color: #2E7D32; font-weight: 700; }
+.rp-q-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.rp-chip {
+  font-family: 'Baloo 2', cursive;
+  font-size: 1rem;
+  background: #F3F4FF;
+  border: 2px solid #ddd;
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+.rp-chip.found { background: #E8F5E9; border-color: #43A047; color: #2E7D32; }
 
 .score-bar {
   display: flex;

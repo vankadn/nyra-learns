@@ -2,7 +2,7 @@ import { renderVowelSection, renderTeamsSection } from './learn.js';
 import { buildQuizData, renderQuizSection } from './quiz.js';
 import { renderGame1Section } from './games/letter-builder.js';
 import { renderGame2Section } from './games/word-match.js';
-import { renderGame3Section } from './games/missing-letter.js';
+import { renderMissingLetterSection, buildMissingLetterGameCard } from './games/missing-letter.js';
 import { renderGame4Section } from './games/unscramble.js';
 import { renderGame5Section } from './games/sentence-builder.js';
 import { renderSoundSortSection, buildSoundSortGameCard } from './games/sound-sort.js';
@@ -10,6 +10,7 @@ import { buildSoundSortConfigs } from './games/sound-sort-config.js';
 import { renderSpellingChoiceSection, buildSpellingChoiceGameCard } from './games/spelling-choice.js';
 import { renderClapCounterSection, buildClapCounterGameCard } from './games/clap-counter.js';
 import { renderSyllableBuilderSection, buildSyllableBuilderGameCard } from './games/syllable-builder.js';
+import { renderReadingPassagesSection, buildReadingPassagesGameCard } from './games/reading-passage.js';
 import { renderWorksheetSection } from './pdf/worksheet-pdf.js';
 import { initNav, showLearnTab, showGames, showTab, renderGamesSection } from './nav.js';
 
@@ -22,6 +23,10 @@ async function init() {
   const spellingChoiceData = await spellingChoiceRes.json();
   const syllablesRes = await fetch('data/syllables.json');
   const syllablesData = await syllablesRes.json();
+  const singleConsonantSoundsRes = await fetch('data/singleConsonantSounds.json');
+  const singleConsonantSoundsData = (await singleConsonantSoundsRes.json()).singleConsonantSounds || [];
+  const readingPassagesRes = await fetch('data/readingPassages.json');
+  const readingPassagesData = (await readingPassagesRes.json()).readingPassages || [];
 
   initNav(DATA.sections[0].id);
 
@@ -67,15 +72,14 @@ async function init() {
   const praises = DATA.completionPraises || [];
   const stickerThemes = DATA.stickerThemes || [];
   content.appendChild(renderGamesSection());
+  const gamesGrid = content.querySelector('#sec-games .games-grid');
+
   content.appendChild(renderQuizSection(buildQuizData(DATA.sections), DATA.sections));
   content.appendChild(renderGame1Section(DATA.sections, praises, stickerThemes));
   content.appendChild(renderGame2Section(DATA.sections, praises, stickerThemes));
-  content.appendChild(renderGame3Section(DATA.sections, praises, stickerThemes));
   content.appendChild(renderGame4Section(DATA.sections, praises, stickerThemes));
   content.appendChild(renderGame5Section(DATA.sections, praises, stickerThemes));
   content.appendChild(renderWorksheetSection(DATA.sections, stickerThemes));
-
-  const gamesGrid = content.querySelector('#sec-games .games-grid');
 
   content.appendChild(renderSpellingChoiceSection(spellingChoiceData, praises));
   gamesGrid.appendChild(buildSpellingChoiceGameCard());
@@ -86,14 +90,55 @@ async function init() {
   content.appendChild(renderSyllableBuilderSection(syllablesData, praises));
   gamesGrid.appendChild(buildSyllableBuilderGameCard());
 
+  content.appendChild(renderReadingPassagesSection(readingPassagesData));
+  gamesGrid.appendChild(buildReadingPassagesGameCard());
+
+  // Missing Letter: gameId 'game3' is the original game (its Games-grid card
+  // is the static markup in nav.js, wired to showGame('game3') already) —
+  // 'missing-letter-start'/'-end' are new, config-driven instances against
+  // singleConsonantSounds.json's flat word list, each always blanking the
+  // first/last letter (blankMode) instead of a random count by level. See
+  // missing-letter.js for the blankMode-driven refactor.
+  const consonantWordsSection = {
+    id: 'single-consonant-sounds',
+    title: 'Consonant Words',
+    color: '#4A90D9',
+    defaultEmoji: '🔤',
+    items: [{
+      id: 'consonant-words',
+      label: 'Consonant Words',
+      defaultEmoji: '🔤',
+      words: singleConsonantSoundsData.map(w => ({ word: w.word, emoji: w.emoji, level: 'easy' })),
+    }],
+  };
+  const missingLetterConfigs = [
+    { gameId: 'game3', prefix: 'g3', icon: '✏️', title: 'Missing Letter',
+      tip: '🎮 Fill in the missing letters to complete each word!',
+      sections: DATA.sections, blankMode: 'byLevel' },
+    { gameId: 'missing-letter-start', prefix: 'g3s', icon: '🔡', title: 'Missing Letter: Start',
+      tip: '🎮 Fill in the missing first letter of each word!',
+      sections: [consonantWordsSection], blankMode: 'start' },
+    { gameId: 'missing-letter-end', prefix: 'g3e', icon: '🔚', title: 'Missing Letter: End',
+      tip: '🎮 Fill in the missing last letter of each word!',
+      sections: [consonantWordsSection], blankMode: 'end' },
+  ];
+  for (const cfg of missingLetterConfigs) {
+    content.appendChild(renderMissingLetterSection(cfg, praises, stickerThemes));
+    if (cfg.gameId !== 'game3') gamesGrid.appendChild(buildMissingLetterGameCard(cfg));
+  }
+
   // Sound Sort: one game instance per manifest entry — adding a new
   // sound-classification game (e.g. Hard/Soft C) only needs a new entry
   // in sound-sort-games.json, no changes here. A manifest entry may source
   // its deck from a vowels.json section (sectionId), a Spelling Choice set
-  // (setId) whose per-word `answer` field already carries the category, or
-  // syllables.json's flat tiers (tiers/challengeTier) — either way the word
-  // list is never hand-duplicated into sound-sort-games.json.
-  const soundSortConfigs = buildSoundSortConfigs(DATA.sections, soundSortManifest.games || [], spellingChoiceData.sets || [], syllablesData);
+  // (setId) whose per-word `answer` field already carries the category,
+  // syllables.json's flat tiers (tiers/challengeTier), or a curated subset
+  // of singleConsonantSounds.json grouped by a per-word field (groupBy) —
+  // either way the word list is never hand-duplicated into
+  // sound-sort-games.json.
+  const soundSortConfigs = buildSoundSortConfigs(
+    DATA.sections, soundSortManifest.games || [], spellingChoiceData.sets || [], syllablesData, singleConsonantSoundsData
+  );
   for (const cfg of soundSortConfigs) {
     content.appendChild(renderSoundSortSection(cfg, praises, stickerThemes));
     gamesGrid.appendChild(buildSoundSortGameCard(cfg));

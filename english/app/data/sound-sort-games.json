@@ -25,6 +25,30 @@
       ]
     },
     {
+      "gameId": "sound-sort-begin-bdp",
+      "groupBy": "beginningSound",
+      "icon": "🎬",
+      "title": "Beginning Sound: B, D, or P?",
+      "instructions": "Listen close — does it start with /b/, /d/, or /p/?",
+      "categories": [
+        { "id": "b", "label": "B", "symbol": "/b/", "color": "#4A90D9" },
+        { "id": "d", "label": "D", "symbol": "/d/", "color": "#D97A4A" },
+        { "id": "p", "label": "P", "symbol": "/p/", "color": "#7CB342" }
+      ]
+    },
+    {
+      "gameId": "sound-sort-end-tdp",
+      "groupBy": "endingSound",
+      "icon": "🏁",
+      "title": "Ending Sound: T, D, or P?",
+      "instructions": "Listen close — does it end with /t/, /d/, or /p/?",
+      "categories": [
+        { "id": "t", "label": "T", "symbol": "/t/", "color": "#AB47BC" },
+        { "id": "d", "label": "D", "symbol": "/d/", "color": "#F06292" },
+        { "id": "p", "label": "P", "symbol": "/p/", "color": "#26A69A" }
+      ]
+    },
+    {
       "gameId": "sound-sort-syllables",
       "icon": "👏",
       "title": "Syllable Sort",
